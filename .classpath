@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="lib/cog-url-1.8.0.jar"/>
+	<classpathentry kind="lib" path="lib/condor.jar"/>
+	<classpathentry kind="lib" path="lib/JGlobus-Core-2.0.4.jar"/>
+	<classpathentry kind="lib" path="lib/JGlobus-GridFTP-2.0.0.jar"/>
+	<classpathentry kind="lib" path="lib/log4j-1.2.15.jar"/>
+	<classpathentry kind="lib" path="lib/matlabcontrol-4.1.0.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>

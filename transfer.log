@@ -1,0 +1,430 @@
+0 added to chunk 0 pp:17 p:1 at:1.587
+0 Piping: /scratch/01814/earslan/mixedDataset/1005 to /oasis/scratch/earslan/temp_project/mixedDataset/1005 3.25 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1006 to /oasis/scratch/earslan/temp_project/mixedDataset/1006 1.27 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1007 to /oasis/scratch/earslan/temp_project/mixedDataset/1007 4.46 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1008 to /oasis/scratch/earslan/temp_project/mixedDataset/1008 4.17 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1009 to /oasis/scratch/earslan/temp_project/mixedDataset/1009 1.21 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/101 to /oasis/scratch/earslan/temp_project/mixedDataset/101 2.87 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1010 to /oasis/scratch/earslan/temp_project/mixedDataset/1010 2.47 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1011 to /oasis/scratch/earslan/temp_project/mixedDataset/1011 3.42 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1012 to /oasis/scratch/earslan/temp_project/mixedDataset/1012 4.07 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1013 to /oasis/scratch/earslan/temp_project/mixedDataset/1013 4.59 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1015 to /oasis/scratch/earslan/temp_project/mixedDataset/1015 1.32 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1016 to /oasis/scratch/earslan/temp_project/mixedDataset/1016 4.59 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1017 to /oasis/scratch/earslan/temp_project/mixedDataset/1017 4.08 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1018 to /oasis/scratch/earslan/temp_project/mixedDataset/1018 2.68 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1019 to /oasis/scratch/earslan/temp_project/mixedDataset/1019 3.56 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/102 to /oasis/scratch/earslan/temp_project/mixedDataset/102 3.92 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/1021 to /oasis/scratch/earslan/temp_project/mixedDataset/1021 4.29 MB
+0 acked 0(1.25 MB) at 2.834
+0 Piping: /scratch/01814/earslan/mixedDataset/1022 to /oasis/scratch/earslan/temp_project/mixedDataset/1022 size 2.63 MB at 2.834
+0 acked 1005(3.25 MB) at 2.924
+0 Piping: /scratch/01814/earslan/mixedDataset/1023 to /oasis/scratch/earslan/temp_project/mixedDataset/1023 size 1.36 MB at 2.924
+0 acked 1006(1.27 MB) at 2.956
+0 Piping: /scratch/01814/earslan/mixedDataset/1024 to /oasis/scratch/earslan/temp_project/mixedDataset/1024 size 3.72 MB at 2.956
+0 acked 1007(4.46 MB) at 3.016
+0 Piping: /scratch/01814/earslan/mixedDataset/1025 to /oasis/scratch/earslan/temp_project/mixedDataset/1025 size 2.82 MB at 3.016
+0 acked 1008(4.17 MB) at 3.511
+0 Piping: /scratch/01814/earslan/mixedDataset/1026 to /oasis/scratch/earslan/temp_project/mixedDataset/1026 size 3.93 MB at 3.511
+0 acked 1009(1.21 MB) at 3.591
+0 Piping: /scratch/01814/earslan/mixedDataset/1027 to /oasis/scratch/earslan/temp_project/mixedDataset/1027 size 4.3 MB at 3.591
+0 acked 101(2.87 MB) at 3.602
+0 Piping: /scratch/01814/earslan/mixedDataset/1028 to /oasis/scratch/earslan/temp_project/mixedDataset/1028 size 3.95 MB at 3.602
+0 acked 1010(2.47 MB) at 3.613
+0 Piping: /scratch/01814/earslan/mixedDataset/103 to /oasis/scratch/earslan/temp_project/mixedDataset/103 size 4.33 MB at 3.613
+0 acked 1011(3.42 MB) at 3.799
+0 Piping: /scratch/01814/earslan/mixedDataset/1031 to /oasis/scratch/earslan/temp_project/mixedDataset/1031 size 4.3 MB at 3.799
+0 acked 1012(4.07 MB) at 3.8
+0 Piping: /scratch/01814/earslan/mixedDataset/1032 to /oasis/scratch/earslan/temp_project/mixedDataset/1032 size 4.53 MB at 3.8
+0 acked 1013(4.59 MB) at 3.801
+0 Piping: /scratch/01814/earslan/mixedDataset/1033 to /oasis/scratch/earslan/temp_project/mixedDataset/1033 size 1.58 MB at 3.801
+0 acked 1015(1.32 MB) at 3.801
+0 Piping: /scratch/01814/earslan/mixedDataset/1034 to /oasis/scratch/earslan/temp_project/mixedDataset/1034 size 4.38 MB at 3.801
+0 acked 1016(4.59 MB) at 3.837
+0 Piping: /scratch/01814/earslan/mixedDataset/1036 to /oasis/scratch/earslan/temp_project/mixedDataset/1036 size 1.25 MB at 3.837
+0 acked 1017(4.08 MB) at 3.888
+0 Piping: /scratch/01814/earslan/mixedDataset/1037 to /oasis/scratch/earslan/temp_project/mixedDataset/1037 size 4.51 MB at 3.889
+0 acked 1018(2.68 MB) at 3.889
+0 Piping: /scratch/01814/earslan/mixedDataset/1038 to /oasis/scratch/earslan/temp_project/mixedDataset/1038 size 1.09 MB at 3.889
+0 acked 1019(3.56 MB) at 3.934
+0 Piping: /scratch/01814/earslan/mixedDataset/1039 to /oasis/scratch/earslan/temp_project/mixedDataset/1039 size 1.83 MB at 3.934
+0 acked 102(3.92 MB) at 4.486
+0 Piping: /scratch/01814/earslan/mixedDataset/104 to /oasis/scratch/earslan/temp_project/mixedDataset/104 size 2.29 MB at 4.486
+0 acked 1021(4.29 MB) at 4.497
+0 Piping: /scratch/01814/earslan/mixedDataset/1040 to /oasis/scratch/earslan/temp_project/mixedDataset/1040 size 4.65 MB at 4.497
+0 acked 1022(2.63 MB) at 4.509
+0 Piping: /scratch/01814/earslan/mixedDataset/1041 to /oasis/scratch/earslan/temp_project/mixedDataset/1041 size 4.76 MB at 4.509
+0 acked 1023(1.36 MB) at 4.514
+0 Piping: /scratch/01814/earslan/mixedDataset/1042 to /oasis/scratch/earslan/temp_project/mixedDataset/1042 size 4.4 MB at 4.514
+0 acked 1024(3.72 MB) at 4.522
+0 Piping: /scratch/01814/earslan/mixedDataset/1043 to /oasis/scratch/earslan/temp_project/mixedDataset/1043 size 1.01 MB at 4.522
+0 acked 1025(2.82 MB) at 4.533
+0 Piping: /scratch/01814/earslan/mixedDataset/1044 to /oasis/scratch/earslan/temp_project/mixedDataset/1044 size 1.63 MB at 4.533
+0 acked 1026(3.93 MB) at 4.541
+0 Piping: /scratch/01814/earslan/mixedDataset/1045 to /oasis/scratch/earslan/temp_project/mixedDataset/1045 size 3.53 MB at 4.541
+0 acked 1027(4.3 MB) at 4.546
+0 Piping: /scratch/01814/earslan/mixedDataset/1046 to /oasis/scratch/earslan/temp_project/mixedDataset/1046 size 3.64 MB at 4.546
+0 acked 1028(3.95 MB) at 4.552
+0 Piping: /scratch/01814/earslan/mixedDataset/1047 to /oasis/scratch/earslan/temp_project/mixedDataset/1047 size 2.31 MB at 4.552
+0 acked 103(4.33 MB) at 4.57
+0 Piping: /scratch/01814/earslan/mixedDataset/1048 to /oasis/scratch/earslan/temp_project/mixedDataset/1048 size 1.57 MB at 4.57
+0 acked 1031(4.3 MB) at 4.582
+0 Piping: /scratch/01814/earslan/mixedDataset/1049 to /oasis/scratch/earslan/temp_project/mixedDataset/1049 size 4.04 MB at 4.582
+0 acked 1032(4.53 MB) at 4.592
+0 Piping: /scratch/01814/earslan/mixedDataset/105 to /oasis/scratch/earslan/temp_project/mixedDataset/105 size 2.21 MB at 4.593
+0 acked 1033(1.58 MB) at 4.612
+0 Piping: /scratch/01814/earslan/mixedDataset/1051 to /oasis/scratch/earslan/temp_project/mixedDataset/1051 size 3.54 MB at 4.612
+0 acked 1034(4.38 MB) at 4.621
+0 Piping: /scratch/01814/earslan/mixedDataset/1052 to /oasis/scratch/earslan/temp_project/mixedDataset/1052 size 1.02 MB at 4.621
+0 acked 1036(1.25 MB) at 4.622
+0 Piping: /scratch/01814/earslan/mixedDataset/1053 to /oasis/scratch/earslan/temp_project/mixedDataset/1053 size 4.21 MB at 4.622
+0 acked 1037(4.51 MB) at 4.63
+0 Piping: /scratch/01814/earslan/mixedDataset/1054 to /oasis/scratch/earslan/temp_project/mixedDataset/1054 size 4.71 MB at 4.63
+0 acked 1038(1.09 MB) at 4.642
+0 Piping: /scratch/01814/earslan/mixedDataset/1055 to /oasis/scratch/earslan/temp_project/mixedDataset/1055 size 4.06 MB at 4.642
+0 acked 1039(1.83 MB) at 4.652
+0 Piping: /scratch/01814/earslan/mixedDataset/1057 to /oasis/scratch/earslan/temp_project/mixedDataset/1057 size 4.09 MB at 4.652
+0 acked 104(2.29 MB) at 4.667
+0 Piping: /scratch/01814/earslan/mixedDataset/1058 to /oasis/scratch/earslan/temp_project/mixedDataset/1058 size 4.26 MB at 4.667
+0 acked 1040(4.65 MB) at 4.728
+0 Piping: /scratch/01814/earslan/mixedDataset/106 to /oasis/scratch/earslan/temp_project/mixedDataset/106 size 1.2 MB at 4.728
+0 acked 1041(4.76 MB) at 4.774
+0 Piping: /scratch/01814/earslan/mixedDataset/1060 to /oasis/scratch/earslan/temp_project/mixedDataset/1060 size 2.75 MB at 4.774
+0 acked 1042(4.4 MB) at 4.846
+0 Piping: /scratch/01814/earslan/mixedDataset/1061 to /oasis/scratch/earslan/temp_project/mixedDataset/1061 size 3.34 MB at 4.846
+0 acked 1043(1.01 MB) at 4.862
+0 Piping: /scratch/01814/earslan/mixedDataset/1062 to /oasis/scratch/earslan/temp_project/mixedDataset/1062 size 3.73 MB at 4.862
+0 acked 1044(1.63 MB) at 4.89
+0 Piping: /scratch/01814/earslan/mixedDataset/1063 to /oasis/scratch/earslan/temp_project/mixedDataset/1063 size 1.18 MB at 4.89
+0 acked 1045(3.53 MB) at 4.9
+0 Piping: /scratch/01814/earslan/mixedDataset/1064 to /oasis/scratch/earslan/temp_project/mixedDataset/1064 size 3.12 MB at 4.9
+0 acked 1046(3.64 MB) at 4.942
+0 Piping: /scratch/01814/earslan/mixedDataset/1065 to /oasis/scratch/earslan/temp_project/mixedDataset/1065 size 3.44 MB at 4.942
+0 acked 1047(2.31 MB) at 4.974
+0 Piping: /scratch/01814/earslan/mixedDataset/1066 to /oasis/scratch/earslan/temp_project/mixedDataset/1066 size 2.94 MB at 4.974
+0 acked 1048(1.57 MB) at 4.985
+0 Piping: /scratch/01814/earslan/mixedDataset/1067 to /oasis/scratch/earslan/temp_project/mixedDataset/1067 size 1.09 MB at 4.985
+0 acked 1049(4.04 MB) at 5.026
+0 Piping: /scratch/01814/earslan/mixedDataset/1068 to /oasis/scratch/earslan/temp_project/mixedDataset/1068 size 1.17 MB at 5.026
+0 acked 105(2.21 MB) at 5.044
+0 Piping: /scratch/01814/earslan/mixedDataset/1069 to /oasis/scratch/earslan/temp_project/mixedDataset/1069 size 2.6 MB at 5.044
+0 acked 1051(3.54 MB) at 5.072
+0 Piping: /scratch/01814/earslan/mixedDataset/107 to /oasis/scratch/earslan/temp_project/mixedDataset/107 size 3.52 MB at 5.072
+0 acked 1052(1.02 MB) at 5.083
+0 Piping: /scratch/01814/earslan/mixedDataset/1070 to /oasis/scratch/earslan/temp_project/mixedDataset/1070 size 1.76 MB at 5.083
+0 acked 1053(4.21 MB) at 5.116
+0 Piping: /scratch/01814/earslan/mixedDataset/1071 to /oasis/scratch/earslan/temp_project/mixedDataset/1071 size 4.76 MB at 5.116
+0 acked 1054(4.71 MB) at 5.205
+0 Piping: /scratch/01814/earslan/mixedDataset/1072 to /oasis/scratch/earslan/temp_project/mixedDataset/1072 size 2.11 MB at 5.205
+0 acked 1055(4.06 MB) at 5.207
+0 Piping: /scratch/01814/earslan/mixedDataset/1073 to /oasis/scratch/earslan/temp_project/mixedDataset/1073 size 3.04 MB at 5.207
+0 acked 1057(4.09 MB) at 5.221
+0 Piping: /scratch/01814/earslan/mixedDataset/1075 to /oasis/scratch/earslan/temp_project/mixedDataset/1075 size 4.46 MB at 5.221
+0 acked 1058(4.26 MB) at 5.253
+0 Piping: /scratch/01814/earslan/mixedDataset/1076 to /oasis/scratch/earslan/temp_project/mixedDataset/1076 size 3.32 MB at 5.253
+0 acked 106(1.2 MB) at 5.262
+0 Piping: /scratch/01814/earslan/mixedDataset/1078 to /oasis/scratch/earslan/temp_project/mixedDataset/1078 size 3.01 MB at 5.262
+0 acked 1060(2.75 MB) at 5.284
+0 Piping: /scratch/01814/earslan/mixedDataset/1079 to /oasis/scratch/earslan/temp_project/mixedDataset/1079 size 3.4 MB at 5.284
+0 acked 1061(3.34 MB) at 5.31
+0 Piping: /scratch/01814/earslan/mixedDataset/108 to /oasis/scratch/earslan/temp_project/mixedDataset/108 size 1.17 MB at 5.31
+0 acked 1062(3.73 MB) at 5.338
+0 Piping: /scratch/01814/earslan/mixedDataset/1080 to /oasis/scratch/earslan/temp_project/mixedDataset/1080 size 1.54 MB at 5.338
+0 acked 1063(1.18 MB) at 5.346
+0 Piping: /scratch/01814/earslan/mixedDataset/1081 to /oasis/scratch/earslan/temp_project/mixedDataset/1081 size 1.37 MB at 5.346
+0 acked 1064(3.12 MB) at 5.365
+0 Piping: /scratch/01814/earslan/mixedDataset/1082 to /oasis/scratch/earslan/temp_project/mixedDataset/1082 size 4.39 MB at 5.365
+0 acked 1065(3.44 MB) at 5.391
+0 Piping: /scratch/01814/earslan/mixedDataset/1083 to /oasis/scratch/earslan/temp_project/mixedDataset/1083 size 2.21 MB at 5.391
+6 added to chunk 0 pp:17 p:1 at:5.405
+0 acked 1066(2.94 MB) at 5.41
+0 Piping: /scratch/01814/earslan/mixedDataset/1084 to /oasis/scratch/earslan/temp_project/mixedDataset/1084 size 4.08 MB at 5.41
+0 acked 1067(1.09 MB) at 5.42
+0 Piping: /scratch/01814/earslan/mixedDataset/1085 to /oasis/scratch/earslan/temp_project/mixedDataset/1085 size 3.99 MB at 5.42
+0 acked 1068(1.17 MB) at 5.43
+0 Piping: /scratch/01814/earslan/mixedDataset/1086 to /oasis/scratch/earslan/temp_project/mixedDataset/1086 size 2.49 MB at 5.431
+0 acked 1069(2.6 MB) at 5.443
+0 Piping: /scratch/01814/earslan/mixedDataset/1087 to /oasis/scratch/earslan/temp_project/mixedDataset/1087 size 1.21 MB at 5.443
+0 acked 107(3.52 MB) at 5.472
+0 Piping: /scratch/01814/earslan/mixedDataset/1088 to /oasis/scratch/earslan/temp_project/mixedDataset/1088 size 1.67 MB at 5.472
+0 acked 1070(1.76 MB) at 5.484
+0 Piping: /scratch/01814/earslan/mixedDataset/1089 to /oasis/scratch/earslan/temp_project/mixedDataset/1089 size 2.79 MB at 5.484
+0 acked 1071(4.76 MB) at 5.513
+0 Piping: /scratch/01814/earslan/mixedDataset/109 to /oasis/scratch/earslan/temp_project/mixedDataset/109 size 2.07 MB at 5.513
+0 acked 1072(2.11 MB) at 5.526
+0 Piping: /scratch/01814/earslan/mixedDataset/1090 to /oasis/scratch/earslan/temp_project/mixedDataset/1090 size 1.29 MB at 5.526
+0 acked 1073(3.04 MB) at 5.542
+0 Piping: /scratch/01814/earslan/mixedDataset/1091 to /oasis/scratch/earslan/temp_project/mixedDataset/1091 size 1.44 MB at 5.542
+0 acked 1075(4.46 MB) at 5.575
+0 Piping: /scratch/01814/earslan/mixedDataset/1092 to /oasis/scratch/earslan/temp_project/mixedDataset/1092 size 2.44 MB at 5.575
+0 acked 1076(3.32 MB) at 5.594
+0 Piping: /scratch/01814/earslan/mixedDataset/1093 to /oasis/scratch/earslan/temp_project/mixedDataset/1093 size 1.99 MB at 5.594
+0 acked 1078(3.01 MB) at 5.614
+0 Piping: /scratch/01814/earslan/mixedDataset/1094 to /oasis/scratch/earslan/temp_project/mixedDataset/1094 size 4.17 MB at 5.614
+0 acked 1079(3.4 MB) at 5.635
+0 Piping: /scratch/01814/earslan/mixedDataset/1095 to /oasis/scratch/earslan/temp_project/mixedDataset/1095 size 1.74 MB at 5.635
+0 acked 108(1.17 MB) at 5.647
+0 Piping: /scratch/01814/earslan/mixedDataset/1096 to /oasis/scratch/earslan/temp_project/mixedDataset/1096 size 1.76 MB at 5.647
+0 acked 1080(1.54 MB) at 5.658
+0 Piping: /scratch/01814/earslan/mixedDataset/1097 to /oasis/scratch/earslan/temp_project/mixedDataset/1097 size 3.09 MB at 5.658
+0 acked 1081(1.37 MB) at 5.67
+0 Piping: /scratch/01814/earslan/mixedDataset/1098 to /oasis/scratch/earslan/temp_project/mixedDataset/1098 size 2.45 MB at 5.67
+0 acked 1082(4.39 MB) at 5.688
+0 Piping: /scratch/01814/earslan/mixedDataset/1099 to /oasis/scratch/earslan/temp_project/mixedDataset/1099 size 4.71 MB at 5.688
+0 acked 1083(2.21 MB) at 5.705
+0 Piping: /scratch/01814/earslan/mixedDataset/11 to /oasis/scratch/earslan/temp_project/mixedDataset/11 size 1.11 MB at 5.705
+0 acked 1084(4.08 MB) at 5.726
+0 Piping: /scratch/01814/earslan/mixedDataset/110 to /oasis/scratch/earslan/temp_project/mixedDataset/110 size 1.91 MB at 5.726
+0 acked 1085(3.99 MB) at 5.753
+0 Piping: /scratch/01814/earslan/mixedDataset/1100 to /oasis/scratch/earslan/temp_project/mixedDataset/1100 size 3.45 MB at 5.753
+0 acked 1086(2.49 MB) at 5.768
+0 Piping: /scratch/01814/earslan/mixedDataset/1101 to /oasis/scratch/earslan/temp_project/mixedDataset/1101 size 3.16 MB at 5.768
+0 acked 1087(1.21 MB) at 5.78
+0 Piping: /scratch/01814/earslan/mixedDataset/1102 to /oasis/scratch/earslan/temp_project/mixedDataset/1102 size 3.37 MB at 5.78
+4 added to chunk 0 pp:17 p:1 at:5.784
+0 acked 1088(1.67 MB) at 5.791
+0 Piping: /scratch/01814/earslan/mixedDataset/1103 to /oasis/scratch/earslan/temp_project/mixedDataset/1103 size 2.16 MB at 5.792
+0 acked 1089(2.79 MB) at 5.806
+0 Piping: /scratch/01814/earslan/mixedDataset/1105 to /oasis/scratch/earslan/temp_project/mixedDataset/1105 size 4.01 MB at 5.806
+0 acked 109(2.07 MB) at 5.821
+0 Piping: /scratch/01814/earslan/mixedDataset/1106 to /oasis/scratch/earslan/temp_project/mixedDataset/1106 size 2.23 MB at 5.821
+6 Piping: /scratch/01814/earslan/mixedDataset/1107 to /oasis/scratch/earslan/temp_project/mixedDataset/1107 1.61 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1108 to /oasis/scratch/earslan/temp_project/mixedDataset/1108 1.82 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1109 to /oasis/scratch/earslan/temp_project/mixedDataset/1109 3.16 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/111 to /oasis/scratch/earslan/temp_project/mixedDataset/111 2.02 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1110 to /oasis/scratch/earslan/temp_project/mixedDataset/1110 2.37 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1111 to /oasis/scratch/earslan/temp_project/mixedDataset/1111 3.57 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1112 to /oasis/scratch/earslan/temp_project/mixedDataset/1112 1.32 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1113 to /oasis/scratch/earslan/temp_project/mixedDataset/1113 4.06 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1114 to /oasis/scratch/earslan/temp_project/mixedDataset/1114 3.95 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1115 to /oasis/scratch/earslan/temp_project/mixedDataset/1115 3.19 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1116 to /oasis/scratch/earslan/temp_project/mixedDataset/1116 1.2 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1117 to /oasis/scratch/earslan/temp_project/mixedDataset/1117 1.78 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1118 to /oasis/scratch/earslan/temp_project/mixedDataset/1118 4.58 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1119 to /oasis/scratch/earslan/temp_project/mixedDataset/1119 3.78 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1120 to /oasis/scratch/earslan/temp_project/mixedDataset/1120 2.36 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1122 to /oasis/scratch/earslan/temp_project/mixedDataset/1122 1.39 MB
+6 Piping: /scratch/01814/earslan/mixedDataset/1123 to /oasis/scratch/earslan/temp_project/mixedDataset/1123 2.59 MB
+7 added to chunk 0 pp:17 p:1 at:5.91
+2 added to chunk 0 pp:17 p:1 at:5.961
+1 added to chunk 0 pp:17 p:1 at:5.978
+8 added to chunk 0 pp:17 p:1 at:5.978
+9 added to chunk 0 pp:17 p:1 at:6.036
+0 acked 1090(1.29 MB) at 6.136
+0 Piping: /scratch/01814/earslan/mixedDataset/1124 to /oasis/scratch/earslan/temp_project/mixedDataset/1124 size 2.42 MB at 6.136
+0 acked 1091(1.44 MB) at 6.136
+0 Piping: /scratch/01814/earslan/mixedDataset/1125 to /oasis/scratch/earslan/temp_project/mixedDataset/1125 size 2.96 MB at 6.136
+0 acked 1092(2.44 MB) at 6.137
+0 Piping: /scratch/01814/earslan/mixedDataset/1126 to /oasis/scratch/earslan/temp_project/mixedDataset/1126 size 3.44 MB at 6.137
+0 acked 1093(1.99 MB) at 6.139
+0 Piping: /scratch/01814/earslan/mixedDataset/1127 to /oasis/scratch/earslan/temp_project/mixedDataset/1127 size 4.14 MB at 6.139
+0 acked 1094(4.17 MB) at 6.14
+0 Piping: /scratch/01814/earslan/mixedDataset/1128 to /oasis/scratch/earslan/temp_project/mixedDataset/1128 size 1.23 MB at 6.14
+0 acked 1095(1.74 MB) at 6.14
+0 Piping: /scratch/01814/earslan/mixedDataset/1129 to /oasis/scratch/earslan/temp_project/mixedDataset/1129 size 3.44 MB at 6.141
+0 acked 1096(1.76 MB) at 6.141
+0 Piping: /scratch/01814/earslan/mixedDataset/113 to /oasis/scratch/earslan/temp_project/mixedDataset/113 size 1.92 MB at 6.141
+0 acked 1097(3.09 MB) at 6.142
+0 Piping: /scratch/01814/earslan/mixedDataset/1131 to /oasis/scratch/earslan/temp_project/mixedDataset/1131 size 4.03 MB at 6.142
+0 acked 1098(2.45 MB) at 6.143
+0 Piping: /scratch/01814/earslan/mixedDataset/1132 to /oasis/scratch/earslan/temp_project/mixedDataset/1132 size 3.75 MB at 6.143
+0 acked 1099(4.71 MB) at 6.143
+0 Piping: /scratch/01814/earslan/mixedDataset/1133 to /oasis/scratch/earslan/temp_project/mixedDataset/1133 size 3.38 MB at 6.143
+0 acked 11(1.11 MB) at 6.144
+0 Piping: /scratch/01814/earslan/mixedDataset/1134 to /oasis/scratch/earslan/temp_project/mixedDataset/1134 size 2.83 MB at 6.144
+0 acked 110(1.91 MB) at 6.144
+0 Piping: /scratch/01814/earslan/mixedDataset/1135 to /oasis/scratch/earslan/temp_project/mixedDataset/1135 size 1.17 MB at 6.144
+0 acked 1100(3.45 MB) at 6.145
+0 Piping: /scratch/01814/earslan/mixedDataset/1136 to /oasis/scratch/earslan/temp_project/mixedDataset/1136 size 4.01 MB at 6.145
+0 acked 1101(3.16 MB) at 6.145
+0 Piping: /scratch/01814/earslan/mixedDataset/1138 to /oasis/scratch/earslan/temp_project/mixedDataset/1138 size 4.44 MB at 6.145
+0 acked 1102(3.37 MB) at 6.146
+0 Piping: /scratch/01814/earslan/mixedDataset/1139 to /oasis/scratch/earslan/temp_project/mixedDataset/1139 size 4.13 MB at 6.146
+0 acked 1103(2.16 MB) at 6.146
+0 Piping: /scratch/01814/earslan/mixedDataset/1140 to /oasis/scratch/earslan/temp_project/mixedDataset/1140 size 1 MB at 6.147
+0 acked 1105(4.01 MB) at 6.147
+0 Piping: /scratch/01814/earslan/mixedDataset/1141 to /oasis/scratch/earslan/temp_project/mixedDataset/1141 size 3.99 MB at 6.147
+0 acked 1106(2.23 MB) at 6.147
+0 Piping: /scratch/01814/earslan/mixedDataset/1142 to /oasis/scratch/earslan/temp_project/mixedDataset/1142 size 2.07 MB at 6.147
+4 Piping: /scratch/01814/earslan/mixedDataset/1143 to /oasis/scratch/earslan/temp_project/mixedDataset/1143 2.51 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1145 to /oasis/scratch/earslan/temp_project/mixedDataset/1145 1.22 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1146 to /oasis/scratch/earslan/temp_project/mixedDataset/1146 4.35 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1149 to /oasis/scratch/earslan/temp_project/mixedDataset/1149 3.27 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/115 to /oasis/scratch/earslan/temp_project/mixedDataset/115 3.75 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1150 to /oasis/scratch/earslan/temp_project/mixedDataset/1150 4.22 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1151 to /oasis/scratch/earslan/temp_project/mixedDataset/1151 1.54 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1152 to /oasis/scratch/earslan/temp_project/mixedDataset/1152 1.31 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1153 to /oasis/scratch/earslan/temp_project/mixedDataset/1153 2.61 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1154 to /oasis/scratch/earslan/temp_project/mixedDataset/1154 3.2 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1155 to /oasis/scratch/earslan/temp_project/mixedDataset/1155 1.49 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1156 to /oasis/scratch/earslan/temp_project/mixedDataset/1156 2.71 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1157 to /oasis/scratch/earslan/temp_project/mixedDataset/1157 3 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1158 to /oasis/scratch/earslan/temp_project/mixedDataset/1158 2.36 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/116 to /oasis/scratch/earslan/temp_project/mixedDataset/116 1.72 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1161 to /oasis/scratch/earslan/temp_project/mixedDataset/1161 2.05 MB
+4 Piping: /scratch/01814/earslan/mixedDataset/1162 to /oasis/scratch/earslan/temp_project/mixedDataset/1162 1.11 MB
+0 acked 1124(2.42 MB) at 6.243
+0 Piping: /scratch/01814/earslan/mixedDataset/1164 to /oasis/scratch/earslan/temp_project/mixedDataset/1164 size 1.42 MB at 6.243
+0 acked 1125(2.96 MB) at 6.258
+0 Piping: /scratch/01814/earslan/mixedDataset/1165 to /oasis/scratch/earslan/temp_project/mixedDataset/1165 size 1.49 MB at 6.258
+3 added to chunk 0 pp:17 p:1 at:6.275
+0 acked 1126(3.44 MB) at 6.281
+0 Piping: /scratch/01814/earslan/mixedDataset/1166 to /oasis/scratch/earslan/temp_project/mixedDataset/1166 size 4.68 MB at 6.281
+0 acked 1127(4.14 MB) at 6.305
+0 Piping: /scratch/01814/earslan/mixedDataset/1167 to /oasis/scratch/earslan/temp_project/mixedDataset/1167 size 1.22 MB at 6.305
+0 acked 1128(1.23 MB) at 6.314
+0 Piping: /scratch/01814/earslan/mixedDataset/1168 to /oasis/scratch/earslan/temp_project/mixedDataset/1168 size 3.06 MB at 6.314
+0 acked 1129(3.44 MB) at 6.326
+5 added to chunk 0 pp:17 p:1 at:6.331
+6 acked 1002(3.32 MB) at 6.339
+0 acked 113(1.92 MB) at 6.339
+0 acked 1131(4.03 MB) at 6.362
+0 acked 1132(3.75 MB) at 6.38
+0 acked 1133(3.38 MB) at 6.396
+0 acked 1134(2.83 MB) at 6.415
+0 acked 1135(1.17 MB) at 6.424
+0 acked 1136(4.01 MB) at 6.444
+0 acked 1138(4.44 MB) at 6.467
+4 acked 10005(0 B) at 6.475
+0 acked 1139(4.13 MB) at 6.491
+0 acked 1140(1 MB) at 6.501
+0 acked 1141(3.99 MB) at 6.524
+0 acked 1142(2.07 MB) at 6.535
+0 acked 1164(1.42 MB) at 6.544
+0 acked 1165(1.49 MB) at 6.567
+0 acked 1166(4.68 MB) at 6.616
+0 acked 1167(1.22 MB) at 6.617
+0 acked 1168(3.06 MB) at 6.618
+4 acked 1143(2.51 MB) at 6.763
+4 acked 1145(1.22 MB) at 6.802
+9 acked 10043(512 KB) at 6.847
+4 acked 1146(4.35 MB) at 6.857
+2 acked 100(2.77 MB) at 6.858
+8 acked 1004(2.09 MB) at 6.874
+1 acked 10(1.75 MB) at 6.875
+4 acked 1149(3.27 MB) at 6.95
+4 acked 115(3.75 MB) at 6.95
+3 acked 1000(2.87 MB) at 7.241
+7 acked 1003(4.57 MB) at 7.324
+6 acked 1107(1.61 MB) at 7.373
+5 acked 1001(4.74 MB) at 7.378
+6 acked 1108(1.82 MB) at 7.573
+6 acked 1109(3.16 MB) at 7.587
+4 acked 1150(4.22 MB) at 7.599
+4 acked 1151(1.54 MB) at 7.639
+6 acked 111(2.02 MB) at 7.669
+6 acked 1110(2.37 MB) at 7.925
+4 acked 1152(1.31 MB) at 8.011
+4 acked 1153(2.61 MB) at 8.011
+4 acked 1154(3.2 MB) at 8.012
+4 acked 1155(1.49 MB) at 8.012
+4 acked 1156(2.71 MB) at 8.013
+4 acked 1157(3 MB) at 8.013
+4 acked 1158(2.36 MB) at 8.014
+4 acked 116(1.72 MB) at 8.014
+4 acked 1161(2.05 MB) at 8.014
+4 acked 1162(1.11 MB) at 8.015
+6 acked 1111(3.57 MB) at 8.557
+6 acked 1112(1.32 MB) at 8.674
+6 acked 1113(4.06 MB) at 8.874
+6 acked 1114(3.95 MB) at 9.033
+6 acked 1115(3.19 MB) at 9.149
+6 acked 1116(1.2 MB) at 9.158
+6 acked 1117(1.78 MB) at 9.24
+6 acked 1118(4.58 MB) at 9.311
+6 acked 1119(3.78 MB) at 9.389
+6 acked 1120(2.36 MB) at 9.435
+6 acked 1122(1.39 MB) at 9.466
+6 acked 1123(2.59 MB) at 9.507
+0 added to chunk 1 pp:3 p:1 at:9.657
+0 Piping: /scratch/01814/earslan/mixedDataset/10009 to /oasis/scratch/earslan/temp_project/mixedDataset/10009 14.5 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/10010 to /oasis/scratch/earslan/temp_project/mixedDataset/10010 23.5 MB
+0 Piping: /scratch/01814/earslan/mixedDataset/10012 to /oasis/scratch/earslan/temp_project/mixedDataset/10012 19 MB
+0 acked 1(4.79 MB) at 10.139
+0 Piping: /scratch/01814/earslan/mixedDataset/10015 to /oasis/scratch/earslan/temp_project/mixedDataset/10015 size 20.5 MB at 10.139
+0 acked 10009(14.5 MB) at 10.436
+0 Piping: /scratch/01814/earslan/mixedDataset/10017 to /oasis/scratch/earslan/temp_project/mixedDataset/10017 size 18.75 MB at 10.436
+0 acked 10010(23.5 MB) at 10.666
+0 Piping: /scratch/01814/earslan/mixedDataset/10024 to /oasis/scratch/earslan/temp_project/mixedDataset/10024 size 12.75 MB at 10.666
+0 acked 10012(19 MB) at 10.781
+0 Piping: /scratch/01814/earslan/mixedDataset/10032 to /oasis/scratch/earslan/temp_project/mixedDataset/10032 size 10.25 MB at 10.781
+0 acked 10015(20.5 MB) at 10.895
+0 Piping: /scratch/01814/earslan/mixedDataset/10034 to /oasis/scratch/earslan/temp_project/mixedDataset/10034 size 12.5 MB at 10.895
+0 acked 10017(18.75 MB) at 10.995
+0 Piping: /scratch/01814/earslan/mixedDataset/10035 to /oasis/scratch/earslan/temp_project/mixedDataset/10035 size 11.75 MB at 10.995
+0 acked 10024(12.75 MB) at 11.055
+0 Piping: /scratch/01814/earslan/mixedDataset/10036 to /oasis/scratch/earslan/temp_project/mixedDataset/10036 size 12.75 MB at 11.055
+0 acked 10032(10.25 MB) at 11.126
+0 Piping: /scratch/01814/earslan/mixedDataset/10038 to /oasis/scratch/earslan/temp_project/mixedDataset/10038 size 21.25 MB at 11.126
+0 acked 10034(12.5 MB) at 11.179
+0 Piping: /scratch/01814/earslan/mixedDataset/10042 to /oasis/scratch/earslan/temp_project/mixedDataset/10042 size 20.5 MB at 11.179
+0 acked 10035(11.75 MB) at 11.23
+0 Piping: /scratch/01814/earslan/mixedDataset/10044 to /oasis/scratch/earslan/temp_project/mixedDataset/10044 size 17 MB at 11.23
+0 acked 10036(12.75 MB) at 11.294
+0 Piping: /scratch/01814/earslan/mixedDataset/10047 to /oasis/scratch/earslan/temp_project/mixedDataset/10047 size 10.5 MB at 11.294
+0 acked 10038(21.25 MB) at 11.409
+0 Piping: /scratch/01814/earslan/mixedDataset/10049 to /oasis/scratch/earslan/temp_project/mixedDataset/10049 size 22.75 MB at 11.409
+0 acked 10042(20.5 MB) at 11.503
+0 Piping: /scratch/01814/earslan/mixedDataset/10057 to /oasis/scratch/earslan/temp_project/mixedDataset/10057 size 20.75 MB at 11.504
+0 acked 10044(17 MB) at 11.562
+0 Piping: /scratch/01814/earslan/mixedDataset/10062 to /oasis/scratch/earslan/temp_project/mixedDataset/10062 size 10 MB at 11.562
+0 acked 10047(10.5 MB) at 11.611
+0 Piping: /scratch/01814/earslan/mixedDataset/10066 to /oasis/scratch/earslan/temp_project/mixedDataset/10066 size 21 MB at 11.611
+0 acked 10049(22.75 MB) at 11.726
+0 Piping: /scratch/01814/earslan/mixedDataset/10070 to /oasis/scratch/earslan/temp_project/mixedDataset/10070 size 10.75 MB at 11.726
+0 acked 10057(20.75 MB) at 11.813
+0 Piping: /scratch/01814/earslan/mixedDataset/10071 to /oasis/scratch/earslan/temp_project/mixedDataset/10071 size 23.5 MB at 11.813
+0 acked 10062(10 MB) at 11.848
+0 Piping: /scratch/01814/earslan/mixedDataset/10073 to /oasis/scratch/earslan/temp_project/mixedDataset/10073 size 16.5 MB at 11.848
+0 acked 10066(21 MB) at 12.043
+0 Piping: /scratch/01814/earslan/mixedDataset/10079 to /oasis/scratch/earslan/temp_project/mixedDataset/10079 size 13.5 MB at 12.043
+0 acked 10070(10.75 MB) at 12.043
+0 Piping: /scratch/01814/earslan/mixedDataset/10083 to /oasis/scratch/earslan/temp_project/mixedDataset/10083 size 11.25 MB at 12.043
+0 acked 10071(23.5 MB) at 12.063
+0 Piping: /scratch/01814/earslan/mixedDataset/10084 to /oasis/scratch/earslan/temp_project/mixedDataset/10084 size 15.5 MB at 12.063
+0 acked 10073(16.5 MB) at 12.126
+0 Piping: /scratch/01814/earslan/mixedDataset/10088 to /oasis/scratch/earslan/temp_project/mixedDataset/10088 size 11.5 MB at 12.126
+0 acked 10079(13.5 MB) at 12.211
+0 Piping: /scratch/01814/earslan/mixedDataset/10090 to /oasis/scratch/earslan/temp_project/mixedDataset/10090 size 11 MB at 12.211
+0 acked 10083(11.25 MB) at 12.255
+0 Piping: /scratch/01814/earslan/mixedDataset/10094 to /oasis/scratch/earslan/temp_project/mixedDataset/10094 size 12.75 MB at 12.255
+0 acked 10084(15.5 MB) at 12.298
+0 Piping: /scratch/01814/earslan/mixedDataset/10096 to /oasis/scratch/earslan/temp_project/mixedDataset/10096 size 20.75 MB at 12.298
+0 acked 10088(11.5 MB) at 12.333
+0 acked 10090(11 MB) at 12.384
+0 acked 10094(12.75 MB) at 12.479
+0 acked 10096(20.75 MB) at 12.531
+1 added to chunk 1 pp:3 p:1 at:12.683
+2 added to chunk 1 pp:3 p:1 at:12.973
+2 acked 10003(21 MB) at 14.125
+1 acked 10000(15 MB) at 14.291
+0 added to chunk 2 pp:1 p:1 at:14.441
+0 Piping: /scratch/01814/earslan/mixedDataset/10004 to /oasis/scratch/earslan/temp_project/mixedDataset/10004 36.5 MB
+0 acked 10001(33 MB) at 15.539
+0 Piping: /scratch/01814/earslan/mixedDataset/10006 to /oasis/scratch/earslan/temp_project/mixedDataset/10006 size 48 MB at 15.539
+0 acked 10004(36.5 MB) at 15.849
+0 Piping: /scratch/01814/earslan/mixedDataset/10007 to /oasis/scratch/earslan/temp_project/mixedDataset/10007 size 29 MB at 15.85
+0 acked 10006(48 MB) at 16.134
+0 Piping: /scratch/01814/earslan/mixedDataset/10008 to /oasis/scratch/earslan/temp_project/mixedDataset/10008 size 26.5 MB at 16.134
+0 acked 10007(29 MB) at 16.271
+0 Piping: /scratch/01814/earslan/mixedDataset/10011 to /oasis/scratch/earslan/temp_project/mixedDataset/10011 size 38.75 MB at 16.271
+0 acked 10008(26.5 MB) at 16.394
+0 Piping: /scratch/01814/earslan/mixedDataset/10013 to /oasis/scratch/earslan/temp_project/mixedDataset/10013 size 36 MB at 16.394
+0 acked 10011(38.75 MB) at 16.544
+0 Piping: /scratch/01814/earslan/mixedDataset/10014 to /oasis/scratch/earslan/temp_project/mixedDataset/10014 size 29.5 MB at 16.544
+0 acked 10013(36 MB) at 16.702
+0 Piping: /scratch/01814/earslan/mixedDataset/10016 to /oasis/scratch/earslan/temp_project/mixedDataset/10016 size 48.5 MB at 16.702
+0 acked 10014(29.5 MB) at 16.812
+0 Piping: /scratch/01814/earslan/mixedDataset/10018 to /oasis/scratch/earslan/temp_project/mixedDataset/10018 size 41.5 MB at 16.812
+0 acked 10016(48.5 MB) at 16.986
+0 Piping: /scratch/01814/earslan/mixedDataset/10019 to /oasis/scratch/earslan/temp_project/mixedDataset/10019 size 43.75 MB at 16.986
+0 acked 10018(41.5 MB) at 17.137
+0 Piping: /scratch/01814/earslan/mixedDataset/10020 to /oasis/scratch/earslan/temp_project/mixedDataset/10020 size 32 MB at 17.138
+0 acked 10019(43.75 MB) at 17.293
+0 acked 10020(32 MB) at 17.413
+1 added to chunk 2 pp:1 p:1 at:17.472
+1 acked 10002(35 MB) at 18.718
+0 added to chunk 3 pp:0 p:1 at:18.868
+1 added to chunk 3 pp:0 p:1 at:21.867
+1 acked 11101(1.09 GB) at 39.464
+0 acked 11100(2.88 GB) at 39.774

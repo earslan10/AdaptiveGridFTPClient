@@ -1,0 +1,310 @@
+package didclab.cse.buffalo;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import stork.module.CooperativeModule.GridFTPTransfer;
+import stork.util.XferList;
+
+
+
+public class CooperativeChannels {
+
+
+	public static final int DoStriping = 1;
+	public static final int DontStriping = 0;
+
+	/*
+	 * k-means variable definition ends here
+	 */
+
+	static class Dfile{
+		Dfile(long size,String path){
+			this.size=size;
+			this.path=path;
+		}
+		long size;
+		String path;
+		String dpath;
+	}
+
+	public enum Density{SMALL, MIDDLE, LARGE, HUGE};
+
+	//static String serverName;
+	// int iperfPortNumber = 8008;
+	static String source,destination,proxyFile;
+	static int maxReadBuffer, maxWriteBuffer;
+	static double rtt = 65 ,bandwidth=10;
+	static int bufferSize =  32*1024*1024;  //32M for XSEDE
+	static double BDP;
+	static BufferedWriter out;
+	public static long init;
+	static GridFTPTransfer tf = null;
+	
+	static int maxChannels  = 2;
+	
+	public static void main(String[] args) throws Exception {
+		
+		FileWriter fstream = new FileWriter("throughput.log",true);
+		out = new BufferedWriter(fstream);
+		init = System.currentTimeMillis();
+		CooperativeChannels p = new CooperativeChannels();
+		URI su =null ,du=null;
+		parseArguments(args);
+
+		try {
+			su = new URI(source).normalize();
+			du = new URI(destination).normalize();
+		} catch (URISyntaxException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		tf = new GridFTPTransfer(proxyFile,su,du);
+		tf.start();
+		tf.waitFor();
+		
+		
+		XferList xList = tf.client.getListofFiles(su.getPath(),du.getPath());
+		init = System.currentTimeMillis();
+		//remove folders from the list and send mkdir command to destination
+		for (int i = 0; i < xList.count(); i++) {
+			if(xList.getItem(i).dir){
+				xList.removeItem(i);
+				//here send mkdir commands for directories
+			}
+		}
+		
+		
+		//
+		//p.parseArguments(args);
+		bandwidth *= Math.pow(10, 9);
+		BDP =  (bandwidth*rtt*0.001)/8;
+		System.out.println(bandwidth+ " "+ rtt+ " "+ printSize(BDP));
+		
+		double totalDataSize = 0;
+		System.out.println("**********************Cooperative Chunks cc="+maxChannels+"**************");
+		out.append("Cooperative Chunks cc="+maxChannels);
+		ArrayList<Partition> chunks = p.partitionByFileSize(xList);
+		for (Partition chunk : chunks) {
+			totalDataSize+= chunk.getRecords().size();
+			chunk.getRecords().sp = xList.sp;
+			chunk.getRecords().dp = xList.dp;
+		}
+		tf.transfer(chunks,maxChannels);
+
+		
+		long end = System.currentTimeMillis();
+		double thr = totalDataSize/((end-init)/1000.0);
+		System.out.println("Overall Time:"+((end-init)/1000.0)+" sec Thr:"+ printSize(thr));
+		out.append(" Time:"+((end-init)/1000.0)+" sec Thr:"+ printSize(thr)+"/s\n");
+		out.flush();
+		out.close();
+		tf.stop();
+		
+		
+	}
+	
+	
+	double totalChunksSize(Partition p ){
+		double sum = 0;
+		for (int i = 0; i < p.getRecords().count(); i++) {
+			sum += p.getRecords().getItem(i).size;
+		}
+		return sum;
+	}
+
+
+	ArrayList<Partition> mergePartitions(ArrayList<Partition> partitions){
+		for (int i = 0; i < partitions.size(); i++) {
+			Partition p  =  partitions.get(i);
+			if(p.getRecords().count() <= 2 || p.getRecords().size() < 2*BDP){  //merge small chunk with the the chunk with closest centroid
+				int index = -1;
+				double diff = Double.POSITIVE_INFINITY;
+				for (int j = 0; j < partitions.size(); j++) {
+					if(j!=i && Math.abs(p.getCentroid()-partitions.get(j).getCentroid()) < diff){
+						diff = Math.abs(p.getCentroid()-partitions.get(j).getCentroid());
+						index = j;
+					}
+				}
+				if(index == -1){
+					System.err.println("Fatal error: Could not find chunk to merge!");
+					System.exit(0);
+				}
+				partitions.get(index).getRecords().addAll(p.getRecords());
+				System.out.println("Partition "+i+" "+p.getRecords().count() +" files "+ printSize(p.getRecords().size()));
+				System.out.println("Merging partition "+i+" to partition "+index);
+				partitions.remove(i);
+				i--;
+			}
+		}
+		return partitions;
+	}
+	
+	ArrayList<Partition> partitionByFileSize(XferList list){
+		ArrayList<Partition> partitions=  new ArrayList<Partition>();
+		for (int i = 0; i < 4; i++) {
+			Partition p = new Partition();
+			partitions.add(p);
+		}
+		for (XferList.Entry e : list) {
+			if(e.size < BDP/10)
+				partitions.get(0).addRecord(e);
+			else if(e.size < BDP/2)
+				partitions.get(1).addRecord(e);
+			else if (e.size < BDP*10)
+				partitions.get(2).addRecord(e);
+			else
+				partitions.get(3).addRecord(e);
+		}
+		mergePartitions(partitions);
+		for (int i = 0; i < partitions.size(); i++) {
+			System.out.println("Chunk "+i+":\tfiles:"+partitions.get(i).getRecords().count()+"\t avg"+printSize(partitions.get(i).getRecords().size()/partitions.get(i).getRecords().count())+"\t"+printSize(partitions.get(i).getRecords().size()));
+		}
+		return partitions;
+	}
+	
+
+
+
+	public static String printSize(double random)
+	{	
+		DecimalFormat df = new DecimalFormat("###.##");
+		if(random<1024.0)
+			return df.format(random)+" B";
+		else if(random<1024.0*1024)
+			return df.format(random/1024.0)+" KB";
+		else if(random<1024.0*1024*1024)
+			return df.format(random/(1024.0*1024))+" MB";
+		else if (random <(1024*1024*1024*1024.0))
+			return df.format(random/(1024*1024.0*1024))+" GB";
+		else 
+			return df.format(random/(1024*1024*1024.0*1024))+" TB";
+	}
+
+
+
+	/*
+	This function find what is average file size in a given directory
+	 */
+	static Density findDensityOfList(XferList list){
+		double average = list.size()/list.count();
+		if(average < BDP/10)
+			return Density.SMALL;
+		else if(average < BDP/2)
+			return Density.MIDDLE;
+		else if (average < 20 * BDP)
+			return Density.LARGE;
+		return Density.HUGE;
+	}	
+
+
+	public static int[] getBestParams(XferList xl){
+		Density density = findDensityOfList(xl);
+		if(density == Density.SMALL)
+			return new int[] {60,Math.min(2,(int)(Math.ceil(BDP/bufferSize))+1),bufferSize, DontStriping};
+		else if(density == Density.MIDDLE)
+			return new int[] {20,Math.min(2,(int)(Math.ceil(BDP/bufferSize))+1),bufferSize,DontStriping};
+		else if(density == Density.LARGE)
+			return new int[] {2,(int)(Math.ceil(BDP/bufferSize)+2),bufferSize,DontStriping};
+		else 
+			return new int[] {0,(int)(Math.ceil(BDP/bufferSize)+2),bufferSize,DontStriping};
+	}
+	static void parseArguments(String[] args){
+		int i = 0;
+		String arg;
+		boolean vflag = true;
+		while (i < args.length && args[i].startsWith("-")) {
+			arg = args[i++];
+			// use this type of check for "wordy" arguments
+			if (arg.equals("-verbose")) {
+				System.out.println("verbose mode on");
+				vflag = true;
+			}
+
+			// use this type of check for arguments that require arguments
+			else if (arg.equals("-s") || arg.equals("-source")) {
+				if (i < args.length)
+					source = args[i++];
+				else
+					System.err.println("-source requires source address");
+				if (vflag)
+					System.out.println("source  = " + source);
+			}
+
+			else if (arg.equals("-d") || arg.equals("-destination")) {
+				if (i < args.length)
+					destination = args[i++];
+				else
+					System.err.println("-destination requires a destination address");
+				if (vflag)
+					System.out.println("destination = " + destination);
+			}
+			else if (arg.equals("-proxy")) {
+				if (i < args.length)
+					proxyFile = args[i++];
+				else
+					System.err.println("-path requires path of file/directory to be transferred");
+				if (vflag)
+					System.out.println("proxyFile = " + proxyFile);
+			}
+
+			else if (arg.equals("-mrd")) {
+				if (i < args.length)
+					maxReadBuffer = Integer.parseInt(args[i++]);
+				else
+					System.err.println("-mrd requires integer maximum read buffer size in in bytes");
+				if (vflag)
+					System.out.println("maximum read buffer = " + maxReadBuffer+" bytes");
+			}
+
+			else if (arg.equals("-mwd")) {
+				if (i < args.length)
+					maxWriteBuffer = Integer.parseInt(args[i++]);
+				else
+					System.err.println("-mwd  requires integer maximum read buffer size in in bytes");
+				if (vflag)
+					System.out.println("maximum write buffer = " + maxWriteBuffer+" bytes");
+			}
+
+			else if (arg.equals("-bw")) {
+				if (i < args.length)
+					bandwidth = Double.parseDouble(args[i++]);
+				else
+					System.err.println("-bw requires bandwidth in GB");
+				if (vflag)
+					System.out.println("bandwidth = " + bandwidth+" GB");
+			}
+			else if (arg.equals("-rtt")) {
+				if (i < args.length)
+					rtt = Double.parseDouble(args[i++]);
+				else
+					System.err.println("-rtt requires round trip time in millisecond");
+				if (vflag)
+					System.out.println("rtt = " + rtt+" ms");
+			}
+			else if (arg.equals("-cc")) {
+				if (i < args.length)
+					maxChannels = Integer.parseInt(args[i++]);
+				else
+					System.err.println("-cc needs integer");
+				if (vflag)
+					System.out.println("cc = " + maxChannels);
+			}
+			else if (arg.equals("-bs")) {
+				if (i < args.length)
+					bufferSize = Integer.parseInt(args[i++]);
+				else
+					System.err.println("-bs needs integer");
+				if (vflag)
+					System.out.println("bs = " + bufferSize);
+				bufferSize =bufferSize*1024*1024;
+			}
+		}
+		if (i != args.length)
+			System.err.println("Usage: ParseCmdLine [-verbose] [-xn] [-output afile] filename");
+		else
+			System.out.println("Success!");
+	}
+}

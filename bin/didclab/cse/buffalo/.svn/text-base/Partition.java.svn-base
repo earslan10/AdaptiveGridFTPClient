@@ -1,0 +1,60 @@
+package didclab.cse.buffalo;
+
+import java.util.ArrayList;
+
+import stork.util.XferList;
+
+/**
+ * Represents a calculated partition. A partition contains the centroid and
+ * the data points.
+ */
+public class Partition {
+    /* centroid of the partition */
+    private double centroid;
+    /* records belonging to this partition */
+    private XferList fileList = new XferList("", "") ;
+
+    public Partition(double centroid) {
+        this.centroid = centroid;
+    }
+    public Partition() {
+        this.centroid = 0;
+    }
+
+    public double getCentroid() {
+        return centroid;
+    }
+
+    public XferList getRecords() {
+        return fileList;
+    }
+
+    public void addRecord(XferList.Entry e) {
+        fileList.add(e.path,e.size);
+    }
+
+    /**
+     * Calculate the new centroid from the data points. Mean of the
+     * data points belonging to this partition is the new centroid.
+     */
+    public double calculateCentroid() {
+
+        centroid = 0;
+        if(fileList.count() != 0 ){
+    	
+	        for (XferList.Entry e : fileList) {
+	                centroid += e.size;
+	        }
+	        centroid /= fileList.count();
+        }
+        return centroid;
+    }
+
+    /**
+     * Clears the data records
+     */
+    public void reset() {
+        // now clear the records
+        fileList.removeAll();
+    } 
+}
