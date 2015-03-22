@@ -1133,21 +1133,34 @@ public class CooperativeModule  {
 
 		public void process() throws Exception {
 			String in = null;  // Used for better error messages.
-			File cred_file = new File(proxyFile);
-			//FileInputStream fis = new FileInputStream(cred_file);
-			byte[] cred_bytes = new byte[(int) cred_file.length()];
-			//fis.read(cred_bytes);
-			// Check if we were provided a proxy. If so, load it.
-			if (proxyFile != null) try {
-				ExtendedGSSManager gm =
-						(ExtendedGSSManager) ExtendedGSSManager.getInstance();
-				cred = gm.createCredential(
-						cred_bytes,
-						ExtendedGSSCredential.IMPEXP_OPAQUE,
-						GSSCredential.DEFAULT_LIFETIME, null,
-						GSSCredential.INITIATE_AND_ACCEPT);
-			} catch (Exception e) {
-				fatal("error loading x509 proxy: "+e.getMessage());
+			if(proxyFile != null){
+				File cred_file = new File(proxyFile);
+				byte[] cred_bytes = null;
+				FileInputStream fis = null;
+				try{
+					fis = new FileInputStream(cred_file);
+					cred_bytes = new byte[(int) cred_file.length()];
+					fis.read(cred_bytes);
+				}catch(Exception e){
+					e.printStackTrace();
+				}
+				// Check if we were provided a proxy. If so, load it.
+				if (usu.getScheme().compareTo("gsiftp") == 0) try {
+					ExtendedGSSManager gm =	(ExtendedGSSManager) ExtendedGSSManager.getInstance();
+					try{
+					cred = gm.createCredential(
+							cred_bytes,
+							ExtendedGSSCredential.IMPEXP_OPAQUE,
+							GSSCredential.DEFAULT_LIFETIME, null,
+							GSSCredential.INITIATE_AND_ACCEPT);
+					fis.close();
+					}
+					catch(Exception e){
+						e.printStackTrace();
+					}
+				} catch (Exception e) {
+					fatal("error loading x509 proxy: "+e.getMessage());
+				}
 			}
 
 			// Attempt to connect to hosts.

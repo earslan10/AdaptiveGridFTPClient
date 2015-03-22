@@ -46,11 +46,11 @@ public class Hysterisis {
 		
 	}
 	
-	public Object[] runMatlabModeling(ArrayList<Partition>  chunks, double []sampleThroughputs){
+	public Object[][] runMatlabModeling(ArrayList<Partition>  chunks, double []sampleThroughputs){
 		/*
     	 * Find equations for each chunk 
     	 */
-		Object[] results = null;
+		Object [][] results = new Object [chunks.size()][];
 		ModellingAndOptimization matlabInstance = new ModellingAndOptimization();
 		if(matlabInstance.initializeMatlab()){
 	    	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
@@ -64,7 +64,7 @@ public class Hysterisis {
 		    	int []sampleTransferValues = CooperativeChannels.getBestParams(chunk.getRecords());
 		    		    	
 		    	//Fit a model on selected historical data entries to derive a formula
-		    	results = matlabInstance.polyFitbyMatlab(chunkNumber, trials.size() , sampleThroughputs[chunkNumber] , maxObservedValues, sampleTransferValues);
+		    	results[chunkNumber] = matlabInstance.polyFitbyMatlab(chunkNumber, trials.size() , sampleThroughputs[chunkNumber] , maxObservedValues, sampleTransferValues);
 			}
 		}
     	return results;

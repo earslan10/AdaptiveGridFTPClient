@@ -1,9 +1,9 @@
 package didclab.cse.buffalo.log;
 
 import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.HashMap;
 import java.util.Map;
@@ -22,7 +22,7 @@ public class LogManager {
 			 if (fileID.compareTo("stdout") == 0)
 				 writer =  new OutputStreamWriter(System.out);
 		    else
-		    	 writer =  new PrintWriter(fileID);
+		    	 writer =  new FileWriter(fileID, true);
 			BufferedWriter bw = new BufferedWriter(writer);
 			logFiles.put(fileID, bw);
 			return bw;
@@ -44,7 +44,7 @@ public class LogManager {
 			for (String out: fileID){
 				BufferedWriter bw = logFiles.get(out);
 				bw.append(message);
-				bw.newLine();
+				bw.append("\n");
 				bw.flush();
 			}
 			return true;

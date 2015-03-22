@@ -16,17 +16,24 @@ public class CooperativeChannels {
 
 	public enum Density{SMALL, MIDDLE, LARGE, HUGE};
 	public static Entry targetTransfer;
-
 	
 	public static void main(String[] args) throws Exception {
 		
+		//initialize output streams for message logging
+		LogManager.createLogFile(ConfigurationParams.STDOUT_ID);
+		LogManager.createLogFile(ConfigurationParams.INFO_LOG_ID);
+		
+		
+		targetTransfer = new Entry();
 		parseArguments(args);
-		ConfigurationParams.BDP =  (ConfigurationParams.BANDWIDTH* ConfigurationParams.RTT*0.001)/8; // In MB
+		targetTransfer.setBDP( (targetTransfer.getBandwidth() * targetTransfer.getRtt()*0.001)/8 ); // In MB
+		LogManager.writeToLog("*********Cooperative Chunks cc="+targetTransfer.getMaxConcurrency()+"********", 
+				ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
 		
 		URI su =null ,du=null;
 		try {
-			su = new URI(ConfigurationParams.SourceServer).normalize();
-			du = new URI(ConfigurationParams.DestinationServer).normalize();
+			su = new URI(targetTransfer.getSource()).normalize();
+			du = new URI(targetTransfer.getDestination()).normalize();
 		} catch (URISyntaxException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -40,56 +47,25 @@ public class CooperativeChannels {
 		
 		//Get metadata information of dataset
 		XferList xList = ConfigurationParams.GridFTPClient.client.getListofFiles(su.getPath(),du.getPath());
+		
 		LogManager.writeToLog("mlsr completed at:"+((System.currentTimeMillis()-startTime)/1000.0),ConfigurationParams.STDOUT_ID);
 		
-		
-		
-		//remove folders from the list and send mkdir command to destination
-		for (int i = 0; i < xList.count(); i++) {
-			if(xList.getItem(i).dir){
-				xList.removeItem(i);
-			}
-		}
-		
-		
-		
-		//initialize output streams for message logging
-		LogManager.createLogFile(ConfigurationParams.STDOUT_ID);
-		LogManager.createLogFile(ConfigurationParams.INFO_LOG_ID);
-		
-		
-		LogManager.writeToLog(ConfigurationParams.STDOUT_ID, "**********************Cooperative Chunks cc="+ConfigurationParams.MAX_CONCURRENCY+"**************");
-		LogManager.writeToLog(ConfigurationParams.INFO_LOG_ID,"******************************Cooperative Chunks cc="+ConfigurationParams.MAX_CONCURRENCY+"***************\n");
-		
 		ArrayList<Partition> chunks = partitionByFileSize(xList);
-		//double totalDataSize = 0;
-		for (Partition chunk : chunks) {
-			//totalDataSize+= chunk.getRecords().size();
-			chunk.getRecords().sp = xList.sp;
-			chunk.getRecords().dp = xList.dp;
-			double avgFileSize = chunk.getRecords().size()/(chunk.getRecords().count()*1.0);
-			CooperativeChannels.targetTransfer.setFileSize( avgFileSize );
-			CooperativeChannels.targetTransfer.setFileCount( chunk.getRecords().count() );
-			CooperativeChannels.targetTransfer.setDensity( Entry.findDensityOfList(avgFileSize, ConfigurationParams.BDP) );
-			CooperativeChannels.targetTransfer.calculateSpecVector();
-		}
-		
+				
 		if(ConfigurationParams.USE_HISTORY){
 			
 			Hysterisis hysterisis = new Hysterisis();
 			hysterisis.parseInputFiles();
-			if(hysterisis.getInputFiles().size() > 0){
+			if(hysterisis.getInputFiles().size() > 0){	// Make sure there are log files to run hysterisis algo
 				double []sampleThroughputs = new double[chunks.size()];
 				//Run sample transfer to learn current network load
 		    	{
-		    		/*
-		    		 * //Create sample dataset to and transfer to measure current load on the network
-		    		 */
+		    		 //Create sample dataset to and transfer to measure current load on the network
 			    	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 			    		Partition chunk =  chunks.get(chunkNumber);
 			    		
 			        	XferList sample_files = new XferList("", "") ;
-			        	double MINIMUM_SAMPLING_SIZE = 10 * ConfigurationParams.BDP;
+			        	double MINIMUM_SAMPLING_SIZE = 10 * targetTransfer.getBDP();
 			        	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
 			        		XferList.Entry file = chunk.getRecords().pop();
 			        		sample_files.add(file.path, file.size);
@@ -103,7 +79,19 @@ public class CooperativeChannels {
 			    	}
 		    	}
 		    	
-		    	hysterisis.runMatlabModeling(chunks, sampleThroughputs);
+		    	//Based on input files and sample tranfer throughput; categorize logs and fit model
+		    	// Then find optimal parameter values out of the model
+		    	Object[][] results = hysterisis.runMatlabModeling(chunks, sampleThroughputs);
+		    	if(results != null){
+		    		for (int  i=0; i< results.length; i++){
+		    			Object []result = results[i];
+		    			Integer []paramValues = (Integer[]) results[0];
+		    			Double estimatedThroughput = (Double) result[1];
+		    			LogManager.writeToLog("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+" ppq:"+paramValues[2]+" throughput:"+
+		    								   estimatedThroughput, ConfigurationParams.STDOUT_ID);
+		    		}
+		    	}
+		    	
 			}
 			
 			
@@ -188,7 +176,7 @@ public class CooperativeChannels {
 	    	LogManager.writeToLog("Sampling chunk --> files:"+sample_files.count()+
 	    			   " Centroid:"+printSize(sample_files.size()/sample_files.count())+
 	    		 	   " total:"+printSize(sample_files.size())+"\tppq:"+params[2]+"*p:"+
-	    			    params[1]+"*"+"*cc:"+params[0]+"\n", ConfigurationParams.INFO_LOG_ID);
+	    			    params[1]+"*"+"*cc:"+params[0], ConfigurationParams.INFO_LOG_ID);
 	    	double fileSize = sample_files.size();
 	    	long init = System.currentTimeMillis();
 	    	ConfigurationParams.GridFTPClient.startTransfer(params[2], params[1], params[0], params[3], sample_files);
@@ -197,7 +185,7 @@ public class CooperativeChannels {
 			//totalTransferTime += timeSpent;
 			measuredThroughput = fileSize*8/timeSpent;
 			LogManager.writeToLog("Time spent:"+ timeSpent+" chunk size:"+printSize(fileSize)+" Throughput:"+
-								printSize(measuredThroughput)+"\n*********", ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
+								printSize(measuredThroughput), ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
     	}
     	catch(Exception e){
     		e.printStackTrace();
@@ -218,7 +206,7 @@ public class CooperativeChannels {
 	static ArrayList<Partition> mergePartitions(ArrayList<Partition> partitions){
 		for (int i = 0; i < partitions.size(); i++) {
 			Partition p  =  partitions.get(i);
-			if(p.getRecords().count() <= 2 || p.getRecords().size() < 2*ConfigurationParams.BDP){  //merge small chunk with the the chunk with closest centroid
+			if(p.getRecords().count() <= 2 || p.getRecords().size() < 2 * targetTransfer.getBDP()){  //merge small chunk with the the chunk with closest centroid
 				int index = -1;
 				double diff = Double.POSITIVE_INFINITY;
 				for (int j = 0; j < partitions.size(); j++) {
@@ -242,24 +230,42 @@ public class CooperativeChannels {
 	}
 	
 	static ArrayList<Partition> partitionByFileSize(XferList list){
+		
+		//remove folders from the list and send mkdir command to destination
+		for (int i = 0; i < list.count(); i++) {
+			if(list.getItem(i).dir){
+				list.removeItem(i);
+			}
+		}
+		
 		ArrayList<Partition> partitions=  new ArrayList<Partition>();
 		for (int i = 0; i < 4; i++) {
 			Partition p = new Partition();
 			partitions.add(p);
 		}
 		for (XferList.Entry e : list) {
-			if(e.size < ConfigurationParams.BDP/10)
+			if(e.size < targetTransfer.getBDP()/10)
 				partitions.get(0).addRecord(e);
-			else if(e.size < ConfigurationParams.BDP/2)
+			else if(e.size < targetTransfer.getBDP()/2)
 				partitions.get(1).addRecord(e);
-			else if (e.size < ConfigurationParams.BDP*10)
+			else if (e.size < targetTransfer.getBDP()*10)
 				partitions.get(2).addRecord(e);
 			else
 				partitions.get(3).addRecord(e);
 		}
 		mergePartitions(partitions);
 		for (int i = 0; i < partitions.size(); i++) {
-			System.out.println("Chunk "+i+":\tfiles:"+partitions.get(i).getRecords().count()+"\t avg"+printSize(partitions.get(i).getRecords().size()/partitions.get(i).getRecords().count())+"\t"+printSize(partitions.get(i).getRecords().size()));
+			Partition chunk = partitions.get(i);
+			chunk.getRecords().sp = list.sp;
+			chunk.getRecords().dp = list.dp;
+			double avgFileSize = chunk.getRecords().size()/(chunk.getRecords().count()*1.0);
+			CooperativeChannels.targetTransfer.setFileSize( avgFileSize );
+			CooperativeChannels.targetTransfer.setFileCount( chunk.getRecords().count() );
+			CooperativeChannels.targetTransfer.setDensity( Entry.findDensityOfList(avgFileSize, targetTransfer.getBDP()) );
+			CooperativeChannels.targetTransfer.calculateSpecVector();
+			LogManager.writeToLog("Chunk "+i+":\tfiles:"+partitions.get(i).getRecords().count()+"\t avg"+
+									printSize(partitions.get(i).getRecords().size()/partitions.get(i).getRecords().count())
+									+"\t"+printSize(partitions.get(i).getRecords().size()), ConfigurationParams.STDOUT_ID);
 		}
 		return partitions;
 	}
@@ -301,16 +307,16 @@ public class CooperativeChannels {
 	
 
 	public static int[] getBestParams(XferList xl){
-		Density density = Entry.findDensityOfList(xl.avgFileSize(), ConfigurationParams.BDP);
+		Density density = Entry.findDensityOfList(xl.avgFileSize(), targetTransfer.getBDP());
 		xl.density = density;
 		double avgFileSize = xl.avgFileSize();
-		int fileCountToFillThePipe = (int)Math.round(ConfigurationParams.BDP/avgFileSize);
-		int paralleStreamCountToFillPipe = (int)Math.round(ConfigurationParams.BDP/ConfigurationParams.BufferSize);
-		int paralleStreamCountToFillBuffer = (int)Math.round(avgFileSize/ConfigurationParams.BufferSize);
-		int cc = Math.max(Math.min(Math.min(fileCountToFillThePipe, xl.count()), ConfigurationParams.MAX_CONCURRENCY), 2);
+		int fileCountToFillThePipe = (int)Math.round(targetTransfer.getBDP()/avgFileSize);
+		int paralleStreamCountToFillPipe = (int)Math.round(targetTransfer.getBDP()/targetTransfer.getBufferSize());
+		int paralleStreamCountToFillBuffer = (int)Math.round(avgFileSize/targetTransfer.getBufferSize());
+		int cc = Math.max(Math.min(Math.min(fileCountToFillThePipe, xl.count()), targetTransfer.getMaxConcurrency()), 2);
 		int ppq = fileCountToFillThePipe;
 		int p =Math.max(Math.min(paralleStreamCountToFillPipe, paralleStreamCountToFillBuffer) , 1);
-		return new int[] {cc,p,ppq,ConfigurationParams.BufferSize};
+		return new int[] {cc,p,ppq,(int)targetTransfer.getBufferSize()};
 		/*
 		if(density == Density.SMALL)
 			return new int[] {ppq,p,cc,bufferSize};
@@ -341,7 +347,7 @@ public class CooperativeChannels {
 				else
 					System.err.println("-source requires source address");
 				if (vflag)
-					System.out.println("source  = " + ConfigurationParams.SourceServer);
+					System.out.println("source  = " + targetTransfer.getSource());
 			}
 
 			else if (arg.equals("-d") || arg.equals("-destination")) {
@@ -350,7 +356,7 @@ public class CooperativeChannels {
 				else
 					System.err.println("-destination requires a destination address");
 				if (vflag)
-					System.out.println("destination = " + ConfigurationParams.DestinationServer);
+					System.out.println("destination = " + targetTransfer.getDestination());
 			}
 			else if (arg.equals("-proxy")) {
 				if (i < args.length)
@@ -367,7 +373,7 @@ public class CooperativeChannels {
 				else
 					System.err.println("-bw requires bandwidth in GB");
 				if (vflag)
-					System.out.println("bandwidth = " + ConfigurationParams.BANDWIDTH+" GB");
+					System.out.println("bandwidth = " + targetTransfer.getBandwidth()+" GB");
 			}
 			else if (arg.equals("-rtt")) {
 				if (i < args.length)
@@ -375,15 +381,15 @@ public class CooperativeChannels {
 				else
 					System.err.println("-rtt requires round trip time in millisecond");
 				if (vflag)
-					System.out.println("rtt = " + ConfigurationParams.RTT+" ms");
+					System.out.println("rtt = " + targetTransfer.getRtt()+" ms");
 			}
 			else if (arg.equals("-cc")) {
 				if (i < args.length)
-					ConfigurationParams.MAX_CONCURRENCY = Integer.parseInt(args[i++]);
+					targetTransfer.setMaxConcurrency( Integer.parseInt(args[i++]) );
 				else
 					System.err.println("-cc needs integer");
 				if (vflag)
-					System.out.println("cc = " + ConfigurationParams.MAX_CONCURRENCY);
+					System.out.println("cc = " + targetTransfer.getMaxConcurrency());
 			}
 			else if (arg.equals("-bs")) {
 				if (i < args.length)
@@ -391,7 +397,7 @@ public class CooperativeChannels {
 				else
 					System.err.println("-bs needs integer");
 				if (vflag)
-					System.out.println("bs = " + ConfigurationParams.BufferSize);
+					System.out.println("bs = " + targetTransfer.getBufferSize());
 			}
 			else if (arg.equals("-testbed")) {
                 if (i < args.length)
@@ -399,7 +405,7 @@ public class CooperativeChannels {
                 else
                         System.err.println("-testbed needs testbed name");
                 if (vflag)
-                        System.out.println("Testbed name is = " + ConfigurationParams.TESTBED);
+                        System.out.println("Testbed name is = " + targetTransfer.getTestbed());
 			}
 			else if (arg.equals("-matlab-dir")) {
                 if (i < args.length)

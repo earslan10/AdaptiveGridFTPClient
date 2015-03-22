@@ -33,11 +33,11 @@ public class Similarity {
 	        	Entry entry = new Entry(); 
 	        	try
 	        	{
+	        		//Mandatory attributes
 		        	entry.setId(id++);
 		        	entry.setFileSize( Double.parseDouble(record[attributeIndices.get("FileSize")]) );
-		        	entry.setNote( record[attributeIndices.get("Note")] );
+		        	
 		        	entry.setFileCount( Integer.parseInt(record[attributeIndices.get("FileCount")]) );
-		        	entry.setTestbed( record[attributeIndices.get("TestBed")] );
 		        	entry.setSource( record[attributeIndices.get("Source")] );
 		        	entry.setDestination( record[attributeIndices.get("Destination")] );
 		        	entry.setBandwidth( Double.parseDouble( record[attributeIndices.get("Bandwidth")] ) );
@@ -45,12 +45,16 @@ public class Similarity {
 		        		entry.setBandwidth( entry.getBandwidth()*1024*1024*1024.0 );
 		        	entry.setRtt( Double.parseDouble( record[attributeIndices.get("RTT")]) );
 		        	entry.setBufferSize( Double.parseDouble( record[attributeIndices.get("BufferSize")]) );
-		        	
 		        	entry.setParallellism( Integer.parseInt( record[attributeIndices.get("Parallelism")]) );
 		        	entry.setConcurrency( Integer.parseInt( record[attributeIndices.get("Concurrency")]) );
 		        	entry.setPipelining( Integer.parseInt( record[attributeIndices.get("Pipelining")] ) );
-		        	if(record[attributeIndices.get("Fast")].compareTo("ON") == 0)
-		        		entry.setFast(true);
+		        	if(record[attributeIndices.get("Fast")].compareTo("ON") == 0 || 
+		        			record[attributeIndices.get("Fast")].compareTo("1") == 0)
+			        		entry.setFast(true);
+		        	
+		        	//Optional attributes
+		        	if(attributeIndices.containsKey(("TestBed") ))
+		        		entry.setTestbed( record[attributeIndices.get("TestBed")] );
 		        	entry.setThroughput( Double.parseDouble( record[attributeIndices.get("Throughput")]) );
 		        	if(attributeIndices.containsKey("Emulation"))
 		        		if(record[attributeIndices.get("Emulation")].compareTo("REAL") != 0)
@@ -58,6 +62,8 @@ public class Similarity {
 		        	if(attributeIndices.containsKey("Dedicated"))
 		        		if(record[attributeIndices.get("Dedicated")].compareTo("true") != 0)
 		        			entry.setEmulation(true);
+		        	if(attributeIndices.containsKey(("Note") ))
+		        		entry.setNote( record[attributeIndices.get("Note")] );
 		        	entry.setDensity( Entry.findDensityOfList(entry.getFileSize(), (entry.getBandwidth()*entry.getRtt()/8.0)) );
 	        	}
 	        	catch (Exception e){
@@ -363,9 +369,9 @@ public class Similarity {
 			        maxPPQ = Math.max(maxPPQ, entry.getPipelining());
 			        maxP = Math.max(maxP, entry.getParallellism());
 			        maxCC = Math.max(maxCC, entry.getConcurrency());
-			        
+			        int fast = entry.getFast() == true ? 1 : 0;
 					writer.write(entry.getConcurrency()+" "+entry.getParallellism()+" "+entry.getPipelining()+" "+
-							 entry.getFast()+" "+entry.getThroughput()+"\n");
+							 fast+" "+entry.getThroughput()+"\n");
 				}
 				writer.flush();
 				writer.close();
@@ -385,7 +391,7 @@ public class Similarity {
 				entry.setConcurrency(entry.getConcurrency() == -1 ?  1 :entry.getConcurrency());
 				
 				entry.setConcurrency((int) (Math.min(entry.getConcurrency(), entry.getFileCount() ) ) );
-				entry.setPipelining( (int)(Math.max(entry.getFileCount() - entry.getConcurrency(), 0)));
+				entry.setPipelining( (int)Math.min( entry.getPipelining(),(Math.max(entry.getFileCount() - entry.getConcurrency(), 0))));
 			}
 		}
 	}

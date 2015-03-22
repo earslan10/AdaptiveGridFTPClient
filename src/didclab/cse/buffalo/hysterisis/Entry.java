@@ -19,7 +19,8 @@ public class Entry{
 	 private String testbed;
 	 private String source, destination;
 	 private double bandwidth;
-	 private double rtt;
+	 private double RTT;
+	 private double BDP;
 	 private double bufferSize;
 	 private double fileSize;
 	 private double fileCount;
@@ -32,7 +33,9 @@ public class Entry{
 	 private boolean isEmulation;
 	 private boolean isDedicated;
 	 private String note;
-	 double similarityValue;
+	 private int maxConcurrency;
+	
+	double similarityValue;
 	 Vector<Double> specVector;
 	 
 	 public Entry(){
@@ -116,14 +119,28 @@ public class Entry{
 	 * @return the rtt
 	 */
 	public double getRtt() {
-		return rtt;
+		return RTT;
 	}
 
 	/**
 	 * @param rtt the rtt to set
 	 */
 	public void setRtt(double rtt) {
-		this.rtt = rtt;
+		this.RTT = rtt;
+	}
+
+	/**
+	 * @return the bDP
+	 */
+	public double getBDP() {
+		return BDP;
+	}
+
+	/**
+	 * @param bDP the bDP to set
+	 */
+	public void setBDP(double BDP) {
+		this.BDP = BDP;
 	}
 
 	/**
@@ -364,6 +381,21 @@ public class Entry{
 		this.specVector = specVector;
 	}
 
+	 /**
+	 * @return the maxConcurrency
+	 */
+	public int getMaxConcurrency() {
+		return maxConcurrency;
+	}
+
+	/**
+	 * @param maxConcurrency the maxConcurrency to set
+	 */
+	public void setMaxConcurrency(int maxConcurrency) {
+		this.maxConcurrency = maxConcurrency;
+	}
+
+	
 	public static Density findDensityOfList(Double averageFileSize, double BDP){
 			if(averageFileSize < BDP/10)
 				return Density.SMALL;
@@ -389,8 +421,8 @@ public class Entry{
 		//specVector.add(fileSize/(1024*1024*1024));
 		//specVector.add(fileSize);
 		specVector.add(bandwidth);
-		specVector.add(rtt);
-		specVector.add(bandwidth*rtt/(8.0*bufferSize));
+		specVector.add(RTT);
+		specVector.add(bandwidth*RTT/(8.0*bufferSize));
 		specVector.add(DensityToValue(density)*1.0);
 		if(isDedicated)
 			specVector.add(0.0);
@@ -406,7 +438,7 @@ public class Entry{
 	
 	String getIdentity(){
 		return note+"*"+fileSize+"*"+fileCount+"*"+density.name()+"*"+testbed+"*"+source+"*"+
-				destination+"*"+bandwidth+"*"+rtt+"*"+bufferSize+"*"+parallellism+"*"+
+				destination+"*"+bandwidth+"*"+RTT+"*"+bufferSize+"*"+parallellism+"*"+
 				concurrency+"*"+pipelining+"*"+fast+"*"+isEmulation+"*"+
 				isDedicated;
 	}
@@ -419,7 +451,7 @@ public class Entry{
 	
 	public  void printEntry(Entry e, String extraInfo){
 		System.out.println(e.note+"*"+e.fileSize+"*"+e.fileCount+"*"+e.density.name()+"*"+e.testbed+"*"+e.source+"*"+
-				e.destination+"*"+e.bandwidth+"*"+e.rtt+"*"+e.bufferSize+"*p:"+e.parallellism+"*cc:"+
+				e.destination+"*"+e.bandwidth+"*"+e.RTT+"*"+e.bufferSize+"*p:"+e.parallellism+"*cc:"+
 				e.concurrency+"*ppq:"+e.pipelining+"*"+e.fast+"*"+e.throughput+"*"+e.isEmulation+"*"+
 				e.isDedicated+" date:"+e.date.toString()+"*Extra:"+extraInfo);
 	}

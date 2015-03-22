@@ -42,7 +42,7 @@ public class ModellingAndOptimization {
 			String command = "main("+folderID+","+throughput+","+(logFilesCount-1)+",["+sampleParams[0]+","
 									+sampleParams[1]+","+sampleParams[2]+"]"+",["+maxParams[0]+","+
 									maxParams[1]+","+maxParams[2]+"]"+", '"+ConfigurationParams.OUTPUT_DIR+"')";
-			LogManager.writeToLog("\t"+command+"\n", ConfigurationParams.INFO_LOG_ID, ConfigurationParams.STDOUT_ID);
+			LogManager.writeToLog("\t"+command, ConfigurationParams.INFO_LOG_ID, ConfigurationParams.STDOUT_ID);
 			results = proxy.returningEval(command,2);
 			
 		} catch (Exception e) {
