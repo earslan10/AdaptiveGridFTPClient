@@ -67,15 +67,17 @@ public class CooperativeChannels {
 			    	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 			    		Partition chunk =  chunks.get(chunkNumber);
 
-
+			    		/*
 			    		List<Entry> similarEntries = Similarity.findSimilarEntries(hysterisis.getEntries(), chunks.get(chunkNumber).entry);
 						LogManager.writeToLog("The number of similar entries is:"+similarEntries.size(), ConfigurationParams.STDOUT_ID);
 				    	//Categorize selected entries based on log date
 				    	LinkedList<LinkedList<Entry>> trials = new LinkedList<LinkedList<Entry>>();
 				    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
 				    	
+			    		
 				    	if(ConfigurationParams.USE_HISTORY)
 				    		continue;
+				    	*/
 			        	XferList sample_files = new XferList("", "") ;
 			        	double MINIMUM_SAMPLING_SIZE = 10 * targetTransfer.getBDP();
 			        	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 

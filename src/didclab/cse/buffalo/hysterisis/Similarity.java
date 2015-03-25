@@ -189,7 +189,7 @@ public class Similarity {
 		//6-specVector.add(fileCount)
 		//7- Testbed name
 		
-		double[] weights = {4,3,8,10,10,4,10};
+		double[] weights = {4,3,8,10,10,6,4,10};
 		
 		/*
 		double sumWeight = 0;
@@ -203,6 +203,7 @@ public class Similarity {
 			System.out.println(weights[i]);
 		}
 		*/
+		target.printSpecVector();
 		for (Entry e: entries) {
 			
 			double similarityValue = 0;
@@ -230,21 +231,32 @@ public class Similarity {
 			target.specVector.remove(target.specVector.size()-1);
 			
 			
-			if(e.getThroughput() == 121.770405961){
+			
+			if(e.getThroughput() == 121.770405961){	//0.25-1M
 				int k = 0;
+				e.printSpecVector();
 				System.out.println(similarityValue);
 				k++;
 			}
-			if(e.getThroughput() == 817.020021894){
+			if(e.getThroughput() == 817.020021894){ // 3G
 				int k = 0;
+				e.printSpecVector();
 				System.out.println(similarityValue);
 				k++;
 			}
-			if(e.getThroughput() == 902.813655486){
+			if(e.getThroughput() == 902.813655486){ //5-25M
 				int k = 0;
+				e.printSpecVector();
 				System.out.println(similarityValue);
 				k++;
 			}
+			if(e.getThroughput() == 1117.53360356){ //100M
+				int k = 0;
+				e.printSpecVector();
+				System.out.println(similarityValue);
+				k++;
+			}
+			
 			
 
 			//e.specVector.remove(e.specVector.size()-1);

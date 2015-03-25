@@ -6,7 +6,9 @@ package didclab.cse.buffalo.hysterisis;
 import java.util.Date;
 import java.util.Vector;
 
+import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.CooperativeChannels.Density;
+import didclab.cse.buffalo.log.LogManager;
 
 /**
  * @author earslan
@@ -430,7 +432,7 @@ public class Entry{
 			specVector.add(1.0);
 		//specVector.add(bufferSize);
 		//specVector.add(bufferSize/(1024*1024));
-		//specVector.add(fileSize/(1024*1024));
+		specVector.add(Math.log10(fileSize/(1024*1024)));
 		specVector.add(Math.log10(fileCount)+1);
 		
 		
@@ -450,11 +452,13 @@ public class Entry{
 	}
 	
 	public  void printEntry(String... extraInfo){
-		System.out.println(note+"*"+fileSize+"*"+fileCount+"*"+density.name()+"*"+testbed+"*"+source+"*"+
+		LogManager.writeToLog(note+"*"+fileSize+"*"+fileCount+"*"+density.name()+"*"+testbed+"*"+source+"*"+
 				destination+"*"+bandwidth+"*"+RTT+"*"+bufferSize+"*p:"+parallellism+"*cc:"+
 				concurrency+"*ppq:"+pipelining+"*"+fast+"*"+throughput+"*"+isEmulation+"*"+
-				isDedicated+" date:"+date.toString()+"*Extra:"+extraInfo);
+				isDedicated+" date:"+date.toString(), ConfigurationParams.STDOUT_ID);
 	}
-	
+	public  void printSpecVector(){
+		LogManager.writeToLog(specVector.toString(), ConfigurationParams.STDOUT_ID);
+	}
 }
 
