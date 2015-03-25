@@ -408,11 +408,11 @@ public class Entry{
 	int DensityToValue(Density density){
 		if(density == Density.SMALL)
 			return 1;
-		else if(density == Density.MIDDLE)
+		if(density == Density.MIDDLE)
 			return 11;
-		else if(density == Density.LARGE)
+		if(density == Density.LARGE)
 			return 21;
-		else if(density == Density.HUGE)
+		if(density == Density.HUGE)
 			return 31;
 		else return -1;
 	}
@@ -449,11 +449,11 @@ public class Entry{
 		return getIdentity().hashCode();
 	}
 	
-	public  void printEntry(Entry e, String extraInfo){
-		System.out.println(e.note+"*"+e.fileSize+"*"+e.fileCount+"*"+e.density.name()+"*"+e.testbed+"*"+e.source+"*"+
-				e.destination+"*"+e.bandwidth+"*"+e.RTT+"*"+e.bufferSize+"*p:"+e.parallellism+"*cc:"+
-				e.concurrency+"*ppq:"+e.pipelining+"*"+e.fast+"*"+e.throughput+"*"+e.isEmulation+"*"+
-				e.isDedicated+" date:"+e.date.toString()+"*Extra:"+extraInfo);
+	public  void printEntry(String... extraInfo){
+		System.out.println(note+"*"+fileSize+"*"+fileCount+"*"+density.name()+"*"+testbed+"*"+source+"*"+
+				destination+"*"+bandwidth+"*"+RTT+"*"+bufferSize+"*p:"+parallellism+"*cc:"+
+				concurrency+"*ppq:"+pipelining+"*"+fast+"*"+throughput+"*"+isEmulation+"*"+
+				isDedicated+" date:"+date.toString()+"*Extra:"+extraInfo);
 	}
 	
 }

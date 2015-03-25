@@ -3,9 +3,12 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 import didclab.cse.buffalo.hysterisis.Hysterisis;
 import didclab.cse.buffalo.hysterisis.Entry;
+import didclab.cse.buffalo.hysterisis.Similarity;
 import didclab.cse.buffalo.log.LogManager;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
@@ -26,7 +29,7 @@ public class CooperativeChannels {
 		
 		targetTransfer = new Entry();
 		parseArguments(args);
-		targetTransfer.setBDP( (targetTransfer.getBandwidth() * targetTransfer.getRtt()*0.001)/8 ); // In MB
+		targetTransfer.setBDP( (targetTransfer.getBandwidth() * targetTransfer.getRtt())/8 ); // In MB
 		LogManager.writeToLog("*********Cooperative Chunks cc="+targetTransfer.getMaxConcurrency()+"********", 
 				ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
 		
@@ -63,7 +66,16 @@ public class CooperativeChannels {
 		    		 //Create sample dataset to and transfer to measure current load on the network
 			    	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 			    		Partition chunk =  chunks.get(chunkNumber);
-			    		
+
+
+			    		List<Entry> similarEntries = Similarity.findSimilarEntries(hysterisis.getEntries(), chunks.get(chunkNumber).entry);
+						LogManager.writeToLog("The number of similar entries is:"+similarEntries.size(), ConfigurationParams.STDOUT_ID);
+				    	//Categorize selected entries based on log date
+				    	LinkedList<LinkedList<Entry>> trials = new LinkedList<LinkedList<Entry>>();
+				    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
+				    	
+				    	if(ConfigurationParams.USE_HISTORY)
+				    		continue;
 			        	XferList sample_files = new XferList("", "") ;
 			        	double MINIMUM_SAMPLING_SIZE = 10 * targetTransfer.getBDP();
 			        	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
@@ -85,8 +97,11 @@ public class CooperativeChannels {
 		    	if(results != null){
 		    		for (int  i=0; i< results.length; i++){
 		    			Object []result = results[i];
-		    			Integer []paramValues = (Integer[]) results[0];
-		    			Double estimatedThroughput = (Double) result[1];
+		    			
+		    			double [] paramValues = (double []) result[0];
+		    			double estimatedThroughput = ((double []) result[1]) [0];
+		    			
+		    			
 		    			LogManager.writeToLog("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+" ppq:"+paramValues[2]+" throughput:"+
 		    								   estimatedThroughput, ConfigurationParams.STDOUT_ID);
 		    		}
@@ -259,13 +274,14 @@ public class CooperativeChannels {
 			chunk.getRecords().sp = list.sp;
 			chunk.getRecords().dp = list.dp;
 			double avgFileSize = chunk.getRecords().size()/(chunk.getRecords().count()*1.0);
-			CooperativeChannels.targetTransfer.setFileSize( avgFileSize );
-			CooperativeChannels.targetTransfer.setFileCount( chunk.getRecords().count() );
-			CooperativeChannels.targetTransfer.setDensity( Entry.findDensityOfList(avgFileSize, targetTransfer.getBDP()) );
-			CooperativeChannels.targetTransfer.calculateSpecVector();
+			chunk.setEntry(CooperativeChannels.targetTransfer);
+			chunk.entry.setFileSize( avgFileSize );
+			chunk.entry.setFileCount( chunk.getRecords().count() );
+			chunk.entry.setDensity( Entry.findDensityOfList(avgFileSize, targetTransfer.getBDP()) );
+			chunk.entry.calculateSpecVector();
 			LogManager.writeToLog("Chunk "+i+":\tfiles:"+partitions.get(i).getRecords().count()+"\t avg"+
 									printSize(partitions.get(i).getRecords().size()/partitions.get(i).getRecords().count())
-									+"\t"+printSize(partitions.get(i).getRecords().size()), ConfigurationParams.STDOUT_ID);
+									+"\t"+printSize(partitions.get(i).getRecords().size())+" Density:"+chunk.entry.getDensity(), ConfigurationParams.STDOUT_ID);
 		}
 		return partitions;
 	}

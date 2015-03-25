@@ -1,5 +1,6 @@
 package didclab.cse.buffalo;
 
+import didclab.cse.buffalo.hysterisis.Entry;
 import stork.util.XferList;
 
 /**
@@ -14,16 +15,66 @@ public class Partition {
     //Observed max values for each parameters in the log files
     int maxCC = Integer.MIN_VALUE, maxP = Integer.MIN_VALUE, maxPPQ = Integer.MIN_VALUE;
     
+    public Entry entry;
+    
     /* records belonging to this partition */
     private XferList fileList = new XferList("", "") ;
 
-    public Partition(double centroid) {
+    /**
+	 * @return the maxCC
+	 */
+	public int getMaxCC() {
+		return maxCC;
+	}
+	/**
+	 * @param maxCC the maxCC to set
+	 */
+	public void setMaxCC(int maxCC) {
+		this.maxCC = maxCC;
+	}
+	/**
+	 * @return the maxP
+	 */
+	public int getMaxP() {
+		return maxP;
+	}
+	/**
+	 * @param maxP the maxP to set
+	 */
+	public void setMaxP(int maxP) {
+		this.maxP = maxP;
+	}
+	/**
+	 * @return the maxPPQ
+	 */
+	public int getMaxPPQ() {
+		return maxPPQ;
+	}
+	/**
+	 * @param maxPPQ the maxPPQ to set
+	 */
+	public void setMaxPPQ(int maxPPQ) {
+		this.maxPPQ = maxPPQ;
+	}
+	/**
+	 * @return the density
+	 */
+	
+	public Partition(double centroid) {
         this.centroid = centroid;
     }
     public Partition() {
         this.centroid = 0;
+    	entry = new Entry();
     }
-
+    
+    public void setEntry(Entry e){
+    	entry.setBandwidth(e.getBandwidth());
+    	entry.setRtt(e.getRtt());
+    	entry.setBDP(e.getBDP());
+    	entry.setBufferSize(e.getBufferSize());
+    	entry.setDedicated(e.isDedicated());
+    }
     public double getCentroid() {
         return centroid;
     }

@@ -4,6 +4,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -12,11 +13,18 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+
+import didclab.cse.buffalo.ConfigurationParams;
+import didclab.cse.buffalo.CooperativeChannels.Density;
+import didclab.cse.buffalo.log.LogManager;
 import au.com.bytecode.opencsv.CSVReader;
 
 
 public class Similarity {
 	static double []avgAttributes,variance;
+	
+	static double[] minSpecValues;
+    static double [] maxSpecValues;
 	private static double similarityThreshold = 0.999;	
 	public static void  readFile(List<Entry> entries, String fname) {
 		try{
@@ -36,13 +44,12 @@ public class Similarity {
 	        		//Mandatory attributes
 		        	entry.setId(id++);
 		        	entry.setFileSize( Double.parseDouble(record[attributeIndices.get("FileSize")]) );
-		        	
 		        	entry.setFileCount( Integer.parseInt(record[attributeIndices.get("FileCount")]) );
 		        	entry.setSource( record[attributeIndices.get("Source")] );
 		        	entry.setDestination( record[attributeIndices.get("Destination")] );
 		        	entry.setBandwidth( Double.parseDouble( record[attributeIndices.get("Bandwidth")] ) );
-		        	if(entry.getBandwidth() >= Math.pow(10, 10))
-		        		entry.setBandwidth( entry.getBandwidth()*1024*1024*1024.0 );
+		        	//if(entry.getBandwidth() >= Math.pow(10, 10))
+		        	//	entry.setBandwidth( entry.getBandwidth()*1024*1024*1024.0 );
 		        	entry.setRtt( Double.parseDouble( record[attributeIndices.get("RTT")]) );
 		        	entry.setBufferSize( Double.parseDouble( record[attributeIndices.get("BufferSize")]) );
 		        	entry.setParallellism( Integer.parseInt( record[attributeIndices.get("Parallelism")]) );
@@ -64,6 +71,8 @@ public class Similarity {
 		        			entry.setEmulation(true);
 		        	if(attributeIndices.containsKey(("Note") ))
 		        		entry.setNote( record[attributeIndices.get("Note")] );
+		        	
+		        	entry.setBandwidth(entry.getBandwidth() * 1000*1000);
 		        	entry.setDensity( Entry.findDensityOfList(entry.getFileSize(), (entry.getBandwidth()*entry.getRtt()/8.0)) );
 	        	}
 	        	catch (Exception e){
@@ -120,14 +129,43 @@ public class Similarity {
         System.out.println();
         for (Entry e: entries) {
         	for (int i = 0; i < e.specVector.size(); i++) {
-        		double newValue = (e.specVector.get(i)-Similarity.avgAttributes[i]);
-        		if(Similarity.variance[i] != 0 )
-        			newValue/= Similarity.variance[i];
+        		//double newValue = (e.specVector.get(i)-Similarity.avgAttributes[i]);
+        		double newValue = (e.specVector.get(i)/sumSpecVector[i]);
+        		//if(Similarity.variance[i] != 0 )
+        		//	newValue/= Similarity.variance[i];
         		e.specVector.set(i, newValue) ;
         		
 			}
 		}
 	}
+	
+	
+	static public void normalizeDataset2(List<Entry> entries){
+        minSpecValues  = entries.size() == 0 ? null : new double [entries.get(0).specVector.size()];
+        maxSpecValues = entries.size() == 0 ? null : new double [entries.get(0).specVector.size()];
+        Arrays.fill(minSpecValues, Double.MAX_VALUE);
+        Arrays.fill(maxSpecValues, Double.MIN_VALUE);
+		for (Entry entry:entries) {
+	            for (int i = 0; i < minSpecValues.length; i++) {
+	            	if(entry.specVector.get(i) < minSpecValues[i])
+	            		minSpecValues[i] = entry.specVector.get(i);
+	            	if(entry.specVector.get(i) > maxSpecValues[i])
+	            		maxSpecValues[i] = entry.specVector.get(i);
+				}
+		}
+		
+        for (Entry e: entries) {
+        	for (int i = 0; i < e.specVector.size(); i++) {
+        		if(maxSpecValues[i] == minSpecValues[i])
+        			e.specVector.set(i, Math.abs(e.specVector.get(i)- Similarity.minSpecValues[i])+1 );
+        		else{
+	        		double newValue = (e.specVector.get(i)- minSpecValues[i]) / (maxSpecValues[i]-minSpecValues[i]);
+	        		e.specVector.set(i, newValue+1) ;
+        		}
+			}
+		}
+	}
+	
 	public static double round(double value, int places) {
 	    if (places < 0) throw new IllegalArgumentException();
 
@@ -186,12 +224,29 @@ public class Similarity {
 				squareOne += (value1 * value1);
 				squareTwo += (value2 * value2);
 				multiplication += (value1 * value2);
-				
 			}
 			similarityValue = multiplication/(Math.sqrt(squareOne)*Math.sqrt(squareTwo));
 			e.specVector.remove(e.specVector.size()-1);
 			target.specVector.remove(target.specVector.size()-1);
 			
+			
+			if(e.getThroughput() == 121.770405961){
+				int k = 0;
+				System.out.println(similarityValue);
+				k++;
+			}
+			if(e.getThroughput() == 817.020021894){
+				int k = 0;
+				System.out.println(similarityValue);
+				k++;
+			}
+			if(e.getThroughput() == 902.813655486){
+				int k = 0;
+				System.out.println(similarityValue);
+				k++;
+			}
+			
+
 			//e.specVector.remove(e.specVector.size()-1);
 			//End of cosine-similarity
 			
@@ -244,15 +299,18 @@ public class Similarity {
 	 * This function takes list of entries and a target entry 
 	 * Returns list of entries which is similar to target entry based on cosine similarity values 
 	 */
-	static List<Entry> findSimilarEntries(List<Entry> entries, Entry targetEntry){
+	public static List<Entry> findSimilarEntries(List<Entry> entries, Entry targetEntry){
 		//Normalize values of target entry
 		for (int j = 0; j < targetEntry.specVector.size(); j++) {
-			double newValue = (targetEntry.specVector.get(j)-Similarity.avgAttributes[j]);
-			if(Similarity.variance[j] != 0 )
-				newValue /=Similarity.variance[j];
-			targetEntry.specVector.set(j, newValue);
+			if(maxSpecValues[j] == minSpecValues[j])
+				targetEntry.specVector.set(j, Math.abs(targetEntry.specVector.get(j)- Similarity.minSpecValues[j])+1);
+			else{
+				double newValue = (targetEntry.specVector.get(j)- Similarity.minSpecValues[j]) / (Similarity.maxSpecValues[j]-Similarity.minSpecValues[j]);
+				targetEntry.specVector.set(j, newValue+1);
+			}
 		}
 		
+		targetEntry.printEntry("");
 		
 		Map<Entry,Double> similarEntries = new TreeMap<Entry,Double>();
 		Similarity similarity = new Similarity();
@@ -266,6 +324,7 @@ public class Similarity {
 		
 		
 		Integer counter = 0;
+		similarityThreshold = 0.999;	
 		//Decrease similarity threshold value until having at least 30 entry
 		while (counter < 30){
 			counter = 0;
@@ -285,17 +344,17 @@ public class Similarity {
 				}
 	    	}
 	    	if(counter < 30){
-	    		if(similarityThreshold > 0.999)
+	    		if(similarityThreshold > 0.99)
 		    		similarityThreshold -= 0.001;
-	    		else if(similarityThreshold > 0.9)
+	    		else if(similarityThreshold > 0.5)
 		    		similarityThreshold -= 0.01;
 		    	else
 		    		similarityThreshold -= 0.1;
-		    	System.out.println("Similarity threshold updated:"+similarityThreshold);
+		    	LogManager.writeToLog("Similarity threshold updated:"+similarityThreshold, ConfigurationParams.STDOUT_ID);
 	    	}
 		}
 		//removeMultipleOccurences(mostSimilarEntries, mostSimilarEntriesThroughput);
-    	System.out.println("most similar list Size:"+mostSimilarEntries.size());
+    	//System.out.println("most similar list Size:"+mostSimilarEntries.size());
     	
 		
 		return mostSimilarEntries_;
@@ -335,9 +394,9 @@ public class Similarity {
         Collections.sort(similarEntries, new DateComparator());
     	for  (Entry e: similarEntries) {
 			if(set.containsKey(e.getIdentity())){
-				//Entry s = set.get(e.getIdentity());
-				//System.out.println("Existing entry:"+s.getIdentity()+" "+s.throughput+" "+s.date.toString());
-				//System.out.println("New entry"+e.getIdentity()+" "+e.throughput+" "+e.date.toString());
+				Entry s = set.get(e.getIdentity());
+				LogManager.writeToLog("Existing entry:"+s.getIdentity()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
+				LogManager.writeToLog("New entry"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 				//Map<String,Similarity.Entry> copied = new HashMap<String,Similarity.Entry>(set);
 				//trials.add((LinkedList)list.clone());
 				if(list.size() >= 6*6*6)
@@ -350,7 +409,6 @@ public class Similarity {
     	}
         
 		trials.add(list);
-		System.out.println("Sets:"+trials.size());
 		
 		
 		parameterBorderCheck(trials);
