@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import didclab.cse.buffalo.ConfigurationParams;
-import didclab.cse.buffalo.CooperativeChannels.Density;
 import didclab.cse.buffalo.log.LogManager;
 import au.com.bytecode.opencsv.CSVReader;
 
@@ -231,7 +230,7 @@ public class Similarity {
 			target.specVector.remove(target.specVector.size()-1);
 			
 			
-			
+			/*
 			if(e.getThroughput() == 121.770405961){	//0.25-1M
 				int k = 0;
 				e.printSpecVector();
@@ -256,7 +255,7 @@ public class Similarity {
 				System.out.println(similarityValue);
 				k++;
 			}
-			
+			*/
 			
 
 			//e.specVector.remove(e.specVector.size()-1);

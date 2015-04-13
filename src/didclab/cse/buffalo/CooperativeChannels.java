@@ -3,12 +3,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
 
 import didclab.cse.buffalo.hysterisis.Hysterisis;
 import didclab.cse.buffalo.hysterisis.Entry;
-import didclab.cse.buffalo.hysterisis.Similarity;
 import didclab.cse.buffalo.log.LogManager;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
