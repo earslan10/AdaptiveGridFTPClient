@@ -68,7 +68,7 @@ public class CooperativeChannels {
 			    	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 			    		Partition chunk =  chunks.get(chunkNumber);
 
-			    		
+			    		/*
 			    		List<Entry> similarEntries = Similarity.findSimilarEntries(hysterisis.getEntries(), chunks.get(chunkNumber).entry);
 						//LogManager.writeToLog("The number of similar entries is:"+similarEntries.size(), ConfigurationParams.STDOUT_ID);
 				    	//Categorize selected entries based on log date
@@ -77,7 +77,7 @@ public class CooperativeChannels {
 				    	
 				    	if(ConfigurationParams.USE_HISTORY)
 				    		continue;
-				    	
+				    	*/
 			    		
 			        	XferList sample_files = new XferList("", "") ;
 			        	double MINIMUM_SAMPLING_SIZE = 20 * targetTransfer.getBDP();
@@ -95,8 +95,9 @@ public class CooperativeChannels {
 			    	}
 		    	}
 		    	
-		    	if(ConfigurationParams.USE_HISTORY)
-		    		System.exit(-1);
+		    	
+		    	//if(ConfigurationParams.USE_HISTORY)
+		    	//	System.exit(-1);
 		    	
 		    	//Based on input files and sample tranfer throughput; categorize logs and fit model
 		    	// Then find optimal parameter values out of the model
@@ -463,8 +464,11 @@ public class CooperativeChannels {
                         System.out.println("Historical data path = " + ConfigurationParams.INPUT_DIR);
 			}
 		}
-		if (i != args.length)
+		if (i != args.length){
 			System.err.println("Usage: ParseCmdLine [-verbose] [-xn] [-output afile] filename");
+			System.out.println(args[i]);
+			System.exit(0);
+		}
 		else
 			System.out.println("Success!");
 	}

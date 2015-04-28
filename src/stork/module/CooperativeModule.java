@@ -950,7 +950,7 @@ public class CooperativeModule  {
 			} catch (Exception ex) {
 				System.out.println("Failed to create new channel");
 				ex.printStackTrace();
-				System.exit(0);
+				//System.exit(0);
 				return;
 			} 
 			if(!cc.dc_ready){
@@ -1223,9 +1223,10 @@ public class CooperativeModule  {
 						catch (Exception e) { e.printStackTrace(); }
 					}
 				});
-
+				
 				threads.add(t);
 				t.start();
+				
 
 			}
 	        

@@ -335,17 +335,12 @@ public class Similarity {
 			}
 		}
 		
-		//targetEntry.printEntry("");
 		
-		Map<Entry,Double> similarEntries = new TreeMap<Entry,Double>();
 		Similarity similarity = new Similarity();
-		similarEntries = similarity.measureCosineSimilarity(targetEntry,entries);
+		similarity.measureCosineSimilarity(targetEntry,entries);
 		
 		
-		//Entry.printEntry(targetEntry,"");
-		Map<Double, Entry> mostSimilarEntries = null;
-		List<Entry> mostSimilarEntries_ = new LinkedList<Entry>();
-		List<Double> mostSimilarEntriesThroughput = null;
+		List<Entry> mostSimilarEntries = new LinkedList<Entry>();
 		
 		
 		int counter = 0;
@@ -379,21 +374,23 @@ public class Similarity {
 		
 		while (counter < 30){
 			counter = 0;
-			mostSimilarEntries_.clear();
+			mostSimilarEntries.clear();
 	    	for(Entry e : entries)
 				if(e.getSimilarityValue() >= similarityThreshold){
-					mostSimilarEntries_.add(e);
+					mostSimilarEntries.add(e);
 					counter++;
 				}
 		    	similarityThreshold -= 0.001;
 		}
+		
+		
 		
 		LogManager.writeToLog("Similarity threshold updated:"+similarityThreshold+" Count:"+counter, ConfigurationParams.STDOUT_ID);
 		//removeMultipleOccurences(mostSimilarEntries, mostSimilarEntriesThroughput);
     	//System.out.println("most similar list Size:"+mostSimilarEntries.size());
     	
 		
-		return mostSimilarEntries_;
+		return mostSimilarEntries;
 	}
 	
 	class ValueComparator implements Comparator<Entry> {
@@ -422,26 +419,28 @@ public class Similarity {
 	}
 	
 	//sort entries based on date of the transfer 
-	public static int[] categorizeEntries(int chunkNumber, LinkedList<LinkedList<Entry>> trials, List<Entry> similarEntries){
+	public static void categorizeEntries(int chunkNumber, LinkedList<LinkedList<Entry>> trials, List<Entry> similarEntries){
 		//trials = new LinkedList<Map<String,Similarity.Entry>>();
     	Map<String,Entry> set = new HashMap<String,Entry>();
     	LinkedList<Entry> list = new LinkedList<Entry>();
     	
-        Collections.sort(similarEntries, new DateComparator());
+        //Collections.sort(similarEntries, new DateComparator());
     	for  (Entry e: similarEntries) {
+    		if(e.getFast() == false)	// IGNORE FAST DISABLED OPTIONS
+    			continue;
 			if(set.containsKey(e.getIdentity())){
 				Entry s = set.get(e.getIdentity());
 				LogManager.writeToLog("Existing entry:"+s.getIdentity()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
 				LogManager.writeToLog("New entry"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 				//Map<String,Similarity.Entry> copied = new HashMap<String,Similarity.Entry>(set);
 				//trials.add((LinkedList)list.clone());
-				if(list.size() >= 6*6*6)
+				if(list.size() >= 6*6*2)
 					trials.add(list);
 				list =  new LinkedList<Entry>();
 				set.clear();
 			}
-			if(e.getDensity() == Density.SMALL)
-				e.printEntry("");
+			if(e.getDensity() == Density.LARGE)
+				LogManager.writeToLog("Added:"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 			list.add(e);
 			set.put(e.getIdentity(), e);
     	}
@@ -476,7 +475,6 @@ public class Similarity {
 				e.printStackTrace();
 			}
 		}
-		return (new int[]{maxCC, maxP, maxPPQ});
 	}
 	
 	private static void parameterBorderCheck(LinkedList<LinkedList<Entry>> trials){

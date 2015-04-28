@@ -439,7 +439,7 @@ public class Entry{
 	}
 	
 	String getIdentity(){
-		return note+"*"+fileSize+"*"+fileCount+"*"+density.name()+"*"+testbed+"*"+source+"*"+
+		return fileSize+"*"+fileCount+"*"+density.name()+"*"+testbed+"*"+source+"*"+
 				destination+"*"+bandwidth+"*"+RTT+"*"+bufferSize+"*"+parallellism+"*"+
 				concurrency+"*"+pipelining+"*"+fast+"*"+isEmulation+"*"+
 				isDedicated;

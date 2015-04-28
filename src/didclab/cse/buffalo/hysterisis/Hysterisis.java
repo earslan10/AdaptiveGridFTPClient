@@ -10,6 +10,7 @@ import matlabcontrol.MatlabProxyFactoryOptions;
 import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.Partition;
+import didclab.cse.buffalo.CooperativeChannels.Density;
 import didclab.cse.buffalo.log.LogManager;
 
 public class Hysterisis {
@@ -83,6 +84,7 @@ public class Hysterisis {
 			Similarity.readFile(entries, fileName);
 		}
 		LogManager.writeToLog("Total Entries"+entries.size(), ConfigurationParams.STDOUT_ID);
+		
 		Similarity.normalizeDataset2(entries);
 		
 	}
@@ -94,21 +96,20 @@ public class Hysterisis {
 	 */
 	public Object[][] runMatlabModeling(ArrayList<Partition>  chunks, double []sampleThroughputs){
 		
-		//hold maximum parallelism, pipelining, concurrency values observed in the dataset
-		int [][] maxValuesInDataset = new int[chunks.size()][3];
+		
 		int []setCounts = new int[chunks.size()];
 		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 			List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
 			
 	    	//Categorize selected entries based on log date
 	    	LinkedList<LinkedList<Entry>> trials = new LinkedList<LinkedList<Entry>>();
-	    	maxValuesInDataset[chunkNumber] = Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
+	    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
 	    	setCounts[chunkNumber] = trials.size();
 	    }
 		/*
     	 * Run matlab optimization to find set of "optimal" parameters for each chunk 
     	 */
-    	return polyFitbyMatlab(chunks, setCounts, sampleThroughputs, maxValuesInDataset);
+    	return polyFitbyMatlab(chunks, setCounts, sampleThroughputs);
 		
 	}
 	
@@ -122,7 +123,7 @@ public class Hysterisis {
 	 * 		   maxParams---- For each chunk, maximum observed cc, p and ppq values in logs
 	 * Output: results-- it holds estimated values of cc,p and ppq for each chunk set
 	 */
-	public Object [][] polyFitbyMatlab(ArrayList<Partition>  chunks, int []logFilesCount, double []sampleThroughputs, int[][] maxParams){
+	public Object [][] polyFitbyMatlab(ArrayList<Partition>  chunks, int []logFilesCount, double []sampleThroughputs){
 		Object[][] results = null;
 		MatlabProxyFactoryOptions options = new MatlabProxyFactoryOptions.Builder()
         .setUsePreviouslyControlledSession(true)
@@ -143,8 +144,7 @@ public class Hysterisis {
 				proxy.eval("cd "+ConfigurationParams.MATLAB_SCRIPT_DIR);
 				String command = "main("+chunkNumber+","+sampleThroughputs[chunkNumber]+","+(logFilesCount[chunkNumber]-1)+
 								  ",["+sampleTransferValues[0]+","+sampleTransferValues[1]+","+sampleTransferValues[2]+"]"+
-								  ",["+maxParams[chunkNumber][0]+","+maxParams[chunkNumber][1]+","+
-								  maxParams[chunkNumber][2]+"]"+", '"+ConfigurationParams.OUTPUT_DIR+"')";
+								  ", '"+ConfigurationParams.OUTPUT_DIR+"')";
 				LogManager.writeToLog("\t"+command, ConfigurationParams.INFO_LOG_ID, ConfigurationParams.STDOUT_ID);
 				results[chunkNumber] = proxy.returningEval(command,2);
     		}
