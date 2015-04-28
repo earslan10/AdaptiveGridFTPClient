@@ -3,6 +3,10 @@ package stork.module;
 import stork.util.*;
 import stork.util.XferList.Entry;
 
+
+
+
+
 //import stork.stat.InvQuadRegression;
 import java.net.*;
 import java.text.DecimalFormat;
@@ -925,12 +929,14 @@ public class CooperativeModule  {
 			//System.out.println(id+" transfer list called at:"+(System.currentTimeMillis()-CooperativeChannels.init)/1000.0+"\n");
 			ChannelPair cc;
 
-
+	        
 			try {
 				if( id ==0 )	// id =0 is already created as main cc channel. dont create again.
 					cc = this.cc;
 				else
 					cc  = new ChannelPair(su, du);
+				
+		        
 				cc.pipelining = pp;
 				cc.setParallelism(p);
 				cc.setBufferSize(bufSize);
@@ -961,7 +967,6 @@ public class CooperativeModule  {
 					cc.setActive(hp);
 				}
 			}
-
 			// Pipeline p commands at a time, unless pipelining is -1,
 			// in which case we have infinite pipelining.
 			LinkedList<XferList.Entry> wl = new LinkedList<XferList.Entry>();
@@ -971,8 +976,6 @@ public class CooperativeModule  {
 				updateOnAir(cc.xferListIndex, +1);
 				wl.add(e);
 			}
-
-
 
 			int ppq = cc.pipelining;
 			while (cc.pipelining > 0 && ppq-- >= 1 && !chunks.get(cc.xferListIndex).isEmpty()) {
@@ -1225,7 +1228,7 @@ public class CooperativeModule  {
 				t.start();
 
 			}
-
+	        
 			for (Thread t : threads){
 				t.join();
 			}

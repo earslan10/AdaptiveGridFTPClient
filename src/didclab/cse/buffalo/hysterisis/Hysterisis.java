@@ -18,7 +18,7 @@ public class Hysterisis {
 	
 	public Hysterisis() {
 		// TODO Auto-generated constructor stub
-		entries = new ArrayList<Entry>();
+		entries = new LinkedList<Entry>();
 		historicalDataset= new ArrayList<String>();
 	}
 	

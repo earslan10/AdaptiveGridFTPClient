@@ -401,9 +401,9 @@ public class Entry{
 	public static Density findDensityOfList(Double averageFileSize, double BDP){
 			if(averageFileSize < BDP/10)
 				return Density.SMALL;
-			else if(averageFileSize < BDP/2)
+			else if(averageFileSize < BDP)
 				return Density.MIDDLE;
-			else if (averageFileSize < 20 * BDP)
+			else if (averageFileSize < 10 * BDP)
 				return Density.LARGE;
 			return Density.HUGE;
 	}	
@@ -452,13 +452,17 @@ public class Entry{
 	}
 	
 	public  void printEntry(String... extraInfo){
+		StringBuilder sb = new StringBuilder("");
+		for (int i = 0; i < extraInfo.length; i++) {
+			sb.append(extraInfo[i] + "\t");
+		}
 		LogManager.writeToLog(note+"*"+fileSize+"*"+fileCount+"*"+density.name()+"*"+testbed+"*"+source+"*"+
 				destination+"*"+bandwidth+"*"+RTT+"*"+bufferSize+"*p:"+parallellism+"*cc:"+
 				concurrency+"*ppq:"+pipelining+"*"+fast+"*"+throughput+"*"+isEmulation+"*"+
-				isDedicated+" date:"+date.toString(), ConfigurationParams.STDOUT_ID);
+				isDedicated+" date:"+date.toString()+" Extra:"+sb.toString(), ConfigurationParams.STDOUT_ID);
 	}
-	public  void printSpecVector(){
-		LogManager.writeToLog(specVector.toString(), ConfigurationParams.STDOUT_ID);
+	public  String printSpecVector(){
+		return specVector.toString();
 	}
 }
 

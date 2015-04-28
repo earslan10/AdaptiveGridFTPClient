@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import didclab.cse.buffalo.ConfigurationParams;
+import didclab.cse.buffalo.CooperativeChannels.Density;
 import didclab.cse.buffalo.log.LogManager;
 import au.com.bytecode.opencsv.CSVReader;
 
@@ -155,11 +156,15 @@ public class Similarity {
 		
         for (Entry e: entries) {
         	for (int i = 0; i < e.specVector.size(); i++) {
-        		if(maxSpecValues[i] == minSpecValues[i])
-        			e.specVector.set(i, Math.abs(e.specVector.get(i)- Similarity.minSpecValues[i])+1 );
+        		if(maxSpecValues[i] == minSpecValues[i]){
+        			//e.specVector.set(i, Math.abs(e.specVector.get(i)- Similarity.minSpecValues[i])+1 );
+        			e.specVector.set(i, Math.abs(e.specVector.get(i)- Similarity.minSpecValues[i]) );
+        		}
         		else{
 	        		double newValue = (e.specVector.get(i)- minSpecValues[i]) / (maxSpecValues[i]-minSpecValues[i]);
-	        		e.specVector.set(i, newValue+1) ;
+	        		//e.specVector.set(i, newValue+1) ;
+	        		e.specVector.set(i, newValue) ;
+	        		
         		}
 			}
 		}
@@ -188,7 +193,7 @@ public class Similarity {
 		//6-specVector.add(fileCount)
 		//7- Testbed name
 		
-		double[] weights = {4,3,8,10,10,6,4,10};
+		double[] weights = {4,3,8,10,10,8, 2,10};
 		
 		/*
 		double sumWeight = 0;
@@ -202,7 +207,10 @@ public class Similarity {
 			System.out.println(weights[i]);
 		}
 		*/
-		target.printSpecVector();
+		LogManager.writeToLog(target.printSpecVector(), ConfigurationParams.STDOUT_ID);
+		
+		double maxSimilarity = 0;
+		Entry maxEntry = null;
 		for (Entry e: entries) {
 			
 			double similarityValue = 0;
@@ -225,37 +233,39 @@ public class Similarity {
 				squareTwo += (value2 * value2);
 				multiplication += (value1 * value2);
 			}
-			similarityValue = multiplication/(Math.sqrt(squareOne)*Math.sqrt(squareTwo));
+			similarityValue  = multiplication/(Math.sqrt(squareOne)*Math.sqrt(squareTwo));
+			if(similarityValue >  maxSimilarity){
+				maxSimilarity = similarityValue;
+				maxEntry = e;
+			}
 			e.specVector.remove(e.specVector.size()-1);
 			target.specVector.remove(target.specVector.size()-1);
 			
 			
-			/*
+			
 			if(e.getThroughput() == 121.770405961){	//0.25-1M
 				int k = 0;
-				e.printSpecVector();
-				System.out.println(similarityValue);
+				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
 				k++;
 			}
-			if(e.getThroughput() == 817.020021894){ // 3G
+			if(e.getThroughput() == 1424.80667455){ //5-25M
 				int k = 0;
-				e.printSpecVector();
-				System.out.println(similarityValue);
-				k++;
-			}
-			if(e.getThroughput() == 902.813655486){ //5-25M
-				int k = 0;
-				e.printSpecVector();
-				System.out.println(similarityValue);
+				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
 				k++;
 			}
 			if(e.getThroughput() == 1117.53360356){ //100M
 				int k = 0;
-				e.printSpecVector();
-				System.out.println(similarityValue);
+				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
 				k++;
 			}
-			*/
+			if(e.getThroughput() == 817.020021894){ // 3G
+				int k = 0;				
+				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
+				k++;
+			}
+			
+			
+			
 			
 
 			//e.specVector.remove(e.specVector.size()-1);
@@ -295,6 +305,10 @@ public class Similarity {
 			e.similarityValue = similarityValue;
 			cosineSimilarity.put(e, similarityValue);
 		}
+		maxEntry.printEntry(Double.toString(maxSimilarity));
+		//LogManager.writeToLog("Max Entry:"+maxEntry.printEntry(Double.toString(maxSimilarity)), ConfigurationParams.STDOUT_ID);
+		
+		Similarity.similarityThreshold = maxSimilarity;
 		//System.out.println("similarity size:"+cosineSimilarity.size());
 		ValueComparator bvc =  new ValueComparator(cosineSimilarity);
         TreeMap<Entry,Double> sorted_map = new TreeMap<Entry,Double>(bvc);
@@ -314,14 +328,14 @@ public class Similarity {
 		//Normalize values of target entry
 		for (int j = 0; j < targetEntry.specVector.size(); j++) {
 			if(maxSpecValues[j] == minSpecValues[j])
-				targetEntry.specVector.set(j, Math.abs(targetEntry.specVector.get(j)- Similarity.minSpecValues[j])+1);
+				targetEntry.specVector.set(j, Math.abs(targetEntry.specVector.get(j)- Similarity.minSpecValues[j]));
 			else{
 				double newValue = (targetEntry.specVector.get(j)- Similarity.minSpecValues[j]) / (Similarity.maxSpecValues[j]-Similarity.minSpecValues[j]);
-				targetEntry.specVector.set(j, newValue+1);
+				targetEntry.specVector.set(j, newValue);
 			}
 		}
 		
-		targetEntry.printEntry("");
+		//targetEntry.printEntry("");
 		
 		Map<Entry,Double> similarEntries = new TreeMap<Entry,Double>();
 		Similarity similarity = new Similarity();
@@ -330,12 +344,14 @@ public class Similarity {
 		
 		//Entry.printEntry(targetEntry,"");
 		Map<Double, Entry> mostSimilarEntries = null;
-		List<Entry> mostSimilarEntries_ = null;
+		List<Entry> mostSimilarEntries_ = new LinkedList<Entry>();
 		List<Double> mostSimilarEntriesThroughput = null;
 		
 		
-		Integer counter = 0;
-		similarityThreshold = 0.999;	
+		int counter = 0;
+		
+		/*
+		//similarityThreshold = 0.999;	
 		//Decrease similarity threshold value until having at least 30 entry
 		while (counter < 30){
 			counter = 0;
@@ -347,7 +363,7 @@ public class Similarity {
 				Map.Entry<Entry,Double> pairs = (Map.Entry<Entry,Double>)it.next();
 		        Entry e = pairs.getKey();
 		        double value = pairs.getValue();
-				if(value > similarityThreshold){
+				if(value >= similarityThreshold){
 					mostSimilarEntries.put(e.getThroughput(),e);
 					mostSimilarEntriesThroughput.add(e.getThroughput());
 					mostSimilarEntries_.add(e);
@@ -355,15 +371,24 @@ public class Similarity {
 				}
 	    	}
 	    	if(counter < 30){
-	    		if(similarityThreshold > 0.99)
-		    		similarityThreshold -= 0.001;
-	    		else if(similarityThreshold > 0.5)
-		    		similarityThreshold -= 0.01;
-		    	else
-		    		similarityThreshold -= 0.1;
-		    	LogManager.writeToLog("Similarity threshold updated:"+similarityThreshold, ConfigurationParams.STDOUT_ID);
+		    	similarityThreshold -= 0.001;
+		    	//LogManager.writeToLog("Similarity threshold updated:"+similarityThreshold, ConfigurationParams.STDOUT_ID);
 	    	}
 		}
+		*/
+		
+		while (counter < 30){
+			counter = 0;
+			mostSimilarEntries_.clear();
+	    	for(Entry e : entries)
+				if(e.getSimilarityValue() >= similarityThreshold){
+					mostSimilarEntries_.add(e);
+					counter++;
+				}
+		    	similarityThreshold -= 0.001;
+		}
+		
+		LogManager.writeToLog("Similarity threshold updated:"+similarityThreshold+" Count:"+counter, ConfigurationParams.STDOUT_ID);
 		//removeMultipleOccurences(mostSimilarEntries, mostSimilarEntriesThroughput);
     	//System.out.println("most similar list Size:"+mostSimilarEntries.size());
     	
@@ -415,6 +440,8 @@ public class Similarity {
 				list =  new LinkedList<Entry>();
 				set.clear();
 			}
+			if(e.getDensity() == Density.SMALL)
+				e.printEntry("");
 			list.add(e);
 			set.put(e.getIdentity(), e);
     	}

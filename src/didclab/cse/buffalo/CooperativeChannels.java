@@ -3,9 +3,13 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedList;
+import java.util.List;
 
 import didclab.cse.buffalo.hysterisis.Hysterisis;
 import didclab.cse.buffalo.hysterisis.Entry;
+import didclab.cse.buffalo.hysterisis.Similarity;
 import didclab.cse.buffalo.log.LogManager;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
@@ -64,31 +68,35 @@ public class CooperativeChannels {
 			    	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 			    		Partition chunk =  chunks.get(chunkNumber);
 
-			    		/*
+			    		
 			    		List<Entry> similarEntries = Similarity.findSimilarEntries(hysterisis.getEntries(), chunks.get(chunkNumber).entry);
-						LogManager.writeToLog("The number of similar entries is:"+similarEntries.size(), ConfigurationParams.STDOUT_ID);
+						//LogManager.writeToLog("The number of similar entries is:"+similarEntries.size(), ConfigurationParams.STDOUT_ID);
 				    	//Categorize selected entries based on log date
 				    	LinkedList<LinkedList<Entry>> trials = new LinkedList<LinkedList<Entry>>();
 				    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
 				    	
-			    		
 				    	if(ConfigurationParams.USE_HISTORY)
 				    		continue;
-				    	*/
+				    	
+			    		
 			        	XferList sample_files = new XferList("", "") ;
-			        	double MINIMUM_SAMPLING_SIZE = 10 * targetTransfer.getBDP();
+			        	double MINIMUM_SAMPLING_SIZE = 20 * targetTransfer.getBDP();
 			        	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
 			        		XferList.Entry file = chunk.getRecords().pop();
 			        		sample_files.add(file.path, file.size);
+			        		//LogManager.writeToLog(file.path(), ConfigurationParams.STDOUT_ID);
 			        	}
 			        	
 			        	sample_files.sp = xList.sp;
 			        	sample_files.dp = xList.dp;
-					    sampleThroughputs[chunkNumber] = runSampleDataTransfer(sample_files);
+					    sampleThroughputs[chunkNumber] = transferList(sample_files, null);
 					    //If transfer failed: To be implemented 
 					    if(sampleThroughputs[chunkNumber] == -1)System.exit(-1);	
 			    	}
 		    	}
+		    	
+		    	if(ConfigurationParams.USE_HISTORY)
+		    		System.exit(-1);
 		    	
 		    	//Based on input files and sample tranfer throughput; categorize logs and fit model
 		    	// Then find optimal parameter values out of the model
@@ -103,6 +111,13 @@ public class CooperativeChannels {
 		    			
 		    			LogManager.writeToLog("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+" ppq:"+paramValues[2]+" throughput:"+
 		    								   estimatedThroughput, ConfigurationParams.STDOUT_ID);
+		    			
+		    			int []parameters = new int[paramValues.length+1];
+		    			for(int j = 0; j<paramValues.length; j++)
+		    				parameters[j] = (int)paramValues[j];
+		    			parameters[paramValues.length] = (int)targetTransfer.getBufferSize();
+		    			transferList(chunks.get(i).getRecords(), parameters);
+		    			
 		    		}
 		    	}
 		    	
@@ -178,22 +193,25 @@ public class CooperativeChannels {
 	 * Run sample data transfer to learn current network load
 	 * sample_files is supposed to be set of files from highest density chunk
 	 */
-	public static double runSampleDataTransfer(XferList sample_files) {
+	public static double transferList(XferList sample_files, int[] parameters) {
 		
 		
     	//parallelism, pipelining and concurrency parameters 
-    	int []params = getBestParams(sample_files);
+		if(parameters == null)
+			parameters = getBestParams(sample_files);
     	
     	double measuredThroughput = -1;
     	try{
 	    	//Run sampling transfer
-	    	LogManager.writeToLog("Sampling chunk --> files:"+sample_files.count()+
+	    	LogManager.writeToLog("Transferring chunk --> files:"+sample_files.count()+
 	    			   " Centroid:"+printSize(sample_files.size()/sample_files.count())+
-	    		 	   " total:"+printSize(sample_files.size())+"\tppq:"+params[2]+"*p:"+
-	    			    params[1]+"*"+"*cc:"+params[0], ConfigurationParams.INFO_LOG_ID);
+	    		 	   " total:"+printSize(sample_files.size())+"\tppq:"+parameters[2]+"*p:"+
+	    		 	  parameters[1]+"*"+"*cc:"+parameters[0], ConfigurationParams.INFO_LOG_ID);
 	    	double fileSize = sample_files.size();
 	    	long init = System.currentTimeMillis();
-	    	ConfigurationParams.GridFTPClient.startTransfer(params[2], params[1], params[0], params[3], sample_files);
+	    	
+	        
+	    	ConfigurationParams.GridFTPClient.startTransfer(parameters[2], parameters[1], parameters[0], parameters[3], sample_files);
 			
 			double timeSpent = (System.currentTimeMillis()-init)/1000.0;
 			//totalTransferTime += timeSpent;
@@ -260,7 +278,7 @@ public class CooperativeChannels {
 		for (XferList.Entry e : list) {
 			if(e.size < targetTransfer.getBDP()/10)
 				partitions.get(0).addRecord(e);
-			else if(e.size < targetTransfer.getBDP()/2)
+			else if(e.size < targetTransfer.getBDP())
 				partitions.get(1).addRecord(e);
 			else if (e.size < targetTransfer.getBDP()*10)
 				partitions.get(2).addRecord(e);
@@ -326,11 +344,17 @@ public class CooperativeChannels {
 		xl.density = density;
 		double avgFileSize = xl.avgFileSize();
 		int fileCountToFillThePipe = (int)Math.round(targetTransfer.getBDP()/avgFileSize);
-		int paralleStreamCountToFillPipe = (int)Math.round(targetTransfer.getBDP()/targetTransfer.getBufferSize());
-		int paralleStreamCountToFillBuffer = (int)Math.round(avgFileSize/targetTransfer.getBufferSize());
+		int paralleStreamCountToFillPipe = (int)Math.ceil(targetTransfer.getBDP()/targetTransfer.getBufferSize());
+		int paralleStreamCountToFillBuffer = (int)Math.ceil(avgFileSize/targetTransfer.getBufferSize());
 		int cc = Math.max(Math.min(Math.min(fileCountToFillThePipe, xl.count()), targetTransfer.getMaxConcurrency()), 2);
 		int ppq = fileCountToFillThePipe;
 		int p =Math.max(Math.min(paralleStreamCountToFillPipe, paralleStreamCountToFillBuffer) , 1);
+		p = (avgFileSize>targetTransfer.getBDP()) ? p+1 : p;
+		
+		//test case for sampling
+		cc = cc > 10 ?  cc : Math.min(8, xl.count());
+		
+		
 		return new int[] {cc,p,ppq,(int)targetTransfer.getBufferSize()};
 		/*
 		if(density == Density.SMALL)
