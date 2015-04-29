@@ -30,8 +30,10 @@ public class CooperativeChannels {
 		
 		targetTransfer = new Entry();
 		parseArguments(args);
+		ConfigurationParams.init();
+		
 		targetTransfer.setBDP( (targetTransfer.getBandwidth() * targetTransfer.getRtt())/8 ); // In MB
-		LogManager.writeToLog("*********Cooperative Chunks cc="+targetTransfer.getMaxConcurrency()+"********", 
+		LogManager.writeToLog("*********Cooperative Chunks cc="+targetTransfer.getMaxConcurrency()+"********"+targetTransfer.getBDP(), 
 				ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
 		
 		URI su =null ,du=null;
@@ -447,13 +449,21 @@ public class CooperativeChannels {
                 if (vflag)
                         System.out.println("Testbed name is = " + targetTransfer.getTestbed());
 			}
-			else if (arg.equals("-matlab-dir")) {
+			else if (arg.equals("-matlab")) {
                 if (i < args.length)
                         ConfigurationParams.MATLAB_DIR = args[i++];
                 else
                         System.err.println("-matlab installation path requires a full path name");
                 if (vflag)
                         System.out.println("Matlab installation directory is = " + ConfigurationParams.MATLAB_DIR);
+			}
+			else if (arg.equals("-home")) {
+                if (i < args.length)
+                        ConfigurationParams.HOME_DIR = args[i++];
+                else
+                        System.err.println("-matlab installation path requires a full path name");
+                if (vflag)
+                        System.out.println("Project directory = " + ConfigurationParams.HOME_DIR);
 			}
 			else if (arg.equals("-input")) {
                 if (i < args.length)
