@@ -3,10 +3,20 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="lib/cog-url-1.8.0.jar"/>
 	<classpathentry kind="lib" path="lib/condor.jar"/>
-	<classpathentry kind="lib" path="lib/JGlobus-Core-2.0.4.jar"/>
-	<classpathentry kind="lib" path="lib/JGlobus-GridFTP-2.0.0.jar"/>
 	<classpathentry kind="lib" path="lib/log4j-1.2.15.jar"/>
 	<classpathentry kind="lib" path="lib/matlabcontrol-4.1.0.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="/home/earslan/jglobus/JGlobus-master/ssl-proxies/target/ssl-proxies-2.2.0-SNAPSHOT.jar"/>
+	<classpathentry kind="lib" path="lib/axisg-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/gram-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/gridftp-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/gss-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/io-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/jsse-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/myproxy-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/ssl-proxies-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/test-utils-2.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/commons-logging-1.1.jar"/>
+	<classpathentry kind="lib" path="bcprov-jdk15on-1.50.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

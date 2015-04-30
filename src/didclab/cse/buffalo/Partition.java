@@ -10,6 +10,7 @@ import stork.util.XferList;
 public class Partition {
     /* centroid of the partition */
     private double centroid;
+    private int[] samplingParameters;
     
     /*variables for log based approach*/
     //Observed max values for each parameters in the log files
@@ -20,7 +21,13 @@ public class Partition {
     /* records belonging to this partition */
     private XferList fileList = new XferList("", "") ;
 
-    /**
+    public int[] getSamplingParameters() {
+		return samplingParameters;
+	}
+	public void setSamplingParameters(int[] samplingParameters) {
+		this.samplingParameters = samplingParameters;
+	}
+	/**
 	 * @return the maxCC
 	 */
 	public int getMaxCC() {

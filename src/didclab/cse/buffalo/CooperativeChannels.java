@@ -89,7 +89,8 @@ public class CooperativeChannels {
 			        	
 			        	sample_files.sp = xList.sp;
 			        	sample_files.dp = xList.dp;
-					    sampleThroughputs[chunkNumber] = transferList(sample_files, null);
+			        	chunk.setSamplingParameters(getBestParams(sample_files));
+					    sampleThroughputs[chunkNumber] = transferList(sample_files, chunk.getSamplingParameters());
 					    //If transfer failed: To be implemented 
 					    if(sampleThroughputs[chunkNumber] == -1)System.exit(-1);	
 			    	}
@@ -111,7 +112,7 @@ public class CooperativeChannels {
 		    			
 		    			
 		    			LogManager.writeToLog("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+" ppq:"+paramValues[2]+" throughput:"+
-		    								   estimatedThroughput, ConfigurationParams.STDOUT_ID);
+		    								   estimatedThroughput, ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
 		    			
 		    			int []parameters = new int[paramValues.length+1];
 		    			for(int j = 0; j<paramValues.length; j++)
@@ -353,7 +354,7 @@ public class CooperativeChannels {
 		p = (avgFileSize>targetTransfer.getBDP()) ? p+1 : p;
 		
 		//test case for sampling
-		cc = cc > 10 ?  cc : Math.min(8, xl.count());
+		cc = cc > 8 ?  cc : Math.min(8, xl.count());
 		
 		
 		return new int[] {cc,p,ppq,(int)targetTransfer.getBufferSize()};

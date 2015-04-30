@@ -140,7 +140,7 @@ public class Hysterisis {
     		}
     		results = new Object[chunks.size()][];
     		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
-		    	int []sampleTransferValues = CooperativeChannels.getBestParams(chunks.get(chunkNumber).getRecords());
+		    	int []sampleTransferValues = chunks.get(chunkNumber).getSamplingParameters();
 				proxy.eval("cd "+ConfigurationParams.MATLAB_SCRIPT_DIR);
 				String command = "main("+chunkNumber+","+sampleThroughputs[chunkNumber]+","+(logFilesCount[chunkNumber]-1)+
 								  ",["+sampleTransferValues[0]+","+sampleTransferValues[1]+","+sampleTransferValues[2]+"]"+
