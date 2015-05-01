@@ -82,7 +82,7 @@ public class CooperativeChannels {
 				    	*/
 			    		
 			        	XferList sample_files = new XferList("", "") ;
-			        	double MINIMUM_SAMPLING_SIZE = 20 * targetTransfer.getBDP();
+			        	double MINIMUM_SAMPLING_SIZE = 40 * targetTransfer.getBDP();
 			        	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
 			        		XferList.Entry file = chunk.getRecords().pop();
 			        		sample_files.add(file.path, file.size);
@@ -120,7 +120,9 @@ public class CooperativeChannels {
 		    			for(int j = 0; j<paramValues.length; j++)
 		    				parameters[j] = (int)paramValues[j];
 		    			parameters[paramValues.length] = (int)targetTransfer.getBufferSize();
-		    			transferList(chunks.get(i).getRecords(), parameters);
+		    			double throughput = transferList(chunks.get(i).getRecords(), parameters);
+		    			LogManager.writeToLog(sampleThroughputs[i]/(1024*1024)+"\t"+ parameters[0]+"\t"+ parameters[1]+"\t"+
+		    					parameters[2]+"\t"+estimatedThroughput+"\t"+throughput/(1024*1024), ConfigurationParams.INFO_LOG_ID);
 		    			
 		    		}
 		    	}
@@ -222,6 +224,7 @@ public class CooperativeChannels {
 			measuredThroughput = fileSize*8/timeSpent;
 			LogManager.writeToLog("Time spent:"+ timeSpent+" chunk size:"+printSize(fileSize)+" Throughput:"+
 								printSize(measuredThroughput), ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
+			
     	}
     	catch(Exception e){
     		e.printStackTrace();
