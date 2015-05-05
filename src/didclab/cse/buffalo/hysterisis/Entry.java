@@ -440,9 +440,11 @@ public class Entry{
 	
 	String getIdentity(){
 		return fileSize+"*"+fileCount+"*"+density.name()+"*"+testbed+"*"+source+"*"+
-				destination+"*"+bandwidth+"*"+RTT+"*"+bufferSize+"*"+parallellism+"*"+
-				concurrency+"*"+pipelining+"*"+fast+"*"+isEmulation+"*"+
-				isDedicated;
+				destination+"*"+bandwidth+"*"+RTT+"*"+bufferSize+isEmulation+"*"+isDedicated;
+	}
+	
+	String getParameters(){
+		return parallellism+"*"+concurrency+"*"+pipelining+"*"+fast;
 	}
 	
 	@Override

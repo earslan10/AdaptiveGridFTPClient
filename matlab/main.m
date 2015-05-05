@@ -2,7 +2,7 @@
 
 function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValues, output_dir, testPcp, testThroughput )
     
-    maxEvaluatedDegree = 3;
+    maxEvaluatedDegree = 5;
     targetThroughput = targetThroughput/(1000*1000);
 	bestTrial = 0;
     bestTrialDegree = 1;
@@ -15,6 +15,10 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
     reasonableTrials = 0;
 	folderName = strcat(output_dir,'/chunk_',num2str(folderID),'/trial-');
 	%for trial = 1:1
+    
+    bestEquationOfTrials =cell(size(trialNumber,2),1);
+    maxParamValues = cell(size(trialNumber,2),1);
+    R2Values = zeros(size(trialNumber,2),1);
     for trial = trialNumber
         disp(['Trial# ', num2str(trial)]);
 	    %fprintf(fid, 'Trial# %d\n', (trial+1));
@@ -32,11 +36,11 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
             f = inline(equation);
             %objectiveFunction = inline([' -1 *(' char(equation) ')']);
             %[t,val] = fmincon(objectiveFunction,[1,1,0],[],[],[],[],[1,1,0], maxValues , [], options);
-            estimation = f(sampleValues);
             %f([32,8,0])
-            disp(['Degree# ', num2str(degree), ' R2:', num2str(R2),' estimation:', num2str(estimation)]);
+            R2
+            disp(['Degree# ', num2str(degree), ' R2:', num2str(R2)]);
              %choose the one with highest R2
-             if R2 > maximumRsquare && estimation < 10^4 && estimation > 0
+             if R2 > maximumRsquare 
                  localBestMatchEquation  = equation;
                  maximumRsquare = R2;
                  bestDegree = degree;
@@ -47,8 +51,9 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
         end
 	    f = inline(localBestMatchEquation);
         %disp(strcat('Trial:',num2str(trial) , ' best-equation:', localBestMatchEquation));
-        bestEquationOfTrials{trial+1} = localBestMatchEquation;
-        maxParamValues{trial+1} = maxVals;
+        R2Values (trial+1) = maximumRsquare;
+        bestEquationOfTrials {trial+1} = localBestMatchEquation;
+        maxParamValues {trial+1} = maxVals;
         %sampleValues
         %localBestMatchEquation
 	    estimation = f(sampleValues);           
@@ -96,11 +101,15 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
     ppq = 0;
     totalWeight = 0;
     totalThrouhput = 0;
-    testThroughput = 0;
+    errorRate = 0;
     %for trial = 1:1
     for trial = trialNumber
-        localBestMatchEquation = bestEquationOfTrials{trial+1};
-        maxParamValue = maxParamValues{trial+1};
+        R2Value = R2Values (trial+1);
+        if(R2Value < 0.6)
+            continue;
+        end
+        localBestMatchEquation = bestEquationOfTrials {trial+1};
+        maxParamValue = maxParamValues {trial+1};
         f = inline(localBestMatchEquation);
 	    estimation = f(sampleValues);
         %if abs(targetThroughput - estimation) <  10^4 && abs(targetThroughput - estimation) < avg
@@ -173,8 +182,15 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
                  disp(strcat('All Adjusted cc:',num2str(subOptimalCC), ' p:',...
                      num2str(subOptimalP), ' ppq:',num2str(subOptimalPPQ)));
                    if isempty(testPcp) == 0
-                       f(testPcp)
-                       testThroughput = testThroughput +  weight *  f(testPcp);
+                       projectedMaxThroughput = f(testPcp);
+                       localMaxThroughput = f([subOptimalCC,subOptimalP,subOptimalPPQ]);
+                       localErrorRate = abs(localMaxThroughput - projectedMaxThroughput)/localMaxThroughput;
+                       testPcp
+                       projectedMaxThroughput
+                       localMaxThroughput
+                       localErrorRate
+                       %testThroughput = testThroughput +  weight *  f(testPcp);
+                       errorRate = errorRate + weight * localErrorRate;
                    end
                  
             %end
@@ -193,8 +209,8 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
                  ' total Weight:', num2str(totalWeight), ' estimated thr:', num2str(val)));
              
     if isempty(testPcp) == 0
-        testThroughput = testThroughput/totalWeight;
-        accuracy = 100 - (abs(val-testThroughput)/val) * 100;
+        errorRate = (errorRate/totalWeight)  * 100;
+        accuracy = 100 - errorRate;
         disp(strcat('Test throughput:',num2str(testThroughput) ,' accuracy:', num2str(accuracy), '%'));
         val = accuracy;
    end

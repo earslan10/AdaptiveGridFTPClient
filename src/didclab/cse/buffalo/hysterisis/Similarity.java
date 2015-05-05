@@ -316,16 +316,16 @@ public class Similarity {
 		        		+"\tFileSize"+e.fileSize+"\tFileCount:"+e.fileCount+"\tSimilarity"+similarityValue);
 			}*/
 			e.similarityValue = similarityValue;
-			cosineSimilarity.put(e, similarityValue);
+			//cosineSimilarity.put(e, similarityValue);
 		}
 		maxEntry.printEntry(Double.toString(maxSimilarity));
 		//LogManager.writeToLog("Max Entry:"+maxEntry.printEntry(Double.toString(maxSimilarity)), ConfigurationParams.STDOUT_ID);
 		
 		Similarity.similarityThreshold = maxSimilarity;
 		//System.out.println("similarity size:"+cosineSimilarity.size());
-		ValueComparator bvc =  new ValueComparator(cosineSimilarity);
-        TreeMap<Entry,Double> sorted_map = new TreeMap<Entry,Double>(bvc);
-        sorted_map.putAll(cosineSimilarity);
+		//ValueComparator bvc =  new ValueComparator(cosineSimilarity);
+        //TreeMap<Entry,Double> sorted_map = new TreeMap<Entry,Double>(bvc);
+        //sorted_map.putAll(cosineSimilarity);
         //System.out.println("sorted size:"+sorted_map.size());
 //		return sorted_map;
         return cosineSimilarity;
@@ -349,6 +349,7 @@ public class Similarity {
 		}
 		
 		Similarity similarity = new Similarity();
+
 		similarity.measureCosineSimilarity(targetEntry,entries);
 		
 		
@@ -383,16 +384,17 @@ public class Similarity {
 	    	}
 		}
 		*/
-		
-		while (counter < 30){
+
+		while (counter < 10000){
 			counter = 0;
 			mostSimilarEntries.clear();
-	    	for(Entry e : entries)
-				if(e.getSimilarityValue() >= similarityThreshold){
+	    	for(Entry e : entries){
+				if(e.getSimilarityValue() >= similarityThreshold && e.getFast() == true){
 					mostSimilarEntries.add(e);
 					counter++;
 				}
-		    	similarityThreshold -= 0.001;
+	    	}
+	    	similarityThreshold -= 0.001;
 		}
 		
 		
@@ -440,10 +442,14 @@ public class Similarity {
     	for  (Entry e: similarEntries) {
     		if(e.getFast() == false)	// IGNORE FAST DISABLED OPTIONS
     			continue;
-			if(set.containsKey(e.getIdentity())){
-				Entry s = set.get(e.getIdentity());
-				LogManager.writeToLog("Size:"+list.size()+" Existing entry:"+s.getIdentity()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
-				LogManager.writeToLog("New entry"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
+    		/* Partition entries in two conditions:
+    		 * 1. Entry's network or data set characteristics is seen for the first time
+    		 * 2. Already seen entry type's repeating parameter values
+    		 */
+			if(!set.containsKey(e.getIdentity()) || (set.get(e.getIdentity())).getParameters().compareTo(e.getParameters()) == 0 ){
+				//Entry s = set.get(e.getIdentity());
+				//LogManager.writeToLog("Size:"+list.size()+" Existing entry:"+s.getIdentity()+" "+s.getParameters()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
+				LogManager.writeToLog("New entry"+e.getIdentity()+" "+e.getThroughput()+" "+e.getParameters()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 				//Map<String,Similarity.Entry> copied = new HashMap<String,Similarity.Entry>(set);
 				//trials.add((LinkedList)list.clone());
 				if(list.size() >= 6*6*2)
@@ -460,7 +466,6 @@ public class Similarity {
 		trials.add(list);
 		
 		
-		parameterBorderCheck(trials);
 		int i=0;
 		int maxCC, maxP, maxPPQ;
 		maxCC = maxP = maxPPQ = Integer.MIN_VALUE;
@@ -470,34 +475,24 @@ public class Similarity {
 				if(!f.exists())
 					f.mkdir();
 				FileWriter writer = new FileWriter("outputs/chunk_"+chunkNumber+"/trial-"+(i++)+".txt");
-				//Iterator<Map.Entry<String,Entry>> iterator = subset.entrySet().iterator();
 				for (Entry entry : subset){
 					/* Max parameters observed in the logs */
+					int pipelining = entry.getPipelining() == -1 ? 0 : entry.getPipelining();
+					int parallelism = entry.getParallellism() == -1 ? 1 : entry.getParallellism();
+					int concurrency = entry.getConcurrency() == -1 ?  1 :entry.getConcurrency();
+					concurrency =(int) (Math.min(entry.getConcurrency(), entry.getFileCount() ) );
+					pipelining = (int)Math.min( entry.getPipelining(),(Math.max(entry.getFileCount() - entry.getConcurrency(), 0)));
 			        maxPPQ = Math.max(maxPPQ, entry.getPipelining());
 			        maxP = Math.max(maxP, entry.getParallellism());
 			        maxCC = Math.max(maxCC, entry.getConcurrency());
 			        int fast = entry.getFast() == true ? 1 : 0;
-					writer.write(entry.getConcurrency()+" "+entry.getParallellism()+" "+entry.getPipelining()+" "+
-							 fast+" "+entry.getThroughput()+"\n");
+					writer.write(concurrency+" "+parallelism+" "+pipelining+" "+fast+" "+entry.getThroughput()+"\n");
 				}
 				writer.flush();
 				writer.close();
 			}
 			catch(Exception e){
 				e.printStackTrace();
-			}
-		}
-	}
-	
-	private static void parameterBorderCheck(LinkedList<LinkedList<Entry>> trials){
-		for (LinkedList<Entry> chunk : trials){
-			for (Entry entry :  chunk){
-				entry.setPipelining( entry.getPipelining() == -1 ? 0 : entry.getPipelining() );
-				entry.setParallellism( entry.getParallellism() == -1 ? 1 : entry.getParallellism() ) ;
-				entry.setConcurrency(entry.getConcurrency() == -1 ?  1 :entry.getConcurrency());
-				
-				entry.setConcurrency((int) (Math.min(entry.getConcurrency(), entry.getFileCount() ) ) );
-				entry.setPipelining( (int)Math.min( entry.getPipelining(),(Math.max(entry.getFileCount() - entry.getConcurrency(), 0))));
 			}
 		}
 	}
