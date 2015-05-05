@@ -142,11 +142,11 @@ public class Hysterisis {
     		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 		    	int []sampleTransferValues = chunks.get(chunkNumber).getSamplingParameters();
 				proxy.eval("cd "+ConfigurationParams.MATLAB_SCRIPT_DIR);
-				String command = "main("+chunkNumber+","+sampleThroughputs[chunkNumber]+","+(logFilesCount[chunkNumber]-1)+
+				String command = "analyzeAndEvaluate("+chunkNumber+","+sampleThroughputs[chunkNumber]+","+(logFilesCount[chunkNumber]-1)+
 								  ",["+sampleTransferValues[0]+","+sampleTransferValues[1]+","+sampleTransferValues[2]+"]"+
 								  ", '"+ConfigurationParams.OUTPUT_DIR+"')";
 				LogManager.writeToLog("\t"+command, ConfigurationParams.INFO_LOG_ID, ConfigurationParams.STDOUT_ID);
-				results[chunkNumber] = proxy.returningEval(command,2);
+				results[chunkNumber] = proxy.returningEval(command,3);
     		}
 			
 		} catch (Exception e) {

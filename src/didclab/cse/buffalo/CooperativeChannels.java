@@ -111,10 +111,11 @@ public class CooperativeChannels {
 		    			
 		    			double [] paramValues = (double []) result[0];
 		    			double estimatedThroughput = ((double []) result[1]) [0];
+		    			double accuracy = ((double []) result[2]) [0];
 		    			
 		    			
 		    			LogManager.writeToLog("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+" ppq:"+paramValues[2]+" throughput:"+
-		    								   estimatedThroughput, ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
+		    								   estimatedThroughput+" Accuracy:"+accuracy, ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
 		    			
 		    			int []parameters = new int[paramValues.length+1];
 		    			for(int j = 0; j<paramValues.length; j++)

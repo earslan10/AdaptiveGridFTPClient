@@ -1,4 +1,4 @@
-function [equation,R2, RMSE] = findEquation(filename, degree)
+function [equation,R2, RMSE, maxVals] = findEquation(filename, degree)
     
      data = load(filename);
      cc = data(:, 1); 
@@ -6,6 +6,7 @@ function [equation,R2, RMSE] = findEquation(filename, degree)
      ppq = data(:, 3);
      %fast = data(:,4);
      y = data(:, 5);
+     maxVals = [max(cc), max(p), max(ppq)];
     
      if size(y) < 20
          R2 = 0;
