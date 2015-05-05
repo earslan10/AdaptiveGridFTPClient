@@ -5,7 +5,7 @@ import stork.module.CooperativeModule.GridFTPTransfer;
 
 public class ConfigurationParams {
 	
-	public static String HOME_DIR = "/home/earslan/Log_Based_Throughput_Optimization/";
+	public static String HOME_DIR = "/home/earslan/Log_Based_Throughput_Optimization/CooperativeChannels";
 	public static String MATLAB_DIR = "/home/earslan/matlab/bin/";
 	public static String MATLAB_SCRIPT_DIR = "/home/earslan/Log_Based_Throughput_Optimization/matlab_scripts";
 	public static String INPUT_DIR = "/home/earslan/Log_Based_Throughput_Optimization/inputs/";
@@ -26,6 +26,6 @@ public class ConfigurationParams {
 	public static void init(){
 		 MATLAB_SCRIPT_DIR = HOME_DIR + "/matlab";
 		INPUT_DIR =  HOME_DIR + "/inputs/";
-		OUTPUT_DIR =  HOME_DIR + "CooperativeChannels/outputs";
+		OUTPUT_DIR =  HOME_DIR + "/outputs";
 	}
 }

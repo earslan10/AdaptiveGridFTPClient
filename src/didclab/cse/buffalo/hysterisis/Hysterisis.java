@@ -67,7 +67,7 @@ public class Hysterisis {
 	 
 	
 	public void parseInputFiles(){
-		//historicalDataset.add("xsede.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "xsede.csv");
 		//historicalDataset.add("loni.csv");
 		//historicalDataset.add("futuregrid.csv");
 		//historicalDataset.add("emulab.csv");

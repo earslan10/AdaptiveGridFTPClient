@@ -194,10 +194,9 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
              
     if isempty(testPcp) == 0
         testThroughput = testThroughput/totalWeight;
-        val
-        testThroughput
         accuracy = 100 - (abs(val-testThroughput)/val) * 100;
         disp(strcat('Test throughput:',num2str(testThroughput) ,' accuracy:', num2str(accuracy), '%'));
+        val = accuracy;
    end
              
 	%{

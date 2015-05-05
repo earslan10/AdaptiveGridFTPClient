@@ -52,9 +52,18 @@ public class Similarity {
 		        	//	entry.setBandwidth( entry.getBandwidth()*1024*1024*1024.0 );
 		        	entry.setRtt( Double.parseDouble( record[attributeIndices.get("RTT")]) );
 		        	entry.setBufferSize( Double.parseDouble( record[attributeIndices.get("BufferSize")]) );
-		        	entry.setParallellism( Integer.parseInt( record[attributeIndices.get("Parallelism")]) );
-		        	entry.setConcurrency( Integer.parseInt( record[attributeIndices.get("Concurrency")]) );
-		        	entry.setPipelining( Integer.parseInt( record[attributeIndices.get("Pipelining")] ) );
+		        	if(record[attributeIndices.get("Parallelism")].compareTo("na") == 0)
+			        	entry.setParallellism( 1 );
+		        	else
+		        		entry.setParallellism( Integer.parseInt( record[attributeIndices.get("Parallelism")]) );
+		        	if(record[attributeIndices.get("Concurrency")].compareTo("na") == 0)
+			        	entry.setConcurrency( 1 );
+		        	else
+		        		entry.setConcurrency( Integer.parseInt( record[attributeIndices.get("Concurrency")]) );
+		        	if(record[attributeIndices.get("Pipelining")].compareTo("na") == 0)
+			        	entry.setPipelining( 0 );
+		        	else
+		        		entry.setPipelining( Integer.parseInt( record[attributeIndices.get("Pipelining")] ) );
 		        	if(record[attributeIndices.get("Fast")].compareTo("ON") == 0 || 
 		        			record[attributeIndices.get("Fast")].compareTo("1") == 0)
 			        		entry.setFast(true);
@@ -263,7 +272,11 @@ public class Similarity {
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
 				k++;
 			}
-			
+			if(e.getThroughput() == 5339.336967){	//old
+				int k = 0;
+				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
+				k++;
+			}
 			
 			
 			
@@ -334,7 +347,6 @@ public class Similarity {
 				targetEntry.specVector.set(j, newValue);
 			}
 		}
-		
 		
 		Similarity similarity = new Similarity();
 		similarity.measureCosineSimilarity(targetEntry,entries);
@@ -430,7 +442,7 @@ public class Similarity {
     			continue;
 			if(set.containsKey(e.getIdentity())){
 				Entry s = set.get(e.getIdentity());
-				LogManager.writeToLog("Existing entry:"+s.getIdentity()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
+				LogManager.writeToLog("Size:"+list.size()+" Existing entry:"+s.getIdentity()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
 				LogManager.writeToLog("New entry"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 				//Map<String,Similarity.Entry> copied = new HashMap<String,Similarity.Entry>(set);
 				//trials.add((LinkedList)list.clone());
@@ -439,8 +451,8 @@ public class Similarity {
 				list =  new LinkedList<Entry>();
 				set.clear();
 			}
-			if(e.getDensity() == Density.LARGE)
-				LogManager.writeToLog("Added:"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
+			//if(e.getDensity() == Density.LARGE)
+			//	LogManager.writeToLog("Added:"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 			list.add(e);
 			set.put(e.getIdentity(), e);
     	}
