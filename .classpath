@@ -6,7 +6,6 @@
 	<classpathentry kind="lib" path="lib/log4j-1.2.15.jar"/>
 	<classpathentry kind="lib" path="lib/matlabcontrol-4.1.0.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry kind="lib" path="/home/earslan/jglobus/JGlobus-master/ssl-proxies/target/ssl-proxies-2.2.0-SNAPSHOT.jar"/>
 	<classpathentry kind="lib" path="lib/axisg-2.1.0.jar"/>
 	<classpathentry kind="lib" path="lib/gram-2.1.0.jar"/>
 	<classpathentry kind="lib" path="lib/gridftp-2.1.0.jar"/>

@@ -24,7 +24,7 @@ public class ConfigurationParams {
 	public static String INFO_LOG_ID = "throughput.log";
 	
 	public static void init(){
-		 MATLAB_SCRIPT_DIR = HOME_DIR + "/matlab_scripts";
+		 MATLAB_SCRIPT_DIR = HOME_DIR + "/matlab";
 		INPUT_DIR =  HOME_DIR + "/inputs/";
 		OUTPUT_DIR =  HOME_DIR + "CooperativeChannels/outputs";
 	}

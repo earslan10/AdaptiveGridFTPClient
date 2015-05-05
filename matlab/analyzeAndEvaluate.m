@@ -1,4 +1,4 @@
-function [final,val] = analyzeAndEvaluate(folderID, targetThroughput, trialNumber, sampleValues, output_dir )
+    function [final,val] = analyzeAndEvaluate(folderID, targetThroughput, trialNumber, sampleValues, output_dir )
     testCount = round(trialNumber*0.7);
     trainingCount = trialNumber - testCount;
     testTrials = linspace(0,testCount-1,testCount);
