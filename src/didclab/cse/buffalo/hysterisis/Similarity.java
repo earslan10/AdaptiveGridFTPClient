@@ -202,7 +202,7 @@ public class Similarity {
 		//6-specVector.add(fileCount)
 		//7- Testbed name
 		
-		double[] weights = {4,3,8,10,10,8, 2,10};
+		double[] weights = {4,3,8,10,8, 1 ,10};
 		
 		/*
 		double sumWeight = 0;
@@ -224,13 +224,13 @@ public class Similarity {
 			
 			double similarityValue = 0;
 			
-			
+			/*
 			target.specVector.add(1.0);
 			if(target.getTestbed() != null && target.getTestbed().compareTo(e.getTestbed()) == 0)
 				e.specVector.add(1.0);
 			else 
 				e.specVector.add(0.0);
-			
+			*/
 			
 			//Cosine Similarity
 			double squareOne = 0, squareTwo= 0 , multiplication = 0;
@@ -247,10 +247,15 @@ public class Similarity {
 				maxSimilarity = similarityValue;
 				maxEntry = e;
 			}
-			e.specVector.remove(e.specVector.size()-1);
-			target.specVector.remove(target.specVector.size()-1);
+			//e.specVector.remove(e.specVector.size()-1);
+			//target.specVector.remove(target.specVector.size()-1);
 			
 			
+			if(e.getThroughput() == 5339.336967){	//old
+				int k = 0;
+				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
+				k++;
+			}
 			
 			if(e.getThroughput() == 121.770405961){	//0.25-1M
 				int k = 0;
@@ -267,17 +272,12 @@ public class Similarity {
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
 				k++;
 			}
+			
 			if(e.getThroughput() == 817.020021894){ // 3G
 				int k = 0;				
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
 				k++;
 			}
-			if(e.getThroughput() == 5339.336967){	//old
-				int k = 0;
-				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
-				k++;
-			}
-			
 			
 			
 
@@ -389,7 +389,7 @@ public class Similarity {
 			counter = 0;
 			mostSimilarEntries.clear();
 	    	for(Entry e : entries){
-				if(e.getSimilarityValue() >= similarityThreshold && e.getFast() == true){
+				if(e.getSimilarityValue() >= similarityThreshold){
 					mostSimilarEntries.add(e);
 					counter++;
 				}
@@ -439,28 +439,34 @@ public class Similarity {
     	LinkedList<Entry> list = new LinkedList<Entry>();
     	
         //Collections.sort(similarEntries, new DateComparator());
+    	String prev = "";
     	for  (Entry e: similarEntries) {
-    		if(e.getFast() == false)	// IGNORE FAST DISABLED OPTIONS
-    			continue;
+    		//if(e.getFast() == false)	// IGNORE FAST DISABLED OPTIONS
+    		//	continue;
     		/* Partition entries in two conditions:
     		 * 1. Entry's network or data set characteristics is seen for the first time
     		 * 2. Already seen entry type's repeating parameter values
     		 */
-			if(!set.containsKey(e.getIdentity()) || (set.get(e.getIdentity())).getParameters().compareTo(e.getParameters()) == 0 ){
+			if(e.getIdentity().compareTo(prev) != 0 || (set.get(e.getIdentity())).getParameters().compareTo(e.getParameters()) == 0 ){
 				//Entry s = set.get(e.getIdentity());
 				//LogManager.writeToLog("Size:"+list.size()+" Existing entry:"+s.getIdentity()+" "+s.getParameters()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
 				LogManager.writeToLog("New entry"+e.getIdentity()+" "+e.getThroughput()+" "+e.getParameters()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 				//Map<String,Similarity.Entry> copied = new HashMap<String,Similarity.Entry>(set);
 				//trials.add((LinkedList)list.clone());
-				if(list.size() >= 6*6*2)
+				if(list.size() >= 6*6*2){
 					trials.add(list);
+					LogManager.writeToLog("Adding "+list.size(), ConfigurationParams.STDOUT_ID);
+
+				}
 				list =  new LinkedList<Entry>();
 				set.clear();
+				
 			}
 			//if(e.getDensity() == Density.LARGE)
 			//	LogManager.writeToLog("Added:"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 			list.add(e);
 			set.put(e.getIdentity(), e);
+			prev = e.getIdentity();
     	}
         
 		trials.add(list);

@@ -2,7 +2,7 @@
 
 function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValues, output_dir, testPcp, testThroughput )
     
-    maxEvaluatedDegree = 5;
+    maxEvaluatedDegree = 3;
     targetThroughput = targetThroughput/(1000*1000);
 	bestTrial = 0;
     bestTrialDegree = 1;
@@ -37,7 +37,7 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
             %objectiveFunction = inline([' -1 *(' char(equation) ')']);
             %[t,val] = fmincon(objectiveFunction,[1,1,0],[],[],[],[],[1,1,0], maxValues , [], options);
             %f([32,8,0])
-            R2
+            %R2
             disp(['Degree# ', num2str(degree), ' R2:', num2str(R2)]);
              %choose the one with highest R2
              if R2 > maximumRsquare 

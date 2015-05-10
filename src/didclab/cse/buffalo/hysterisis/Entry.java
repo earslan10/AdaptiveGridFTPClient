@@ -426,10 +426,12 @@ public class Entry{
 		specVector.add(RTT);
 		specVector.add(bandwidth*RTT/(8.0*bufferSize));
 		specVector.add(DensityToValue(density)*1.0);
+		/*
 		if(isDedicated)
 			specVector.add(0.0);
 		else
 			specVector.add(1.0);
+		*/
 		//specVector.add(bufferSize);
 		//specVector.add(bufferSize/(1024*1024));
 		specVector.add(Math.log10(fileSize/(1024*1024)));
