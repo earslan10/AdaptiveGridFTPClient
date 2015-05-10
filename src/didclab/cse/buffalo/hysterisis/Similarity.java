@@ -8,10 +8,12 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 import didclab.cse.buffalo.ConfigurationParams;
@@ -202,7 +204,7 @@ public class Similarity {
 		//6-specVector.add(fileCount)
 		//7- Testbed name
 		
-		double[] weights = {4,3,8,10,8, 1 ,10};
+		double[] weights = {2,2,10,10,3, 1 ,10};
 		
 		/*
 		double sumWeight = 0;
@@ -435,7 +437,7 @@ public class Similarity {
 	//sort entries based on date of the transfer 
 	public static void categorizeEntries(int chunkNumber, LinkedList<LinkedList<Entry>> trials, List<Entry> similarEntries){
 		//trials = new LinkedList<Map<String,Similarity.Entry>>();
-    	Map<String,Entry> set = new HashMap<String,Entry>();
+    	Set<String> set = new HashSet<String>();
     	LinkedList<Entry> list = new LinkedList<Entry>();
     	
         //Collections.sort(similarEntries, new DateComparator());
@@ -447,10 +449,10 @@ public class Similarity {
     		 * 1. Entry's network or data set characteristics is seen for the first time
     		 * 2. Already seen entry type's repeating parameter values
     		 */
-			if(e.getIdentity().compareTo(prev) != 0 || (set.get(e.getIdentity())).getParameters().compareTo(e.getParameters()) == 0 ){
+			if(e.getIdentity().compareTo(prev) != 0 || (set.contains(e.getParameters())) ){
 				//Entry s = set.get(e.getIdentity());
 				//LogManager.writeToLog("Size:"+list.size()+" Existing entry:"+s.getIdentity()+" "+s.getParameters()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
-				LogManager.writeToLog("New entry"+e.getIdentity()+" "+e.getThroughput()+" "+e.getParameters()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
+				LogManager.writeToLog("New entry "+e.getSimilarityValue()+" "+e.printSpecVector()+" "+e.getIdentity()+" "+e.getThroughput()+" "+e.getParameters(), ConfigurationParams.STDOUT_ID);
 				//Map<String,Similarity.Entry> copied = new HashMap<String,Similarity.Entry>(set);
 				//trials.add((LinkedList)list.clone());
 				if(list.size() >= 6*6*2){
@@ -465,7 +467,7 @@ public class Similarity {
 			//if(e.getDensity() == Density.LARGE)
 			//	LogManager.writeToLog("Added:"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 			list.add(e);
-			set.put(e.getIdentity(), e);
+			set.add(e.getParameters());
 			prev = e.getIdentity();
     	}
         
