@@ -67,8 +67,8 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
                  bestTrialDegree = bestDegree;
                  
             end
-            disp(strcat('Trial:',num2str(bestTrial) , ' estimation:', num2str(estimation),...
-                     ' error:', num2str(minEstimationError)));
+            disp(strcat('Trial:',num2str(trial) , ' estimation:', num2str(estimation),...
+                     ' error:', num2str(abs(targetThroughput - estimation))));
         else
             disp(strcat('Skipping:',num2str(trial) , ' estimation:', num2str(estimation),...
                      ' error:', num2str(abs(targetThroughput - estimation))));
@@ -100,6 +100,7 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
     p = 0;
     ppq = 0;
     totalWeight = 0;
+    totalErrorWeight = 0;
     totalThrouhput = 0;
     errorRate = 0;
     %for trial = 1:1
@@ -182,15 +183,21 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
                  disp(strcat('All Adjusted cc:',num2str(subOptimalCC), ' p:',...
                      num2str(subOptimalP), ' ppq:',num2str(subOptimalPPQ)));
                    if isempty(testPcp) == 0
-                       projectedMaxThroughput = f(testPcp);
-                       localMaxThroughput = f([subOptimalCC,subOptimalP,subOptimalPPQ]);
-                       localErrorRate = abs(localMaxThroughput - projectedMaxThroughput)/localMaxThroughput;
+                       maxParamValue
                        testPcp
-                       projectedMaxThroughput
-                       localMaxThroughput
-                       localErrorRate
-                       %testThroughput = testThroughput +  weight *  f(testPcp);
-                       errorRate = errorRate + weight * localErrorRate;
+                       if maxParamValue(1) < testPcp(1) || maxParamValue(2) < testPcp(2) || maxParamValue(3) < testPcp(3)
+                           disp(strcat('Skipping trial ', num2str(trial)));
+                       else
+                           projectedMaxThroughput = f(testPcp);
+                           localMaxThroughput = f([subOptimalCC,subOptimalP,subOptimalPPQ]);
+                           localErrorRate = abs(localMaxThroughput - projectedMaxThroughput)/localMaxThroughput;
+                           %testPcp
+                           disp(strcat('Projected :',num2str(projectedMaxThroughput), ' local',...
+                     num2str(localMaxThroughput), ' error:',num2str(localErrorRate)));
+                           %testThroughput = testThroughput +  weight *  f(testPcp);
+                           errorRate = errorRate + weight * localErrorRate;
+                           totalErrorWeight = totalErrorWeight + weight;
+                       end
                    end
                  
             %end
@@ -209,7 +216,7 @@ function [final,val] = main(folderID, targetThroughput, trialNumber, sampleValue
                  ' total Weight:', num2str(totalWeight), ' estimated thr:', num2str(val)));
              
     if isempty(testPcp) == 0
-        errorRate = (errorRate/totalWeight)  * 100;
+        errorRate = (errorRate/totalErrorWeight)  * 100;
         accuracy = 100 - errorRate;
         disp(strcat('Test throughput:',num2str(testThroughput) ,' accuracy:', num2str(accuracy), '%'));
         val = accuracy;

@@ -87,6 +87,8 @@ public class Similarity {
 		        	entry.setDensity( Entry.findDensityOfList(entry.getFileSize(), (entry.getBandwidth()*entry.getRtt()/8.0)) );
 	        	}
 	        	catch (Exception e){
+	        		for(String s : record)
+	        			System.out.print(s+"\n");
 	        		e.printStackTrace();
 	        		System.exit(0);
 	        	}
@@ -259,6 +261,11 @@ public class Similarity {
 				k++;
 			}
 			
+			if(e.getThroughput() == 491.0390175){	//0.25-1M
+				int k = 0;
+				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
+				k++;
+			}
 			if(e.getThroughput() == 121.770405961){	//0.25-1M
 				int k = 0;
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
@@ -441,7 +448,7 @@ public class Similarity {
     	LinkedList<Entry> list = new LinkedList<Entry>();
     	
         //Collections.sort(similarEntries, new DateComparator());
-    	String prev = "";
+    	Entry prev = similarEntries.get(0);
     	for  (Entry e: similarEntries) {
     		//if(e.getFast() == false)	// IGNORE FAST DISABLED OPTIONS
     		//	continue;
@@ -449,7 +456,7 @@ public class Similarity {
     		 * 1. Entry's network or data set characteristics is seen for the first time
     		 * 2. Already seen entry type's repeating parameter values
     		 */
-			if(e.getIdentity().compareTo(prev) != 0 || (set.contains(e.getParameters())) ){
+			if(e.getIdentity().compareTo(prev.getIdentity()) != 0 || (set.contains(e.getParameters()) && e.getParameters().compareTo(prev.getParameters()) != 0 && list.size() >= 6*6*6-1) ){
 				//Entry s = set.get(e.getIdentity());
 				//LogManager.writeToLog("Size:"+list.size()+" Existing entry:"+s.getIdentity()+" "+s.getParameters()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
 				LogManager.writeToLog("New entry "+e.getSimilarityValue()+" "+e.printSpecVector()+" "+e.getIdentity()+" "+e.getThroughput()+" "+e.getParameters(), ConfigurationParams.STDOUT_ID);
@@ -468,7 +475,7 @@ public class Similarity {
 			//	LogManager.writeToLog("Added:"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
 			list.add(e);
 			set.add(e.getParameters());
-			prev = e.getIdentity();
+			prev = e;
     	}
         
 		trials.add(list);

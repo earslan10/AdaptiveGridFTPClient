@@ -79,7 +79,9 @@ public class CooperativeChannels {
 				    	
 				    	if(ConfigurationParams.USE_HISTORY)
 				    		continue;
+				    	
 				    	*/
+				    	
 			    		
 			        	XferList sample_files = new XferList("", "") ;
 			        	double MINIMUM_SAMPLING_SIZE = 40 * targetTransfer.getBDP();
@@ -99,12 +101,13 @@ public class CooperativeChannels {
 		    	}
 		    	
 		    	
-		    	//if(ConfigurationParams.USE_HISTORY)
-		    	//	System.exit(-1);
+		    	
 		    	
 		    	//Based on input files and sample tranfer throughput; categorize logs and fit model
 		    	// Then find optimal parameter values out of the model
 		    	Object[][] results = hysterisis.runMatlabModeling(chunks, sampleThroughputs);
+		    	//if(ConfigurationParams.USE_HISTORY)
+		    	//	System.exit(-1);
 		    	if(results != null){
 		    		for (int  i=0; i< results.length; i++){
 		    			Object []result = results[i];

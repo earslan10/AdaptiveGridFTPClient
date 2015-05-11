@@ -67,12 +67,16 @@ public class Hysterisis {
 	 
 	
 	public void parseInputFiles(){
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "xsede.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "xsede_revised.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSB.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSG.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataBT.csv");
+
 		//historicalDataset.add("loni.csv");
 		//historicalDataset.add("futuregrid.csv");
 		//historicalDataset.add("emulab.csv");
 		//historicalDataset.add("didclab.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg0.25-1M.csv");
+		//historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg0.25-1M.csv");
 		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg5-25M.csv");
 		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg100M.csv");
 		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg1G.csv");
