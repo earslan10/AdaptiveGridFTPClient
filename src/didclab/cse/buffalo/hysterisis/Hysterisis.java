@@ -7,10 +7,9 @@ import java.util.List;
 import matlabcontrol.MatlabProxy;
 import matlabcontrol.MatlabProxyFactory;
 import matlabcontrol.MatlabProxyFactoryOptions;
+
 import didclab.cse.buffalo.ConfigurationParams;
-import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.Partition;
-import didclab.cse.buffalo.CooperativeChannels.Density;
 import didclab.cse.buffalo.log.LogManager;
 
 public class Hysterisis {
@@ -71,16 +70,17 @@ public class Hysterisis {
 		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSB.csv");
 		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSG.csv");
 		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataBT.csv");
-
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSB_1T.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSG_1T.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg5-25M.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg100M.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg1G.csv");
+		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg3G.csv");
 		//historicalDataset.add("loni.csv");
 		//historicalDataset.add("futuregrid.csv");
 		//historicalDataset.add("emulab.csv");
 		//historicalDataset.add("didclab.csv");
 		//historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg0.25-1M.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg5-25M.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg100M.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg1G.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg3G.csv");
 		
 		for (int i = 0; i < historicalDataset.size(); i++) {
 			String fileName = historicalDataset.get(i);
@@ -88,9 +88,7 @@ public class Hysterisis {
 			Similarity.readFile(entries, fileName);
 		}
 		LogManager.writeToLog("Total Entries"+entries.size(), ConfigurationParams.STDOUT_ID);
-		
 		Similarity.normalizeDataset2(entries);
-		
 	}
 	
 	/*
@@ -104,7 +102,6 @@ public class Hysterisis {
 		int []setCounts = new int[chunks.size()];
 		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 			List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
-			
 	    	//Categorize selected entries based on log date
 	    	LinkedList<LinkedList<Entry>> trials = new LinkedList<LinkedList<Entry>>();
 	    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);

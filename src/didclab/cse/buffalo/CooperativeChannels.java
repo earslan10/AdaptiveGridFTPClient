@@ -3,13 +3,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
 
 import didclab.cse.buffalo.hysterisis.Hysterisis;
 import didclab.cse.buffalo.hysterisis.Entry;
-import didclab.cse.buffalo.hysterisis.Similarity;
 import didclab.cse.buffalo.log.LogManager;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
@@ -64,46 +60,40 @@ public class CooperativeChannels {
 			hysterisis.parseInputFiles();
 			if(hysterisis.getInputFiles().size() > 0){	// Make sure there are log files to run hysterisis algo
 				double []sampleThroughputs = new double[chunks.size()];
-				//Run sample transfer to learn current network load
-		    	{
-		    		 //Create sample dataset to and transfer to measure current load on the network
-			    	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
-			    		Partition chunk =  chunks.get(chunkNumber);
+				// Run sample transfer to learn current network load
+	    		// Create sample dataset to and transfer to measure current load on the network
+		    	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
+		    		Partition chunk =  chunks.get(chunkNumber);
 
-			    		/*
-			    		List<Entry> similarEntries = Similarity.findSimilarEntries(hysterisis.getEntries(), chunks.get(chunkNumber).entry);
-						//LogManager.writeToLog("The number of similar entries is:"+similarEntries.size(), ConfigurationParams.STDOUT_ID);
-				    	//Categorize selected entries based on log date
-				    	LinkedList<LinkedList<Entry>> trials = new LinkedList<LinkedList<Entry>>();
-				    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
-				    	
-				    	if(ConfigurationParams.USE_HISTORY)
-				    		continue;
-				    	
-				    	*/
-				    	
-			    		
-			        	XferList sample_files = new XferList("", "") ;
-			        	double MINIMUM_SAMPLING_SIZE = 40 * targetTransfer.getBDP();
-			        	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
-			        		XferList.Entry file = chunk.getRecords().pop();
-			        		sample_files.add(file.path, file.size);
-			        		//LogManager.writeToLog(file.path(), ConfigurationParams.STDOUT_ID);
-			        	}
-			        	
-			        	sample_files.sp = xList.sp;
-			        	sample_files.dp = xList.dp;
-			        	chunk.setSamplingParameters(getBestParams(sample_files));
-					    sampleThroughputs[chunkNumber] = transferList(sample_files, chunk.getSamplingParameters());
-					    //If transfer failed: To be implemented 
-					    if(sampleThroughputs[chunkNumber] == -1)System.exit(-1);	
-			    	}
+		    		/*
+		    		List<Entry> similarEntries = Similarity.findSimilarEntries(hysterisis.getEntries(), chunks.get(chunkNumber).entry);
+					//LogManager.writeToLog("The number of similar entries is:"+similarEntries.size(), ConfigurationParams.STDOUT_ID);
+			    	//Categorize selected entries based on log date
+			    	LinkedList<LinkedList<Entry>> trials = new LinkedList<LinkedList<Entry>>();
+			    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
+			    	
+			    	if(ConfigurationParams.USE_HISTORY)
+			    		continue;
+			    	*/
+		    		
+		        	XferList sample_files = new XferList("", "") ;
+		        	double MINIMUM_SAMPLING_SIZE = 40 * targetTransfer.getBDP();
+		        	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
+		        		XferList.Entry file = chunk.getRecords().pop();
+		        		sample_files.add(file.path, file.size);
+		        		//LogManager.writeToLog(file.path(), ConfigurationParams.STDOUT_ID);
+		        	}
+		        	
+		        	sample_files.sp = xList.sp;
+		        	sample_files.dp = xList.dp;
+		        	chunk.setSamplingParameters(getBestParams(sample_files));
+				    sampleThroughputs[chunkNumber] = transferList(sample_files, chunk.getSamplingParameters());
+				    //TODO: handle transfer failure 
+				    if(sampleThroughputs[chunkNumber] == -1)System.exit(-1);	
 		    	}
 		    	
 		    	
-		    	
-		    	
-		    	//Based on input files and sample tranfer throughput; categorize logs and fit model
+		    	// Based on input files and sample tranfer throughput; categorize logs and fit model
 		    	// Then find optimal parameter values out of the model
 		    	Object[][] results = hysterisis.runMatlabModeling(chunks, sampleThroughputs);
 		    	//if(ConfigurationParams.USE_HISTORY)
@@ -133,11 +123,6 @@ public class CooperativeChannels {
 		    	
 			}
 			
-			
-			
-	    	
-	    	
-	    	
 	    	/*double [] parameters = (double []) results[0];
 			double throuhput = ((double []) results[1]) [0];
 			System.out.println("Results:"+ throuhput +" "+Math.round(parameters[0])+" "+parameters[1]+" "+parameters[2]);
@@ -226,8 +211,9 @@ public class CooperativeChannels {
 			double timeSpent = (System.currentTimeMillis()-init)/1000.0;
 			//totalTransferTime += timeSpent;
 			measuredThroughput = fileSize*8/timeSpent;
-			LogManager.writeToLog("Time spent:"+ timeSpent+" chunk size:"+printSize(fileSize)+" Throughput:"+
-								printSize(measuredThroughput), ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
+			LogManager.writeToLog("Time spent:"+ timeSpent+" chunk size:"+printSize(fileSize)+" cc:"+
+					ConfigurationParams.GridFTPClient.client.getChannelCount()+" Throughput:"+
+					printSize(measuredThroughput), ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
 			
     	}
     	catch(Exception e){
@@ -331,23 +317,6 @@ public class CooperativeChannels {
 		else 
 			return df.format(random/(1024*1024*1024.0*1024))+" TB";
 	}
-
-
-
-	/*
-	This function find what is average file size in a given directory
-	 
-	static Density findDensityOfList(XferList list){
-		double average = list.size()/list.count();
-		if(average < BDP/10)
-			return Density.SMALL;
-		else if(average < BDP/2)
-			return Density.MIDDLE;
-		else if (average < 20 * BDP)
-			return Density.LARGE;
-		return Density.HUGE;
-	}	
-	*/
 	
 
 	public static int[] getBestParams(XferList xl){
@@ -364,19 +333,7 @@ public class CooperativeChannels {
 		
 		//test case for sampling
 		cc = cc > 8 ?  cc : Math.min(8, xl.count());
-		
-		
 		return new int[] {cc,p,ppq,(int)targetTransfer.getBufferSize()};
-		/*
-		if(density == Density.SMALL)
-			return new int[] {ppq,p,cc,bufferSize};
-		else if(density == Density.MIDDLE)
-			return new int[] {ppq,Math.min(2,(int)(Math.ceil(BDP/bufferSize))+1), cc,bufferSize};
-		else if(density == Density.LARGE)
-			return new int[] {ppq,(int)(Math.ceil(BDP/bufferSize)+2), cc,bufferSize};
-		else 
-			return new int[] {ppq,(int)(Math.ceil(BDP/bufferSize)+2), cc,bufferSize};
-		*/
 	}
 	static void parseArguments(String[] args){
 		int i = 0;

@@ -5,19 +5,15 @@ import java.io.FileWriter;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 import didclab.cse.buffalo.ConfigurationParams;
-import didclab.cse.buffalo.CooperativeChannels.Density;
 import didclab.cse.buffalo.log.LogManager;
 import au.com.bytecode.opencsv.CSVReader;
 
@@ -254,38 +250,23 @@ public class Similarity {
 			//e.specVector.remove(e.specVector.size()-1);
 			//target.specVector.remove(target.specVector.size()-1);
 			
-			
 			if(e.getThroughput() == 5339.336967){	//old
-				int k = 0;
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
-				k++;
 			}
-			
 			if(e.getThroughput() == 491.0390175){	//0.25-1M
-				int k = 0;
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
-				k++;
 			}
 			if(e.getThroughput() == 121.770405961){	//0.25-1M
-				int k = 0;
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
-				k++;
 			}
 			if(e.getThroughput() == 1424.80667455){ //5-25M
-				int k = 0;
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
-				k++;
 			}
 			if(e.getThroughput() == 1117.53360356){ //100M
-				int k = 0;
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
-				k++;
 			}
-			
 			if(e.getThroughput() == 817.020021894){ // 3G
-				int k = 0;				
 				LogManager.writeToLog(" similarity Value\t"+similarityValue+ "\t" + e.printSpecVector(), ConfigurationParams.STDOUT_ID);
-				k++;
 			}
 			
 			
@@ -456,15 +437,16 @@ public class Similarity {
     		 * 1. Entry's network or data set characteristics is seen for the first time
     		 * 2. Already seen entry type's repeating parameter values
     		 */
-			if(e.getIdentity().compareTo(prev.getIdentity()) != 0 || (set.contains(e.getParameters()) && e.getParameters().compareTo(prev.getParameters()) != 0 && list.size() >= 6*6*6-1) ){
+			if(e.getIdentity().compareTo(prev.getIdentity()) != 0 || (set.contains(e.getParameters()) &&
+					e.getParameters().compareTo(prev.getParameters()) != 0 && list.size() >= 6*6*6-1) ){
 				//Entry s = set.get(e.getIdentity());
-				//LogManager.writeToLog("Size:"+list.size()+" Existing entry:"+s.getIdentity()+" "+s.getParameters()+" "+s.getThroughput()+" "+s.getDate().toString(), ConfigurationParams.STDOUT_ID);;
-				LogManager.writeToLog("New entry "+e.getSimilarityValue()+" "+e.printSpecVector()+" "+e.getIdentity()+" "+e.getThroughput()+" "+e.getParameters(), ConfigurationParams.STDOUT_ID);
+				//LogManager.writeToLog("New entry "+e.getSimilarityValue()+" "+e.printSpecVector()+" "+e.getIdentity()+" "
+				//		+e.getThroughput()+" "+e.getParameters(), ConfigurationParams.STDOUT_ID);
 				//Map<String,Similarity.Entry> copied = new HashMap<String,Similarity.Entry>(set);
 				//trials.add((LinkedList)list.clone());
 				if(list.size() >= 6*6*2){
 					trials.add(list);
-					LogManager.writeToLog("Adding "+list.size(), ConfigurationParams.STDOUT_ID);
+					//LogManager.writeToLog("Adding "+list.size(), ConfigurationParams.STDOUT_ID);
 
 				}
 				list =  new LinkedList<Entry>();
@@ -477,10 +459,8 @@ public class Similarity {
 			set.add(e.getParameters());
 			prev = e;
     	}
-        
+    	// add the final list
 		trials.add(list);
-		
-		
 		int i=0;
 		int maxCC, maxP, maxPPQ;
 		maxCC = maxP = maxPPQ = Integer.MIN_VALUE;

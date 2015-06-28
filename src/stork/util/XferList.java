@@ -19,7 +19,7 @@ public class XferList implements Iterable<XferList.Entry> {
   public List<Integer> channels;
   public int []params ;
   public int interval= 0 ;
-  public int onAir= 0;
+  public int onAir= 1; // Each chunk will transfer atleast one file
   public boolean isCompleted = false;
   public boolean isReadyToTransfer =false;
   public Density density;
@@ -96,7 +96,6 @@ public class XferList implements Iterable<XferList.Entry> {
       //return XferList.this.dp + path;
     	return dpath;
     }
-
     public String toString() {
       return (dir ? "Directory: " : "File: ")+path()+" -> "+dpath();
     }
@@ -238,5 +237,14 @@ public class XferList implements Iterable<XferList.Entry> {
 
   public Iterator<Entry> iterator() {
     return list.iterator();
+  }
+  
+  public void updateDestinationPaths(){
+  	for (Entry e : list){
+	    	if(dp.compareTo("/dev/null") == 0)
+				e.setdpath(dp);
+			else
+				e.setdpath(dp+e.path);
+  	}
   }
 }
