@@ -690,9 +690,10 @@ public class CooperativeModule  {
 						return;
 					default:
 						throw new Exception("unexpected reply: "+r.getCode()+" "+r.getMessage());
-					} throw other.error;  // We'd have returned otherwise...
+					}   // We'd have returned otherwise...
 				}
 			}
+			throw other.error;
 		}
 
 		public void run() {
@@ -941,72 +942,27 @@ public class CooperativeModule  {
 		// TODO: Get rid of this adhoc pipelining.
 		void transferList(ChannelPair cc) throws Exception {
 			checkTransfer();
-			
-			// Pipeline p commands at a time, unless pipelining is -1,
-			// in which case we have infinite pipelining.
-			LinkedList<XferList.Entry> wl = new LinkedList<XferList.Entry>();
-			wl.add(cc.inTransitFiles.peek());
-			log.write(cc.id+" initial peek: "+cc.inTransitFiles.peek().path()+" to "+
-					cc.inTransitFiles.peek().dpath()+" "+CooperativeChannels.printSize(cc.inTransitFiles.peek().size)+
-					" ppq "+cc.pipelining+"\n");
-
-			int ppq = cc.pipelining;
-			Entry e;
-			while (cc.pipelining > 0 && ppq-- >= 1 && !chunks.get(cc.xferListIndex).isEmpty()) {
-				if ((e = getNextFile(cc.xferListIndex)) == null)
-					break;
-				log.write(cc.id+" Piping: "+e.path()+" to "+e.dpath()+" "+CooperativeChannels.printSize(e.size)+"\n");
-				cc.pipeTransfer(e);
-				wl.add(e);
-				updateOnAir(cc.xferListIndex, +1);
+			// pipe transfer commands if ppq is enabled
+			for (int i = 0; i < cc.pipelining; i++) {
+				 pullAndSendAFile(cc);
 			}
-
-
-			while (!wl.isEmpty()) {
+			while (!cc.inTransitFiles.isEmpty()) {
 				// Read responses to piped commands.
-				e = wl.pop();
-				//System.out.println("Getting: "+e.path());
+				Entry e = cc.inTransitFiles.poll();
 				if (e.dir) try {
 					if (!cc.dc.local) cc.dc.read();
 				} catch (Exception ex) {
 				} else {
 					cc.watchTransfer(null); 
-					//cc.bytesTransferred +=e.size;
 					updateChunk(cc.xferListIndex,e.size);
-					//chunks.get(cc.xferListIndex).totalTransferredSize+=e.size;
 					updateOnAir(cc.xferListIndex, -1);
-					log.write(cc.id+" acked "+e.path+"("+CooperativeChannels.printSize(e.size)+")\n");
-					ppq = 1;
-					for (int i = 0; i < ppq; i++) {
-						if(!chunks.get(cc.xferListIndex).isEmpty()){
-							Entry e2 = getNextFile(cc.xferListIndex);
-							if (e2 == null)
-								break;
-							cc.pipeTransfer(e2);
-							wl.add(e2);
-							updateOnAir(cc.xferListIndex, +1);
-						}
-					}
-
+					// Transfer is acknowledged, send a new file
+					pullAndSendAFile(cc);
 				} 
-				if(wl.isEmpty()){
-					List<Entry> commands =  new LinkedList<XferList.Entry>();
-					int[] params= findChunkInNeed(commands,cc);
-					if(params != null){
-						cc.pipelining = params[0];
-						ppq = cc.pipelining;
-						if(params[3] == 1){
-							HostPortList hpl = cc.setStripedPassive();
-							cc.setStripedActive(hpl);
-						}
-						cc.setParallelism(params[1]);
-						for (int i = 0; i < commands.size(); i++) {
-							e = commands.get(i);
-							cc.pipeTransfer(e);
-							wl.add(e);
-							updateOnAir(cc.xferListIndex, +1);
-						}
-					}
+				// The transfer of the channel's assigned chunks is completed.
+				// Check if other chunks have any outstanding files. If so, help!
+				if(cc.inTransitFiles.isEmpty()){
+					findChunkInNeed(cc);
 				}
 			}
 
@@ -1034,48 +990,51 @@ public class CooperativeModule  {
 				chunks.get(index).totalTransferredSize += count;
 			}
 		}
-		int[] findChunkInNeed(List<Entry> commands,ChannelPair cc) throws Exception{
+		private final boolean pullAndSendAFile(ChannelPair cc){
+			Entry e = null;
+			if ((e = getNextFile(cc.xferListIndex)) == null)
+				return false;
+			cc.pipeTransfer(e);
+			cc.inTransitFiles.add(e);
+			updateOnAir(cc.xferListIndex, +1);
+			return true;
+		}
+		void findChunkInNeed(ChannelPair cc) throws Exception{
 			int index= -1;
 			double max = Double.MIN_VALUE;
-			int params[] = null ;
 			boolean found = false;
 			
 			while(!found){
 				//System.out.println("total chunks:"+chunks.size());
 				for (int i = 0; i < chunks.size(); i++) {
-					//System.out.println("Chunk "+i+" "+chunks.get(i).count()+" files "+ CooperativeChannels.printSize(chunks.get(i).size())+"\t"
-					//		+"Estimated completion time "+chunks.get(i).estimatedFinishTime+" ");
-					if((chunks.get(i).estimatedFinishTime > max  || chunks.get(i).channels.size() == 0) && chunks.get(i).count() > 0 && chunks.get(i).isReadyToTransfer){
+					if((chunks.get(i).estimatedFinishTime > max  || chunks.get(i).channels.size() == 0) && 
+							chunks.get(i).count() > 0 && chunks.get(i).isReadyToTransfer){
 						max = chunks.get(i).estimatedFinishTime;
 						index = i;
 					}
 				}
+				// not found any chunk candidate, returns
 				if(index == -1)
 					break;
 				if(index != -1 && chunks.get(index).count() > 0){
-					params = chunks.get(index).params;
+					int []params = CooperativeChannels.getBestParams(chunks.get(index));
 					chunks.get(cc.xferListIndex).channels.remove(new Integer(cc.id));
 					System.out.print("Thread "+cc.id+"---> from chunk "+cc.xferListIndex);
 					cc.xferListIndex = index;
-					int ppq = params[0] ;
+					cc.pipelining = params[0];
+					cc.setParallelism(params[1]);
 					chunks.get(index).channels.add(cc.id);
-					while (ppq-- >= 0 && !chunks.get(index).isEmpty()) {
-						Entry e = getNextFile(index);
-						if (e != null){
-							if(chunks.get(index).dp.compareTo("/dev/null") == 0)
-								e.setdpath(chunks.get(index).dp);
-							else
-								e.setdpath(chunks.get(index).dp+e.path);
-							commands.add(e);
-							found = true;
-						}
-						else 
-							break;
+					// pipe ppq commands for new chunk
+					for (int i = 0; i < cc.pipelining; i++) {
+						 pullAndSendAFile(cc);
 					}
+					// check if this chunk is successfully fetched and piped files
+					// from new chunk
+					if(cc.inTransitFiles.size() > 0)
+						found = true;
 					System.out.println(" to Chunk "+ cc.xferListIndex+" ");
 				}
 			}
-			return params;
 		}
 	}
 
