@@ -21,7 +21,7 @@ public class XferList implements Iterable<XferList.Entry> {
   public int interval= 0 ;
   public int onAir= 1; // Each chunk will transfer atleast one file
   public boolean isCompleted = false;
-  public boolean isReadyToTransfer =false;
+  public boolean isReadyToTransfer = false;
   public Density density;
 
   // Create an XferList for a directory.

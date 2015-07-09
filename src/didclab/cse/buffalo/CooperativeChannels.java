@@ -159,28 +159,20 @@ public class CooperativeChannels {
 			chunkNumber++;*/
 			
 		}
-		/*
 		
-		tf.transfer(chunks,maxChannels);
-
-		
-		long end = System.currentTimeMillis();
-		double thr = totalDataSize/((end-init)/1000.0);
-		System.out.println("Overall Time:"+((end-init)/1000.0)+" sec Thr:"+ printSize(thr));
-		out.append(" Time:"+((end-init)/1000.0)+" sec Thr:"+ printSize(thr)+"/s\n");
-		out.flush();
-		out.close();
-		tf.stop();
-		
-		/*
-		Date endDate = new Date();
-		FileWriter fstream2 = new FileWriter("startTimes.log",true);
-		out = new BufferedWriter(fstream2);
-		out.write("Cooperative Chunks cc="+maxChannels+" start:"+start+"\tend:"+endDate);
-		out.flush();
-		out.close();
-		*/
-		
+		else{
+			ConfigurationParams.GridFTPClient.transfer(chunks,targetTransfer.getMaxConcurrency());
+	
+			/*
+			long end = System.currentTimeMillis();
+			double thr = totalDataSize/((end-init)/1000.0);
+			System.out.println("Overall Time:"+((end-init)/1000.0)+" sec Thr:"+ printSize(thr));
+			LogManager.writeToLog(" Time:"+((end-init)/1000.0)+" sec Thr:"+ printSize(thr), ConfigurationParams.INFO_LOG_ID);
+			out.flush();
+			out.close();
+			*/
+			ConfigurationParams.GridFTPClient.stop();
+		}
 		
 	}
 	

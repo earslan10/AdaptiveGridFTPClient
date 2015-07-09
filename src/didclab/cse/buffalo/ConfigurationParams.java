@@ -18,7 +18,7 @@ public class ConfigurationParams {
 	static double totalTransferTime = 0;
 	
 	//Log Based approach parameters
-	static boolean USE_HISTORY = true;	
+	static boolean USE_HISTORY = false;	
 	
 	public static String STDOUT_ID = "stdout";
 	public static String INFO_LOG_ID = "throughput.log";

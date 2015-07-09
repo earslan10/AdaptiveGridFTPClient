@@ -942,6 +942,8 @@ public class CooperativeModule  {
 		// TODO: Get rid of this adhoc pipelining.
 		void transferList(ChannelPair cc) throws Exception {
 			checkTransfer();
+			//add first piped file to onAir list
+			updateOnAir(cc.xferListIndex, +1);
 			// pipe transfer commands if ppq is enabled
 			for (int i = 0; i < cc.pipelining; i++) {
 				 pullAndSendAFile(cc);
@@ -1135,7 +1137,7 @@ public class CooperativeModule  {
 				ChannelPair channel = channels.get(i);
 				setupChannelConf(channel, p, ppq, bufSize, doStriping, chunkIndex);
 				channel.id = i;	// assign id to the channel
-				client.chunks.get(chunkIndex).channels.add(i); // add channel id to chunks's list
+				xl.channels.add(i); // add channel id to chunks's list
 				Entry e = xl.pop();
 				channel.pipeTransfer(e);
 				channel.inTransitFiles.add(e);
@@ -1192,86 +1194,67 @@ public class CooperativeModule  {
 		}
 		
 
-		public void transfer(ArrayList<Partition> chunks, final int maxChannels) throws Exception{
-			client.threads = new LinkedList<Thread>();
-			client.ccs = new  ChannelPair[maxChannels];
+		public void transfer(ArrayList<Partition> chunks, final int cc) throws Exception{
+			
+			List<ChannelPair> channels = new LinkedList<ChannelPair>();
+			channels.add(client.cc); // Add main channel first
+			for (int i = 0; i < cc-1; i++){
+				ChannelPair channel = new ChannelPair(su, du);
+				if(channel != null)
+					channels.add(channel);
+			}
 
+			// Find channel distribution to chunks. Revised round-robin
+			// e.g if cc= 6 and there're 4 chunks then, iterate as: 0-3-1-2-0-3
+			// thus channel assignments becomes: 2-1-1-2
+			int totalChunks = chunks.size();
+			int[] concurrencyLevels = new int[totalChunks];
+			for (int i = 0; i < cc/2; i++) {
+				int chunkIndex = i % (totalChunks/2);
+				concurrencyLevels[chunkIndex]++;
+				if (i+1 < cc)
+					concurrencyLevels[chunks.size() - chunkIndex - 1]++;
+			}
+			
 			// initialize chunks' specific variables
-			for (int i = 0; i < chunks.size(); i++) {
+			int currentChannelId = 0;
+			int doStriping = 0;
+			for (int i = 0; i < totalChunks; i++) {
 				XferList xl = chunks.get(i).getRecords();
 				xl.initialSize = xl.size();
+				xl.updateDestinationPaths();
 				xl.channels = new LinkedList<Integer>();
-				int params[] = CooperativeChannels.getBestParams(xl);
-				xl.params = params;
-				//System.out.println("Setting parameters... ppq:"+params[0]+" p:"+params[1]+" buf:"+params[2]+" striping:"+params[3]);
+				xl.params = CooperativeChannels.getBestParams(xl);
+				xl.isReadyToTransfer = true;
 				client.chunks.add(xl);
+				//setup channels for each chunk
+				for (int j= 0; j<concurrencyLevels[i]; j++ ){
+					ChannelPair channel = channels.get(currentChannelId);
+					setupChannelConf(channel, xl.params[1], xl.params[2], xl.params[3], doStriping, i);
+					channel.id = currentChannelId++;	// assign id to the channel
+					xl.channels.add(channel.id); // add channel id to chunks's list
+					Entry e = xl.pop();
+					channel.pipeTransfer(e);
+					channel.inTransitFiles.add(e);
+				}
 			}
-
-			// assign at least one file for each chunk. do this beforehand not to mess with threads
-			Entry []firstFiles = new Entry [maxChannels];
-			int x=0 , y=chunks.size()-1;
-			boolean xtrue=true;;
-			for (int i = 0; i < maxChannels; i++) {
-				int xferListID;
-				if(x>y){
-					x=0;  y=chunks.size()-1;
-					xtrue = true;
-				}
-
-				if(xtrue){
-					xferListID = x;
-					x++;
-					xtrue = false;
-				}
-				else{
-					xferListID =  y;
-					y--;
-					xtrue = true;
-				}
-
-				Entry e =  client.chunks.get(xferListID).pop();
-				if(client.chunks.get(xferListID).dp.compareTo("/dev/null") == 0)
-					e.setdpath(client.chunks.get(xferListID).dp);
-				else
-					e.setdpath(client.chunks.get(xferListID).dp+e.path);
-				firstFiles[i] = e; 
-			}
-			x=0 ; y=chunks.size()-1;
-			xtrue=true;
-
-			for (int i = 0; i < maxChannels; i++) {
-				int id ;
-				if(x>y){
-					x=0;  y=chunks.size()-1;
-					xtrue = true;
-				}
-
-				if(xtrue){
-					id = x;
-					x++;
-					xtrue = false;
-				}
-				else{
-					id =  y;
-					y--;
-					xtrue = true;
-				}
-				//System.out.println(i+" xferlistid "+id);
-				final int xferListID = id;	
-				final Entry e = firstFiles[i];
-				final int params [] = client.chunks.get(xferListID).params;
-				final int index =i; 
+			
+			client.ccs =  channels.toArray(new ChannelPair[channels.size()]);
+			LinkedList<Thread> threads = new LinkedList<Thread>();
+			for (int i = 0; i < client.ccs.length; i++) {
+				final ChannelPair channel = client.ccs[i];
 				Thread t = new Thread(new Runnable() {
 					public void run() {
 						try  {
-							//client.transferList(params[2], params[1], params[0], params[3], index, xferListID, e); 
+							client.transferList(channel); 
 						}
 						catch (Exception e) { e.printStackTrace(); }
 					}
 				});
-				client.threads.add(t);
+				threads.add(t);
 				t.start();
 			}
+			
 			//this is monitoring thread which measures throughput of each chunk in every 3 seconds
 			new Thread(new Runnable() {
 				BufferedWriter log;
@@ -1281,11 +1264,11 @@ public class CooperativeModule  {
 					try  {
 						Calendar cal = Calendar.getInstance();
 						SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss-MM-dd-yyy ");
-						String fileName = "CooperativeCC"+maxChannels+"_"+sdf.format(cal.getTime());
+						String fileName = "CooperativeCC"+cc+"_"+sdf.format(cal.getTime());
 						FileWriter fstream = new FileWriter(fileName);
 						log = new BufferedWriter(fstream);
 						initializeMonitoring();
-						Thread.sleep(interval+3);
+						Thread.sleep(interval);
 						while(isRunning){
 							isRunning = monitorChannels(interval/1000,log);
 							Thread.sleep(interval);
@@ -1296,122 +1279,17 @@ public class CooperativeModule  {
 
 				}
 			}).start();
-			for (Thread thread : client.threads) {
+			
+			// Wait for threads to complete
+			for (Thread thread : threads) {
 				thread.join();
 			}
-
+			
+			// Close channels
+			for (int i = 1; i < client.ccs.length; i++) {
+				client.ccs[i].close();
+			}
 		}
-		
-		
-		
-		public void transferList(ArrayList<Partition> chunks, final int maxChannels) throws Exception{
-			client.threads = new LinkedList<Thread>();
-			client.ccs = new  ChannelPair[maxChannels];
-
-			// initialize chunks' specific variables
-			for (int i = 0; i < chunks.size(); i++) {
-				XferList xl = chunks.get(i).getRecords();
-				xl.initialSize = xl.size();
-				xl.channels = new LinkedList<Integer>();
-				xl.params =  CooperativeChannels.getBestParams(xl);
-				client.chunks.add(xl);
-			}
-
-			// assign at least one file for each chunk. do this before hand not to mess with threads
-			Entry []firstFiles = new Entry [maxChannels];
-			int x=0 , y=chunks.size()-1;
-			boolean xtrue=true;;
-			for (int i = 0; i < maxChannels; i++) {
-				int xferListID;
-				if(x>y){
-					x=0;  y=chunks.size()-1;
-					xtrue = true;
-				}
-
-				if(xtrue){
-					xferListID = x;
-					x++;
-					xtrue = false;
-				}
-				else{
-					xferListID =  y;
-					y--;
-					xtrue = true;
-				}
-
-				Entry e =  client.chunks.get(xferListID).pop();
-				if(client.chunks.get(xferListID).dp.compareTo("/dev/null") == 0)
-					e.setdpath(client.chunks.get(xferListID).dp);
-				else
-					e.setdpath(client.chunks.get(xferListID).dp+e.path);
-				firstFiles[i] = e; 
-			}
-			x=0 ; y=chunks.size()-1;
-			xtrue=true;
-
-			for (int i = 0; i < maxChannels; i++) {
-				int id ;
-				if(x>y){
-					x=0;  y=chunks.size()-1;
-					xtrue = true;
-				}
-
-				if(xtrue){
-					id = x;
-					x++;
-					xtrue = false;
-				}
-				else{
-					id =  y;
-					y--;
-					xtrue = true;
-				}
-				//System.out.println(i+" xferlistid "+id);
-				final int xferListID = id;	
-				final Entry e = firstFiles[i];
-				final int params [] = client.chunks.get(xferListID).params;
-				final int index =i; 
-				Thread t = new Thread(new Runnable() {
-					public void run() {
-						try  {
-							//client.transferList(params[2], params[1], params[0], params[3], index, xferListID, e); 
-						}
-						catch (Exception e) { e.printStackTrace(); }
-					}
-				});
-				client.threads.add(t);
-				t.start();
-			}
-			//this is monitoring thread which measures throughput of each chunk in every 3 seconds
-			new Thread(new Runnable() {
-				BufferedWriter log;
-				final int interval = 3000;
-				public void run() {
-					boolean isRunning = true;
-					try  {
-						Calendar cal = Calendar.getInstance();
-						SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss-MM-dd-yyy ");
-						String fileName = "CooperativeCC"+maxChannels+"_"+sdf.format(cal.getTime());
-						FileWriter fstream = new FileWriter(fileName);
-						log = new BufferedWriter(fstream);
-						initializeMonitoring();
-						Thread.sleep(interval+3);
-						while(isRunning){
-							isRunning = monitorChannels(interval/1000,log);
-							Thread.sleep(interval);
-						}
-						log.flush();
-					}
-					catch (Exception e) { e.printStackTrace(); }
-
-				}
-			}).start();
-			for (Thread thread : client.threads) {
-				thread.join();
-			}
-
-		}
-		
 		
 		private void initializeMonitoring(){
 			for (int i = 0; i <client.chunks.size() ; i++) {
