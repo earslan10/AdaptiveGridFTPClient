@@ -155,23 +155,21 @@ public class Similarity {
         Arrays.fill(minSpecValues, Double.MAX_VALUE);
         Arrays.fill(maxSpecValues, Double.MIN_VALUE);
 		for (Entry entry:entries) {
-	            for (int i = 0; i < minSpecValues.length; i++) {
-	            	if(entry.specVector.get(i) < minSpecValues[i])
-	            		minSpecValues[i] = entry.specVector.get(i);
-	            	if(entry.specVector.get(i) > maxSpecValues[i])
-	            		maxSpecValues[i] = entry.specVector.get(i);
-				}
+            for (int i = 0; i < minSpecValues.length; i++) {
+            	if(entry.specVector.get(i) < minSpecValues[i])
+            		minSpecValues[i] = entry.specVector.get(i);
+            	if(entry.specVector.get(i) > maxSpecValues[i])
+            		maxSpecValues[i] = entry.specVector.get(i);
+			}
 		}
 		
         for (Entry e: entries) {
         	for (int i = 0; i < e.specVector.size(); i++) {
         		if(maxSpecValues[i] == minSpecValues[i]){
-        			//e.specVector.set(i, Math.abs(e.specVector.get(i)- Similarity.minSpecValues[i])+1 );
         			e.specVector.set(i, Math.abs(e.specVector.get(i)- Similarity.minSpecValues[i]) );
         		}
         		else{
 	        		double newValue = (e.specVector.get(i)- minSpecValues[i]) / (maxSpecValues[i]-minSpecValues[i]);
-	        		//e.specVector.set(i, newValue+1) ;
 	        		e.specVector.set(i, newValue) ;
 	        		
         		}

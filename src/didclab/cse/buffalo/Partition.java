@@ -19,7 +19,7 @@ public class Partition {
     public Entry entry;
     
     /* records belonging to this partition */
-    private XferList fileList = new XferList("", "") ;
+    private XferList fileList = new XferList("", "");
 
     public int[] getSamplingParameters() {
 		return samplingParameters;
@@ -109,4 +109,8 @@ public class Partition {
         // now clear the records
         fileList.removeAll();
     } 
+    
+    public long getTotalSize(){
+    	return fileList.size();
+    }
 }

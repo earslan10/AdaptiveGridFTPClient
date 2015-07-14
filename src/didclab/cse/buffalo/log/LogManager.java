@@ -2,7 +2,6 @@ package didclab.cse.buffalo.log;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.util.HashMap;
@@ -49,17 +48,23 @@ public class LogManager {
 			}
 			return true;
 		} 
-		catch (NullPointerException e){
-			e.printStackTrace();
-			return false;
-		}
-		catch(IOException e){
+		catch (Exception e){
 			e.printStackTrace();
 			return false;
 		}
 		
 	}
 	
-	
+	public static void close(){
+		try {
+			for (BufferedWriter bw: logFiles.values()){
+				bw.close();
+			}
+		} 
+		catch (Exception e){
+			e.printStackTrace();
+		}
+		
+	}
 	
 }

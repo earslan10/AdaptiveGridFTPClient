@@ -1,5 +1,6 @@
 package didclab.cse.buffalo.hysterisis;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -7,7 +8,6 @@ import java.util.List;
 import matlabcontrol.MatlabProxy;
 import matlabcontrol.MatlabProxyFactory;
 import matlabcontrol.MatlabProxyFactoryOptions;
-
 import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.Partition;
 import didclab.cse.buffalo.log.LogManager;
@@ -66,21 +66,14 @@ public class Hysterisis {
 	 
 	
 	public void parseInputFiles(){
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "xsede_revised.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSB.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSG.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataBT.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSB_1T.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "enDataSG_1T.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg5-25M.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg100M.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg1G.csv");
-		historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg3G.csv");
-		//historicalDataset.add("loni.csv");
-		//historicalDataset.add("futuregrid.csv");
-		//historicalDataset.add("emulab.csv");
-		//historicalDataset.add("didclab.csv");
-		//historicalDataset.add(ConfigurationParams.INPUT_DIR + "sg0.25-1M.csv");
+		
+		File folder = new File(ConfigurationParams.INPUT_DIR);
+		File[] listOfFiles = folder.listFiles();
+		for (int i = 0; i < listOfFiles.length; i++) {
+			if (listOfFiles[i].isFile()) {
+				historicalDataset.add(ConfigurationParams.INPUT_DIR + listOfFiles[i].getName());
+		    }
+		}
 		
 		for (int i = 0; i < historicalDataset.size(); i++) {
 			String fileName = historicalDataset.get(i);
