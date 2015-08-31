@@ -1,8 +1,5 @@
 package stork.module;
 
-import stork.util.*;
-import stork.util.XferList.Entry;
-
 //import stork.stat.InvQuadRegression;
 import java.net.*;
 import java.text.DecimalFormat;
@@ -18,10 +15,13 @@ import org.globus.ftp.extended.GridFTPControlChannel;
 import org.globus.ftp.extended.GridFTPServerFacade;
 import org.globus.ftp.vanilla.*;
 import org.ietf.jgss.*;
-import org.gridforum.jgss.*;
 
-import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.Partition;
+import didclab.cse.buffalo.utils.Utils;
+import stork.util.*;
+import stork.util.XferList.Entry;
+
+import org.gridforum.jgss.*;
 
 public class CooperativeModule  {
 	private static String MODULE_NAME= "Stork GridFTP Module";
@@ -1019,7 +1019,7 @@ public class CooperativeModule  {
 				if(index == -1)
 					break;
 				if(index != -1 && chunks.get(index).count() > 0){
-					int []params = CooperativeChannels.getBestParams(chunks.get(index));
+					int []params = Utils.getBestParams(chunks.get(index));
 					chunks.get(cc.xferListIndex).channels.remove(new Integer(cc.id));
 					System.out.print("Thread "+cc.id+"---> from chunk "+cc.xferListIndex);
 					cc.xferListIndex = index;
@@ -1119,6 +1119,10 @@ public class CooperativeModule  {
 
 		}
 		
+		public XferList getListofFiles(String sp, String dp) throws Exception {
+			return client.getListofFiles(sp, dp);
+		}
+		
 		public void startTransfer(final int ppq, final int p, final int cc,final int bufSize, XferList xl) throws Exception{
 			// Set full destination path of files
 			xl.updateDestinationPaths();
@@ -1133,6 +1137,7 @@ public class CooperativeModule  {
 				if(channel != null)
 					channels.add(channel);
 			}
+			
 			for (int i = 0; i < channels.size(); i++) {
 				ChannelPair channel = channels.get(i);
 				setupChannelConf(channel, p, ppq, bufSize, doStriping, chunkIndex);
@@ -1224,7 +1229,7 @@ public class CooperativeModule  {
 				xl.initialSize = xl.size();
 				xl.updateDestinationPaths();
 				xl.channels = new LinkedList<Integer>();
-				xl.params = CooperativeChannels.getBestParams(xl);
+				xl.params = Utils.getBestParams(xl);
 				xl.isReadyToTransfer = true;
 				client.chunks.add(xl);
 				//setup channels for each chunk

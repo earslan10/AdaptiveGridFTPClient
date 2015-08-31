@@ -3,7 +3,6 @@ package stork.util;
 import java.util.*;
 
 import didclab.cse.buffalo.CooperativeChannels.Density;
-// A list of files and directories to transfer.
 
 public class XferList implements Iterable<XferList.Entry> {
   private LinkedList<Entry> list = new LinkedList<Entry>();

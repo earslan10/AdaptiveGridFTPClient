@@ -15,7 +15,7 @@ import java.util.Set;
 
 import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.log.LogManager;
-import au.com.bytecode.opencsv.CSVReader;
+import didclab.cse.buffalo.utils.csv.CSVReader;
 
 
 public class Similarity {
