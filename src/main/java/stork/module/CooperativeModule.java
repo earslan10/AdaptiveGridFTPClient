@@ -7,6 +7,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.io.*;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.globus.ftp.*;
 import org.globus.ftp.exception.FTPReplyParseException;
 import org.globus.ftp.exception.ServerException;
@@ -17,6 +19,7 @@ import org.globus.ftp.vanilla.*;
 import org.ietf.jgss.*;
 
 import didclab.cse.buffalo.Partition;
+import didclab.cse.buffalo.hysterisis.Hysterisis;
 import didclab.cse.buffalo.utils.Utils;
 import stork.util.*;
 import stork.util.XferList.Entry;
@@ -24,6 +27,9 @@ import stork.util.XferList.Entry;
 import org.gridforum.jgss.*;
 
 public class CooperativeModule  {
+	
+	private static final Log LOG = LogFactory.getLog(CooperativeModule.class);
+
 	private static String MODULE_NAME= "Stork GridFTP Module";
 	private static String MODULE_VERSION= "0.1";
 
@@ -1123,8 +1129,10 @@ public class CooperativeModule  {
 			return client.getListofFiles(sp, dp);
 		}
 		
-		public void startTransfer(final int ppq, final int p, final int cc,final int bufSize, XferList xl) throws Exception{
+		public double runTransfer(final int ppq, final int p, final int cc,final int bufSize, XferList xl) throws Exception{
 			// Set full destination path of files
+			double fileSize = xl.size();
+			long init = System.currentTimeMillis();
 			xl.updateDestinationPaths();
 			client.chunks.add( xl );
 			xl.channels = new LinkedList<Integer>();
@@ -1169,6 +1177,12 @@ public class CooperativeModule  {
 			for (int i = 1; i < client.ccs.length; i++) {
 				client.ccs[i].close();
 			}
+			double timeSpent = (System.currentTimeMillis()-init)/1000.0;
+			double throughput = fileSize*8/timeSpent;
+			LOG.info("Time spent:"+ timeSpent+" chunk size:" + Utils.printSize(fileSize) +
+					" cc:" + client.getChannelCount() + 
+					" Throughput:" + Utils.printSize(throughput));
+			return throughput;
 		}
 		
 		private void setupChannelConf(ChannelPair cc, int p, int pp, int bufSize, int doStriping, int chunkIndex){

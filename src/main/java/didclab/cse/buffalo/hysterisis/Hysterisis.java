@@ -1,6 +1,7 @@
 package didclab.cse.buffalo.hysterisis;
 
 import java.io.File;
+import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -8,8 +9,9 @@ import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import didclab.cse.buffalo.ConfigurationParams;
-import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.Partition;
 import didclab.cse.buffalo.log.LogManager;
 import didclab.cse.buffalo.utils.Utils;
@@ -23,74 +25,57 @@ public class Hysterisis {
 	
 	private static final Log LOG = LogFactory.getLog(Hysterisis.class);
 
-	List<Entry> entries;
-	List<String> historicalDataset;
-	private final GridFTPTransfer gridFTPClient;
+	List<List<Entry>> entries;
+	private GridFTPTransfer gridFTPClient;
 	
 	public Hysterisis(GridFTPTransfer gridFTPClient) {
 		// TODO Auto-generated constructor stub
-		entries = new LinkedList<Entry>();
-		historicalDataset= new ArrayList<String>();
+		this.gridFTPClient = gridFTPClient;
+	}
+	
+	@VisibleForTesting
+	public void setGridFTP(GridFTPTransfer gridFTPClient) {
 		this.gridFTPClient = gridFTPClient;
 	}
 	
 	/**
 	 * @return the entries
 	 */
-	public List<Entry> getEntries() {
+	public List<List<Entry>> getEntries() {
 		return entries;
-	}
-
-	/**
-	 * @param entries the entries to set
-	 */
-	public void setEntries(List<Entry> entries) {
-		this.entries = entries;
-	}
-
-	/**
-	 * @return the historicalDataset
-	 */
-	public List<String> getHistoricalDataset() {
-		return historicalDataset;
-	}
-
-	/**
-	 * @param historicalDataset the historicalDataset to set
-	 */
-	public void setHistoricalDataset(List<String> historicalDataset) {
-		this.historicalDataset = historicalDataset;
-	}
-
-	public List<String> getInputFiles(){
-		return historicalDataset;
 	}
 	 
 	
 	public void parseInputFiles(){
-		
 		File folder = new File(ConfigurationParams.INPUT_DIR);
+		System.out.println("Folder path "+folder.getAbsolutePath());
 		File[] listOfFiles = folder.listFiles();
+		List<String> historicalDataset = new ArrayList<>(listOfFiles.length);
+		entries = new ArrayList<List<Entry>>();
 		for (int i = 0; i < listOfFiles.length; i++) {
 			if (listOfFiles[i].isFile()) {
 				historicalDataset.add(ConfigurationParams.INPUT_DIR + listOfFiles[i].getName());
 		    }
 		}
-		
+		LOG.info("Total files"+historicalDataset.size());
 		for (int i = 0; i < historicalDataset.size(); i++) {
 			String fileName = historicalDataset.get(i);
-			//Similarity.readFile(entries, fileName);
-			Similarity.readFile(entries, fileName);
+			List<Entry> fileEntries = Similarity.readFile(fileName);
+			LOG.info("Entries "+fileEntries.size());
+			if(!fileEntries.isEmpty())
+				entries.add(fileEntries);
 		}
-		LOG.info("Total Entries"+entries.size());
-		Similarity.normalizeDataset2(entries);
+		int sum = 0;
+		for (List<Entry> entryList : entries) {
+			sum += entryList.size();
+		}
+		LOG.info("Total entries "+sum);
 	}
 	
 	public void transfer(List<Partition> chunks, Entry intendedTransfer, XferList dataset){
 		parseInputFiles();
-		if(getInputFiles().size() == 0){	// Make sure there are log files to run hysterisis 
-			LogManager.writeToLog("No input entries to run hysterisis analysis. Exiting...", ConfigurationParams.STDOUT_ID);
-			return;
+		if(entries.isEmpty()){	// Make sure there are log files to run hysterisis 
+			LOG.fatal("No input entries found to run hysterisis analysis. Exiting...");
 		}
 		double []sampleThroughputs = new double[chunks.size()];
 		// Run sample transfer to learn current network load
@@ -144,8 +129,8 @@ public class Hysterisis {
     			double estimatedThroughput = ((double []) result[1]) [0];
     			double accuracy = ((double []) result[2]) [0];
 
-    			LogManager.writeToLog("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+" ppq:"+paramValues[2]+" throughput:"+
-    								   estimatedThroughput+" Accuracy:"+accuracy, ConfigurationParams.STDOUT_ID, ConfigurationParams.INFO_LOG_ID);
+    			LOG.info("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+" ppq:"+paramValues[2]+" throughput:"+
+    								   estimatedThroughput+" Accuracy:"+accuracy);
     			
     			int []parameters = new int[paramValues.length+1];
     			for(int j = 0; j<paramValues.length; j++)
@@ -177,20 +162,8 @@ public class Hysterisis {
 	    			   " Centroid:"+ Utils.printSize(sample_files.size()/sample_files.count())+
 	    		 	   " total:"+ Utils.printSize(sample_files.size())+"\tppq:"+parameters[2]+"*p:"+
 	    		 	  parameters[1]+"*"+"*cc:"+parameters[0]);
-	    	double fileSize = sample_files.size();
-	    	long init = System.currentTimeMillis();
-	    	
-	        
-	    	gridFTPClient.startTransfer(parameters[2], parameters[1], 
+	    	measuredThroughput = gridFTPClient.runTransfer(parameters[2], parameters[1], 
 	    			parameters[0], parameters[3], sample_files);
-			
-			double timeSpent = (System.currentTimeMillis()-init)/1000.0;
-			//totalTransferTime += timeSpent;
-			measuredThroughput = fileSize*8/timeSpent;
-			LOG.info("Time spent:"+ timeSpent+" chunk size:" + Utils.printSize(fileSize) +
-					" cc:" + gridFTPClient.client.getChannelCount() + 
-					" Throughput:" + Utils.printSize(measuredThroughput));
-			
     	}
     	catch(Exception e){
     		e.printStackTrace();
@@ -206,18 +179,23 @@ public class Hysterisis {
 	 */
 	public Object[][] runMatlabModeling(List<Partition>  chunks, double []sampleThroughputs){
 		int []setCounts = new int[chunks.size()];
+		Similarity.normalizeDataset3(entries, chunks);
+		long jvmUpTime = ManagementFactory.getRuntimeMXBean().getUptime();
+		LOG.info("Entries are normalized at "+ jvmUpTime);
 		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 			List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
 	    	//Categorize selected entries based on log date
-	    	LinkedList<LinkedList<Entry>> trials = new LinkedList<LinkedList<Entry>>();
+	    	List<List<Entry>> trials = new LinkedList<List<Entry>>();
 	    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
 	    	setCounts[chunkNumber] = trials.size();
+			jvmUpTime = ManagementFactory.getRuntimeMXBean().getUptime();
+			LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
 	    }
 		/*
     	 * Run matlab optimization to find set of "optimal" parameters for each chunk 
     	 */
+		//return null;
     	return polyFitbyMatlab(chunks, setCounts, sampleThroughputs);
-		
 	}
 	
 	/*
@@ -230,7 +208,8 @@ public class Hysterisis {
 	 * 		   maxParams---- For each chunk, maximum observed cc, p and ppq values in logs
 	 * Output: results-- it holds estimated values of cc,p and ppq for each chunk set
 	 */
-	public Object [][] polyFitbyMatlab(List<Partition>  chunks, int []logFilesCount, double []sampleThroughputs){
+	public Object [][] polyFitbyMatlab(List<Partition>  chunks, int []logFilesCount,
+			double []sampleThroughputs){
 		Object[][] results = null;
 		MatlabProxyFactoryOptions options = new MatlabProxyFactoryOptions.Builder()
         .setUsePreviouslyControlledSession(true)
@@ -246,13 +225,15 @@ public class Hysterisis {
     			return null;
     		}
     		results = new Object[chunks.size()][];
+    		LOG.info("chunks :" + chunks.size());
     		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 		    	int []sampleTransferValues = chunks.get(chunkNumber).getSamplingParameters();
 				proxy.eval("cd "+ConfigurationParams.MATLAB_SCRIPT_DIR);
-				String command = "analyzeAndEvaluate("+chunkNumber+","+sampleThroughputs[chunkNumber]+","+(logFilesCount[chunkNumber]-1)+
-								  ",["+sampleTransferValues[0]+","+sampleTransferValues[1]+","+sampleTransferValues[2]+"]"+
-								  ", '"+ConfigurationParams.OUTPUT_DIR+"')";
-				LogManager.writeToLog("\t"+command, ConfigurationParams.INFO_LOG_ID, ConfigurationParams.STDOUT_ID);
+				String filePath = ConfigurationParams.OUTPUT_DIR + "/chunk_" + chunkNumber;
+				String command = "analyzeAndEvaluate('"+filePath+"',"+sampleThroughputs[chunkNumber]+
+								  ",["+sampleTransferValues[0]+","+sampleTransferValues[1] +
+								  ","+sampleTransferValues[2]+"]"+")";
+				LOG.info("Matlab command:" + command);
 				results[chunkNumber] = proxy.returningEval(command,3);
     		}
 			

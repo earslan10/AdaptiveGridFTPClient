@@ -30,6 +30,7 @@ public class CooperativeChannels {
 
 	//Log Based approach parameters
 	boolean HYSTERISIS_ENABLED = false;
+	private Hysterisis hysterisis;
 	
 	public CooperativeChannels() {
 		// TODO Auto-generated constructor stub
@@ -43,6 +44,8 @@ public class CooperativeChannels {
 	@VisibleForTesting
 	public CooperativeChannels(GridFTPTransfer gridFTPClient) {
 		this.gridFTPClient = gridFTPClient;
+		LogManager.createLogFile(ConfigurationParams.STDOUT_ID);
+		LogManager.createLogFile(ConfigurationParams.INFO_LOG_ID);
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -53,8 +56,7 @@ public class CooperativeChannels {
 	@VisibleForTesting
 	void transfer() throws Exception{
 		intendedTransfer.setBDP( (intendedTransfer.getBandwidth() * intendedTransfer.getRtt())/8 ); // In MB
-		LOG.info("*********Cooperative Chunks cc="+intendedTransfer.getMaxConcurrency()+"********"+intendedTransfer.getBDP());
-
+		LOG.info("*********Cooperative Chunks cc="+intendedTransfer.getMaxConcurrency()+"********");
 		URI su = null ,du = null;
 		try {
 			su = new URI(intendedTransfer.getSource()).normalize();
@@ -76,10 +78,10 @@ public class CooperativeChannels {
 		LOG.debug("mlsr completed at:"+((System.currentTimeMillis()-startTime)/1000.0));
 
 		ArrayList<Partition> chunks = partitionByFileSize(dataset);
-		System.out.println(chunks.size());
 
 		if(HYSTERISIS_ENABLED){
-			Hysterisis hysterisis = new Hysterisis(gridFTPClient);
+			if(hysterisis == null)
+				hysterisis = new Hysterisis(gridFTPClient);
 			hysterisis.transfer(chunks, intendedTransfer, dataset);
 		}
 		else {
@@ -261,6 +263,10 @@ public class CooperativeChannels {
 			else if (arg.equals("-hysterisis")) {
 				HYSTERISIS_ENABLED = true;
 				LOG.info("Historical data path = " + ConfigurationParams.INPUT_DIR);
+			}
+			else {
+				System.err.println("Unrecognized input parameter "+arg);
+				System.exit(-1);
 			}
 		}
 		if (i != args.length){

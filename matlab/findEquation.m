@@ -1,14 +1,13 @@
-function [equation,R2, RMSE, maxVals] = findEquation(filename, degree)
-    
-     data = load(filename);
-     cc = data(:, 1); 
-     p = data(:, 2);
-     ppq = data(:, 3);
+function [equation,R2, RMSE, maxVals] = findEquation(data, degree)
+
+     cc = data(:,1); 
+     p = data(:,2); 
+     ppq = data(:,3); 
      %fast = data(:,4);
-     y = data(:, 5);
+     y = data(:,5); 
      maxVals = [max(cc), max(p), max(ppq)];
     
-     if size(y) < 20
+     if size(y) < 5
          R2 = 0;
          equation = '';
          RMSE = 10^10;
@@ -24,8 +23,8 @@ function [equation,R2, RMSE, maxVals] = findEquation(filename, degree)
              power2 = t.ModelTerms(i,2);
              power3 = t.ModelTerms(i,3);
              
-             new = strcat('x(1)^',num2str(power1), '*', 'x(2)^',num2str(power2), '*', ...
-                'x(3)^',num2str(power3) ,'*',num2str(t.Coefficients(i)));
+             new = strcat('x(1).^',num2str(power1), '*', 'x(2).^',num2str(power2), '*', ...
+                'x(3).^',num2str(power3) ,'*',num2str(t.Coefficients(i)));
             if i == 1
                 equation = new;
             else

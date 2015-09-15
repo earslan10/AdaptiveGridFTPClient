@@ -21,7 +21,7 @@ public class LogManager {
 			 if (fileID.compareTo("stdout") == 0)
 				 writer =  new OutputStreamWriter(System.out);
 		    else
-		    	 writer =  new FileWriter(fileID, true);
+		    	 writer =  new FileWriter(fileID, false);
 			BufferedWriter bw = new BufferedWriter(writer);
 			logFiles.put(fileID, bw);
 			return bw;

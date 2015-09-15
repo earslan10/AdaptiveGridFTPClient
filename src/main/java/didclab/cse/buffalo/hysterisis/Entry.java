@@ -424,7 +424,7 @@ public class Entry{
 		//specVector.add(fileSize);
 		specVector.add(bandwidth);
 		specVector.add(RTT);
-		specVector.add(bandwidth*RTT/(8.0*bufferSize));
+		specVector.add((bandwidth*RTT)/(8.0*bufferSize));
 		specVector.add(DensityToValue(density)*1.0);
 		/*
 		if(isDedicated)
