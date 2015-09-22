@@ -2,6 +2,7 @@
 <classpath>
 	<classpathentry kind="src" path="src/main/java"/>
 	<classpathentry kind="src" path="src/test/java"/>
+	<classpathentry kind="src" path="src/test/resources"/>
 	<classpathentry kind="lib" path="lib/cog-url-1.8.0.jar"/>
 	<classpathentry kind="lib" path="lib/condor.jar"/>
 	<classpathentry kind="lib" path="lib/matlabcontrol-4.1.0.jar"/>

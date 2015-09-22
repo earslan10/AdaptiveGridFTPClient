@@ -10,6 +10,9 @@ import stork.util.XferList;
 public class Partition {
     /* centroid of the partition */
     private double centroid;
+    
+    private double samplingTime;
+	private long samplingSize;
     private int[] samplingParameters;
     
     /*variables for log based approach*/
@@ -113,4 +116,17 @@ public class Partition {
     public long getTotalSize(){
     	return fileList.size();
     }
+    
+    public double getSamplingTime() {
+		return samplingTime;
+	}
+	public void setSamplingTime(double samplingTime) {
+		this.samplingTime = samplingTime;
+	}
+	public long getSamplingSize() {
+		return samplingSize;
+	}
+	public void setSamplingSize(long samplingSize) {
+		this.samplingSize = samplingSize;
+	}
 }

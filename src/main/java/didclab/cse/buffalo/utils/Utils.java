@@ -1,8 +1,6 @@
 package didclab.cse.buffalo.utils;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.DecimalFormat;
@@ -14,19 +12,21 @@ import stork.util.XferList;
 
 public class Utils {
 	
-	public static String printSize(double random)
-	{	
+	public static String printSize(double random, boolean inByte){
+		char sizeUnit = 'b';
+		if(inByte)
+			sizeUnit = 'B';
 		DecimalFormat df = new DecimalFormat("###.##");
 		if(random<1024.0)
-			return df.format(random)+" B";
+			return df.format(random)+" " + sizeUnit;
 		else if(random<1024.0*1024)
-			return df.format(random/1024.0)+" KB";
+			return df.format(random/1024.0)+" K" + sizeUnit;
 		else if(random<1024.0*1024*1024)
-			return df.format(random/(1024.0*1024))+" MB";
+			return df.format(random/(1024.0*1024))+" M" + sizeUnit;
 		else if (random <(1024*1024*1024*1024.0))
-			return df.format(random/(1024*1024.0*1024))+" GB";
+			return df.format(random/(1024*1024.0*1024))+" G" + sizeUnit;
 		else 
-			return df.format(random/(1024*1024*1024.0*1024))+" TB";
+			return df.format(random/(1024*1024*1024.0*1024))+" T" + sizeUnit;
 	}
 	
 	public static int[] getBestParams(XferList xl){

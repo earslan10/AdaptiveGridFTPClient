@@ -2,22 +2,18 @@ package didclab.cse.buffalo;
 
 import static org.mockito.Mockito.when;
 
-import java.util.List;
-
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
-import static org.mockito.Mockito.doCallRealMethod;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import didclab.cse.buffalo.CooperativeChannels;
+import didclab.cse.buffalo.CooperativeChannels.TransferAlgorithm;
 import didclab.cse.buffalo.hysterisis.Entry;
-import didclab.cse.buffalo.hysterisis.Hysterisis;
 import didclab.cse.buffalo.utils.Utils;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.module.CooperativeModule.StorkFTPClient;
@@ -75,7 +71,7 @@ public class CooperativeChannelsTest {
 
 	@Test
 	public void testHysterisis() throws Exception {
-		multiChunk.HYSTERISIS_ENABLED = true;
+		multiChunk.algorithm = TransferAlgorithm.HYSTERISIS;
 		multiChunk.transfer();
 	}
 

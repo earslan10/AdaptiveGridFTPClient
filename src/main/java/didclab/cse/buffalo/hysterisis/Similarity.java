@@ -2,11 +2,9 @@ package didclab.cse.buffalo.hysterisis;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.lang.management.ManagementFactory;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -18,8 +16,6 @@ import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.google.common.collect.Lists;
 
 import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.Partition;
@@ -36,13 +32,14 @@ public class Similarity {
 	static double[] minSpecValues;
 	static double [] maxSpecValues;
 	private static double similarityThreshold = 0.999;	
+	static int skippedEntryCount = 0;
 	public static List<Entry> readFile(String fname) {
 		List<Entry> entries = new LinkedList<Entry>();
 		try{
 			File freader = new File(fname);
 			String fileName = freader.getName();
 			CSVReader reader = new CSVReader(new FileReader(fname), ',');
-			System.out.println("Reading "+fname+"...");
+			//System.out.println("Reading "+fname+"...");
 			//read line by line
 			String []header = reader.readNext();
 			Map<String, Integer> attributeIndices = new HashMap<String, Integer>();
@@ -55,6 +52,15 @@ public class Similarity {
 				try
 				{
 					//Mandatory attributes
+					if(attributeIndices.containsKey("Duration") &&  !record[attributeIndices.get("Duration")].isEmpty() &&
+							Double.parseDouble( record[attributeIndices.get("Duration")])  < 10){
+						skippedEntryCount ++;
+						continue;
+					}
+					else if (Double.parseDouble( record[attributeIndices.get("Throughput")])  > 9000){
+						skippedEntryCount ++;
+						continue;
+					}
 					entry.setId(id++);
 					entry.setFileSize( Double.parseDouble(record[attributeIndices.get("FileSize")]) );
 					entry.setFileCount( Integer.parseInt(record[attributeIndices.get("FileCount")]) );
@@ -214,15 +220,9 @@ public class Similarity {
 			}
 		}
 		
-		
-		
 		double[] ratios = new double[maxValues.length];
 		for (int i = 0; i < maxValues.length; i++) {
 			ratios[i] = 100 / maxValues[i];
-		}
-		
-		for (int i = 0; i < maxValues.length; i++) {
-			LOG.info("Spec " + i + " max:" + maxValues[i] + "Ratio " + ratios[i]);
 		}
 		
 		for (List<Entry> entryList : entries){
@@ -421,7 +421,7 @@ public class Similarity {
 			}
 			similarityThreshold -= 0.001;
 		}
-		LogManager.writeToLog("Similarity threshold updated:"+similarityThreshold+" Count:"+counter, ConfigurationParams.STDOUT_ID);
+		//LogManager.writeToLog("Similarity threshold updated:"+similarityThreshold+" Count:"+counter, ConfigurationParams.STDOUT_ID);
 		return mostSimilarEntries;
 	}
 

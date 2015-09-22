@@ -48,7 +48,6 @@ public class Hysterisis {
 	
 	public void parseInputFiles(){
 		File folder = new File(ConfigurationParams.INPUT_DIR);
-		System.out.println("Folder path "+folder.getAbsolutePath());
 		File[] listOfFiles = folder.listFiles();
 		List<String> historicalDataset = new ArrayList<>(listOfFiles.length);
 		entries = new ArrayList<List<Entry>>();
@@ -57,19 +56,13 @@ public class Hysterisis {
 				historicalDataset.add(ConfigurationParams.INPUT_DIR + listOfFiles[i].getName());
 		    }
 		}
-		LOG.info("Total files"+historicalDataset.size());
 		for (int i = 0; i < historicalDataset.size(); i++) {
 			String fileName = historicalDataset.get(i);
 			List<Entry> fileEntries = Similarity.readFile(fileName);
-			LOG.info("Entries "+fileEntries.size());
 			if(!fileEntries.isEmpty())
 				entries.add(fileEntries);
 		}
-		int sum = 0;
-		for (List<Entry> entryList : entries) {
-			sum += entryList.size();
-		}
-		LOG.info("Total entries "+sum);
+		//System.out.println("Skipped Entry count =" + Similarity.skippedEntryCount);
 	}
 	
 	public void transfer(List<Partition> chunks, Entry intendedTransfer, XferList dataset){
@@ -110,38 +103,50 @@ public class Hysterisis {
         	int cc = samplingParams[0];
 			cc = cc > 8 ? cc : Math.min(8, sample_files.count());
 			samplingParams[0] = cc;
+			chunk.setSamplingSize(sample_files.size());
         	chunk.setSamplingParameters(samplingParams);
+			long start = System.currentTimeMillis();
+			//LOG.info("Sample transfer called at "+ManagementFactory.getRuntimeMXBean().getUptime());
 		    sampleThroughputs[chunkNumber] = transferList(sample_files, chunk.getSamplingParameters());
+			
+		    chunk.setSamplingTime((System.currentTimeMillis()-start)/1000.0);
+		    //LOG.info( chunk.getSamplingTime() + " "+  chunk.getSamplingSize());
 		    //TODO: handle transfer failure 
 		    if(sampleThroughputs[chunkNumber] == -1)System.exit(-1);	
     	}
-    	
+
     	// Based on input files and sample tranfer throughput; categorize logs and fit model
     	// Then find optimal parameter values out of the model
     	Object[][] results = runMatlabModeling(chunks, sampleThroughputs);
     	//if(ConfigurationParams.USE_HISTORY)
     	//	System.exit(-1);
-    	if(results != null){
-    		for (int  i=0; i< results.length; i++){
-    			Object []result = results[i];
-    			
-    			double [] paramValues = (double []) result[0];
-    			double estimatedThroughput = ((double []) result[1]) [0];
-    			double accuracy = ((double []) result[2]) [0];
+    	if (results == null)
+    		return;
+		for (int  i=0; i< results.length; i++){
+			Object []result = results[i];
+			
+			double [] paramValues = (double []) result[0];
+			double estimatedThroughput = ((double []) result[1]) [0];
+			double accuracy = ((double []) result[2]) [0];
+			
+			//Convert from double to int
+			int []parameters = new int[paramValues.length+1];
+			for(int j = 0; j<paramValues.length; j++)
+				parameters[j] = (int)paramValues[j];
+			parameters[paramValues.length] = (int)intendedTransfer.getBufferSize();
 
-    			LOG.info("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+" ppq:"+paramValues[2]+" throughput:"+
-    								   estimatedThroughput+" Accuracy:"+accuracy);
-    			
-    			int []parameters = new int[paramValues.length+1];
-    			for(int j = 0; j<paramValues.length; j++)
-    				parameters[j] = (int)paramValues[j];
-    			parameters[paramValues.length] = (int)intendedTransfer.getBufferSize();
-    			double throughput = transferList(chunks.get(i).getRecords(), parameters);
-    			LogManager.writeToLog(sampleThroughputs[i]/(1024*1024)+"\t"+ parameters[0]+"\t"+ parameters[1]+"\t"+
-    					parameters[2]+"\t"+estimatedThroughput+"\t"+throughput/(1024*1024), ConfigurationParams.INFO_LOG_ID);
-    			
-    		}
-    	}
+			LOG.info("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+
+					" ppq:"+paramValues[2]+" throughput:"+estimatedThroughput+" Accuracy:"+accuracy);
+			Partition chunk = chunks.get(i);
+			long totalDataSize = chunk.getTotalSize() + chunk.getSamplingSize();
+			long start = System.currentTimeMillis();
+			// Total data size in this chunk type including sampling transfers
+			
+			transferList(chunk.getRecords(), parameters);
+			double totalTime = (System.currentTimeMillis()-start)/1000.0 + chunk.getSamplingTime();
+			LOG.info("Average throughput of chunk " +i+ " " + ((totalDataSize*8)/(totalTime*1000*1000)));
+		}
+    	
 	}
 	
 	/*
@@ -159,8 +164,8 @@ public class Hysterisis {
     	try{
 	    	//Run sampling transfer
 	    	LOG.info("Transferring chunk --> files:"+sample_files.count()+
-	    			   " Centroid:"+ Utils.printSize(sample_files.size()/sample_files.count())+
-	    		 	   " total:"+ Utils.printSize(sample_files.size())+"\tppq:"+parameters[2]+"*p:"+
+	    			   " Centroid:"+ Utils.printSize(sample_files.size()/sample_files.count(), true)+
+	    		 	   " total:"+ Utils.printSize(sample_files.size(), true)+"\tppq:"+parameters[2]+"*p:"+
 	    		 	  parameters[1]+"*"+"*cc:"+parameters[0]);
 	    	measuredThroughput = gridFTPClient.runTransfer(parameters[2], parameters[1], 
 	    			parameters[0], parameters[3], sample_files);
@@ -180,16 +185,14 @@ public class Hysterisis {
 	public Object[][] runMatlabModeling(List<Partition>  chunks, double []sampleThroughputs){
 		int []setCounts = new int[chunks.size()];
 		Similarity.normalizeDataset3(entries, chunks);
-		long jvmUpTime = ManagementFactory.getRuntimeMXBean().getUptime();
-		LOG.info("Entries are normalized at "+ jvmUpTime);
+		//LOG.info("Entries are normalized at "+ ManagementFactory.getRuntimeMXBean().getUptime());
 		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
 			List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
 	    	//Categorize selected entries based on log date
 	    	List<List<Entry>> trials = new LinkedList<List<Entry>>();
 	    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
 	    	setCounts[chunkNumber] = trials.size();
-			jvmUpTime = ManagementFactory.getRuntimeMXBean().getUptime();
-			LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
+			//LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
 	    }
 		/*
     	 * Run matlab optimization to find set of "optimal" parameters for each chunk 

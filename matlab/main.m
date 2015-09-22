@@ -16,7 +16,6 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
     metadata = textscan(fileId, '%s %d\n',numGroups );
     data= textscan(fileId, '%f %f %f %f %f', 'CommentStyle', '*');
     matrix = cell2mat(data);
-    size(matrix)
     
     warning off;
     
@@ -40,8 +39,8 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
             errors(index) = closeness;
             index = index + 1;
         else
-            disp(strcat('Skipping:',name , ' estimation:', num2str(estimation),...
-                ' error:', num2str(abs(targetThroughput - estimation)), ' R2:', num2str(R2)));
+            %disp(strcat('Skipping:',name , ' estimation:', num2str(estimation),...
+            %    ' error:', num2str(abs(targetThroughput - estimation)), ' R2:', num2str(R2)));
         end
         offset = offset + count;
     end
@@ -91,7 +90,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         %entrySet.bestFitEq
         newEq = strcat(' -1 *(', entrySet.bestFitEq ,')');
         objectiveF = @(x)eval(newEq);
-        [t,val] = fmincon(objectiveF,[1,1,0],[],[],[],[],sampleValues,entrySet.maxParamValues,[], options);
+        [t,val] = fmincon(objectiveF,[1,1,0],[],[],[],[],[1,1,0],entrySet.maxParamValues,[], options);
         if -1*val > 10^4 | -1*val < 10
             disp(strcat('Skipping:',num2str(entrySet.note) , ' estimation:', num2str(val)));
             continue;
@@ -104,50 +103,50 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         index = index + 1;
         
         disp(strcat('Final #',entrySet.note ,' error:', num2str(entrySet.closeness), ...
-             ' weight:',num2str(weight), ' Val:', num2str(val)));
+             ' R2:', num2str(entrySet.R2),' weight:',num2str(weight),...
+            ' Val:', num2str(val)));
         disp(strcat('Fmincon cc:',num2str(t(1)) ,' p:', num2str(round(t(2))), ...
              ' ppq:', num2str(round(t(3))) , ' value:',num2str(-1*val)));
          
         f = @(x)eval(entrySet.bestFitEq);
+        entrySet.bestFitEq
         thrEstimation = -1 * val;
-        newEstimation = thrEstimation;
+        
+        for subOptimalCC = 1:t(1)
+            newEstimation = f([subOptimalCC,t(2),t(3)]);
+            %disp(strcat('CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
+            if newEstimation > thrEstimation * 0.9
+                disp(strcat('Adjusted CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
+                break;
+            end
+         end
+         
+        thrEstimation = newEstimation;
+        subOptimalP = round(t(2));
+        if subOptimalP >= 1 
+             for subOptimalP = 1:round(t(2))
+                 newEstimation = f([subOptimalCC,subOptimalP,t(3)]);
+                 %disp(strcat('CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
+                 if newEstimation > thrEstimation  * 0.9
+                     disp(strcat('Adjusted P:',num2str(subOptimalP) ,' estimation:',num2str(newEstimation)));
+                     break;
+                 end
+             end
+        end
+        
+        thrEstimation = newEstimation;
         subOptimalPPQ = round(t(3));
         if subOptimalPPQ >= 1
-            for subOptimalPPQ = 0 :1 :round(t(3))
-                newEstimation = f([t(1),t(2),subOptimalPPQ]);
-                %disp(strcat('Adjusted PPQ:',num2str(subOptimalPPQ) ,' estimation:',num2str(newEstimation)));
-                if newEstimation > thrEstimation * 0.9
+            for subOptimalPPQ = round(t(3)) : -1 :0 
+                newEstimation = f([subOptimalCC,subOptimalP,subOptimalPPQ]);
+                disp(strcat('Adjusted PPQ:',num2str(subOptimalPPQ) ,' estimation:',num2str(newEstimation)));
+                if newEstimation < thrEstimation * 0.95
+                    subOptimalPPQ = subOptimalPPQ + 1;
                     %disp(strcat('Adjusted PPQ:',num2str(subOptimalPPQ) ,' estimation:',num2str(newEstimation)));
                     break;
                 end
             end
         end
-
-        thrEstimation = newEstimation;
-        subOptimalP = round(t(2));
-        if subOptimalP >= 1 
-             for subOptimalP = 1:round(t(2))
-                 newEstimation = f([t(1),subOptimalP,subOptimalPPQ]);
-                 %disp(strcat('CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
-                 if newEstimation > thrEstimation  * 0.9
-                     %disp(strcat('Adjusted P:',num2str(subOptimalP) ,' estimation:',num2str(newEstimation)));
-                     break;
-                 end
-             end
-         end
-
-         thrEstimation = newEstimation;
-
-         for subOptimalCC = 1:t(1)
-             newEstimation = f([subOptimalCC,subOptimalP,subOptimalPPQ]);
-             %disp(strcat('CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
-             if newEstimation > thrEstimation * 0.9
-                 %disp(strcat('Adjusted CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
-                 break;
-             end
-
-         end
-
          cc = cc + subOptimalCC * weight;
          %p = p + t(2) * weight;
          p = p + subOptimalP * weight;
