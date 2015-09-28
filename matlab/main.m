@@ -51,22 +51,34 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         
     fprintf('Total entry set list l %d\n', size(entrySetList));
     disp(strcat('TOTAL entry set list l', ' ', num2str(size(entrySetList))));
-
-    [idx,cntr] = kmeanspp(errors,4);
-    sorted_cntr = sort(cntr, 'descend');
-    new_idx = arrayfun(@(x)find(sorted_cntr==x,1),cntr);
+    
+    
+    %errors
+    [idx,cntr] = kmeanspp(errors,5);
     %cntr
+    %idx
+    
+    new_idx = zeros(5,1);
+    [sorted_cntr] = sort(cntr, 'descend');
+    for i = 1:5
+        for j = 1:5
+            if cntr(i) == sorted_cntr(j)
+                new_idx(i) = j;
+                break;
+            end
+        end
+    end
     totalWeight = 0;
     index = 1;
     for entrySet = entrySetList
-        weight = 2^new_idx(idx(index));
-        %fprintf('%d %d %d\n',  idx(index),new_idx(idx(index)), weight  )
+        %entrySet.closeness
+        weight = 2^(new_idx(idx(index))-1);
         %weight = targetThroughput / (targetThroughput + entrySet.closeness);
         %weight = 1 / entrySet.closeness;
         totalWeight = totalWeight + weight;
         index = index + 1;
     end
-    
+    %return
     
     %sumd = zeros(size(errors));
     %for i = 1:size(errors')
@@ -84,8 +96,9 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
     totalErrorWeight = 0;
     totalThrouhput = 0;
     errorRate = 0;
-    index = 1;
+    index = 0;
     for entrySet = entrySetList
+        index = index + 1;
         %entrySet.maxParamValues
         %entrySet.bestFitEq
         newEq = strcat(' -1 *(', entrySet.bestFitEq ,')');
@@ -97,11 +110,11 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         end
         %weight = targetThroughput / (targetThroughput + entrySet.closeness);
         %weight = (1 / entrySet.closeness);
+        %entrySet.closeness
         weight_percent = 100 * weight / totalWeight;
-        
-        weight = 2^new_idx(idx(index));
-        index = index + 1;
-        
+        %new_idx(idx(index))
+        weight = 2^(new_idx(idx(index)) -1 );
+        %weight
         disp(strcat('Final #',entrySet.note ,' error:', num2str(entrySet.closeness), ...
              ' R2:', num2str(entrySet.R2),' weight:',num2str(weight),...
             ' Val:', num2str(val)));
@@ -109,7 +122,6 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
              ' ppq:', num2str(round(t(3))) , ' value:',num2str(-1*val)));
          
         f = @(x)eval(entrySet.bestFitEq);
-        entrySet.bestFitEq
         thrEstimation = -1 * val;
         
         for subOptimalCC = 1:t(1)
