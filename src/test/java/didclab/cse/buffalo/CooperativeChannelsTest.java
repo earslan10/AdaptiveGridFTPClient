@@ -57,7 +57,7 @@ public class CooperativeChannelsTest {
 		when(mockGridFTPClient.getListofFiles(any(String.class), any(String.class)))
 		.thenReturn(files);
 		when(mockGridFTPClient.runTransfer(anyInt(), anyInt(),
-				anyInt(), anyInt(),any(XferList.class)))
+				anyInt(), anyInt(),any(XferList.class), anyInt()))
 				.thenReturn(611.8585207)
 				.thenReturn(740.0)
 				.thenReturn(1437.0)
@@ -71,7 +71,8 @@ public class CooperativeChannelsTest {
 
 	@Test
 	public void testHysterisis() throws Exception {
-		multiChunk.algorithm = TransferAlgorithm.HYSTERISIS;
+		multiChunk.setUseHysterisi(true);
+		multiChunk.algorithm = TransferAlgorithm.MULTICHUNK;
 		multiChunk.transfer();
 	}
 

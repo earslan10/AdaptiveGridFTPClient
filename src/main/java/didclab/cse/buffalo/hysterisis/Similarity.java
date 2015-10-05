@@ -383,7 +383,7 @@ public class Similarity {
 			}
 		}
 		//System.exit(-1);
-		maxEntry.printEntry(Double.toString(maxSimilarity));
+		//maxEntry.printEntry(Double.toString(maxSimilarity));
 		//LogManager.writeToLog("Max Entry:"+maxEntry.printEntry(Double.toString(maxSimilarity)), ConfigurationParams.STDOUT_ID);
 
 		Similarity.similarityThreshold = maxSimilarity;

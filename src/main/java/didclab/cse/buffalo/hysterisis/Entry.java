@@ -398,7 +398,7 @@ public class Entry{
 	}
 
 	
-	public static Density findDensityOfList(Double averageFileSize, double BDP){
+	public static Density findDensityOfList(double averageFileSize, double BDP){
 			if(averageFileSize < BDP/10)
 				return Density.SMALL;
 			else if(averageFileSize < BDP)

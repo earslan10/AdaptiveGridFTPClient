@@ -1,7 +1,6 @@
 package didclab.cse.buffalo.hysterisis;
 
 import java.io.File;
-import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -25,8 +24,12 @@ public class Hysterisis {
 	
 	private static final Log LOG = LogFactory.getLog(Hysterisis.class);
 
-	List<List<Entry>> entries;
+	static List<List<Entry>> entries;
 	private GridFTPTransfer gridFTPClient;
+	
+	int [][] estimatedParamsForChunks;
+	private double [] estimatedThroughputs;
+	private double[] estimatedAccuracies;
 	
 	public Hysterisis(GridFTPTransfer gridFTPClient) {
 		// TODO Auto-generated constructor stub
@@ -65,7 +68,8 @@ public class Hysterisis {
 		//System.out.println("Skipped Entry count =" + Similarity.skippedEntryCount);
 	}
 	
-	public void transfer(List<Partition> chunks, Entry intendedTransfer, XferList dataset){
+	public int[][] findOptimalParameters(List<Partition> chunks,
+			Entry intendedTransfer, XferList dataset) throws Exception{
 		parseInputFiles();
 		if(entries.isEmpty()){	// Make sure there are log files to run hysterisis 
 			LOG.fatal("No input entries found to run hysterisis analysis. Exiting...");
@@ -76,17 +80,6 @@ public class Hysterisis {
     	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
     		Partition chunk =  chunks.get(chunkNumber);
 
-    		/*
-    		List<Entry> similarEntries = Similarity.findSimilarEntries(hysterisis.getEntries(), chunks.get(chunkNumber).entry);
-			//LogManager.writeToLog("The number of similar entries is:"+similarEntries.size(), ConfigurationParams.STDOUT_ID);
-	    	//Categorize selected entries based on log date
-	    	LinkedList<LinkedList<Entry>> trials = new LinkedList<LinkedList<Entry>>();
-	    	Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
-	    	
-	    	if(ConfigurationParams.USE_HISTORY)
-	    		continue;
-	    	*/
-    		
         	XferList sample_files = new XferList("", "") ;
         	double MINIMUM_SAMPLING_SIZE = 40 * intendedTransfer.getBDP();
         	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
@@ -107,7 +100,9 @@ public class Hysterisis {
         	chunk.setSamplingParameters(samplingParams);
 			long start = System.currentTimeMillis();
 			//LOG.info("Sample transfer called at "+ManagementFactory.getRuntimeMXBean().getUptime());
-		    sampleThroughputs[chunkNumber] = transferList(sample_files, chunk.getSamplingParameters());
+			
+		    sampleThroughputs[chunkNumber] =  gridFTPClient.runTransfer(samplingParams[0], samplingParams[1], 
+		    		samplingParams[2], samplingParams[3], sample_files, chunkNumber);
 			
 		    chunk.setSamplingTime((System.currentTimeMillis()-start)/1000.0);
 		    //LOG.info( chunk.getSamplingTime() + " "+  chunk.getSamplingSize());
@@ -118,63 +113,28 @@ public class Hysterisis {
     	// Based on input files and sample tranfer throughput; categorize logs and fit model
     	// Then find optimal parameter values out of the model
     	Object[][] results = runMatlabModeling(chunks, sampleThroughputs);
-    	//if(ConfigurationParams.USE_HISTORY)
-    	//	System.exit(-1);
     	if (results == null)
-    		return;
-		for (int  i=0; i< results.length; i++){
+    		return null;
+    	
+    	estimatedParamsForChunks = new int[chunks.size()][4];
+    	estimatedThroughputs = new double[chunks.size()];
+    	estimatedAccuracies = new double[chunks.size()];
+    	for (int  i=0; i< results.length; i++){
 			Object []result = results[i];
-			
 			double [] paramValues = (double []) result[0];
-			double estimatedThroughput = ((double []) result[1]) [0];
-			double accuracy = ((double []) result[2]) [0];
-			
 			//Convert from double to int
 			int []parameters = new int[paramValues.length+1];
 			for(int j = 0; j<paramValues.length; j++)
 				parameters[j] = (int)paramValues[j];
 			parameters[paramValues.length] = (int)intendedTransfer.getBufferSize();
-
-			LOG.info("Estimated params cc:"+paramValues[0]+" p:"+paramValues[1]+
-					" ppq:"+paramValues[2]+" throughput:"+estimatedThroughput+" Accuracy:"+accuracy);
-			Partition chunk = chunks.get(i);
-			long totalDataSize = chunk.getTotalSize() + chunk.getSamplingSize();
-			long start = System.currentTimeMillis();
-			// Total data size in this chunk type including sampling transfers
-			
-			transferList(chunk.getRecords(), parameters);
-			double totalTime = (System.currentTimeMillis()-start)/1000.0 + chunk.getSamplingTime();
-			LOG.info("Average throughput of chunk " +i+ " " + ((totalDataSize*8)/(totalTime*1000*1000)));
+			estimatedParamsForChunks [i] = parameters;
+			estimatedAccuracies[i] = ((double []) result[2]) [0];
+			estimatedThroughputs[i]  = ((double []) result[1]) [0];;
+			LOG.info("Estimated params cc:" + paramValues[0] + " p:"+paramValues[1] +
+					" ppq:"+paramValues[2] + " throughput:" + estimatedThroughputs[i] + 
+					" Accuracy:" + estimatedAccuracies[i]);
 		}
-    	
-	}
-	
-	/*
-	 * Run sample data transfer to learn current network load
-	 * sample_files is supposed to be set of files from highest density chunk
-	 */
-	public double transferList(XferList sample_files, int[] parameters) {
-		
-		
-    	//parallelism, pipelining and concurrency parameters 
-		if(parameters == null)
-			parameters = Utils.getBestParams(sample_files);
-    	
-    	double measuredThroughput = -1;
-    	try{
-	    	//Run sampling transfer
-	    	LOG.info("Transferring chunk --> files:"+sample_files.count()+
-	    			   " Centroid:"+ Utils.printSize(sample_files.size()/sample_files.count(), true)+
-	    		 	   " total:"+ Utils.printSize(sample_files.size(), true)+"\tppq:"+parameters[2]+"*p:"+
-	    		 	  parameters[1]+"*"+"*cc:"+parameters[0]);
-	    	measuredThroughput = gridFTPClient.runTransfer(parameters[2], parameters[1], 
-	    			parameters[0], parameters[3], sample_files);
-    	}
-    	catch(Exception e){
-    		e.printStackTrace();
-    		System.exit(0);
-    	}
-		return measuredThroughput;
+		return estimatedParamsForChunks;	
 	}
 	
 	/*
@@ -246,6 +206,10 @@ public class Hysterisis {
 		}
     	proxy.disconnect();
     	return results;
+	}
+	
+	public double[] getEstimatedThroughputs(){
+		return estimatedThroughputs;
 	}
 	
 }

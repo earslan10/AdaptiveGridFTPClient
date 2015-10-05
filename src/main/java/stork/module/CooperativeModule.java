@@ -11,7 +11,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.Reader;
-import java.lang.management.ManagementFactory;
 import java.net.URI;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,8 +28,11 @@ import org.globus.ftp.vanilla.*;
 import org.ietf.jgss.*;
 
 import com.google.common.collect.Lists;
+import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader.Array;
 
+import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.Partition;
+import didclab.cse.buffalo.CooperativeChannels.Density;
 import didclab.cse.buffalo.utils.Utils;
 import stork.util.*;
 import stork.util.XferList.Entry;
@@ -1120,14 +1122,14 @@ public class CooperativeModule  {
 			return client.getListofFiles(sp, dp);
 		}
 		
-		public double runTransfer(final int ppq, final int p, final int cc,final int bufSize, final XferList xl) throws Exception{
+		public double runTransfer(final int cc, final int p, final int ppq,
+				final int bufSize, final XferList xl, int chunkId) throws Exception{
 			// Set full destination path of files
+			LOG.info("Transferring chunk " + chunkId +" params:" + cc+ " " + p + " "+ ppq);
 			double fileSize = xl.size();
 			xl.updateDestinationPaths();
 			client.chunks.add( xl );
 			xl.channels = new LinkedList<Integer>();
-			int chunkId = client.chunks.size()-1;
-			
 			
 			// Reserve one file for each channel, otherwise pipelining 
 			// may lead to assigning all files to one channel
@@ -1186,27 +1188,20 @@ public class CooperativeModule  {
 		
 		
 
-		public void runMultiChunkTransfer(ArrayList<Partition> chunks, final int cc) throws Exception{
-			// Find channel distribution to chunks. Revised round-robin
-			// e.g if cc= 6 and there're 4 chunks then, iterate as: 0-3-1-2-0-3
-			// thus channel assignments becomes: 2-1-1-2
+		public void runMultiChunkTransfer(List<Partition> chunks, int[] channelAllocations) throws Exception{
+			int totalChannels = 0;
+			for (int channelAllocation : channelAllocations)
+				totalChannels += channelAllocation;
 			int totalChunks = chunks.size();
-			int modulo = Math.max(totalChunks/2, 1);
-			int[] concurrencyLevels = new int[totalChunks];
-			for (int i = 0; i < cc/2; i++) {
-				int chunkIndex = i % modulo;
-				concurrencyLevels[chunkIndex]++;
-				if (i+1 < cc)
-					concurrencyLevels[totalChunks - chunkIndex - 1]++;
-			}
 			
+			long totalDataSize = 0;
+			client.chunks.clear();
 			for (int i = 0; i < totalChunks; i++) {
 				XferList xl = chunks.get(i).getRecords();
+				totalDataSize += xl.size();
 				xl.initialSize = xl.size();
 				xl.updateDestinationPaths();
-				xl.channels = Lists.newArrayListWithCapacity(concurrencyLevels[i]);
-				int[] bestParams = Utils.getBestParams(xl);
-				xl.params = bestParams;
+				xl.channels = Lists.newArrayListWithCapacity(channelAllocations[i]);
 				xl.isReadyToTransfer = true;
 				client.chunks.add(xl);
 			}
@@ -1215,23 +1210,26 @@ public class CooperativeModule  {
 			// pipelining may cause assigning all chunks to one channel.
 			List<List<Entry>> firstFilesToSend= new ArrayList<List<Entry>>();
 			for (int i = 0; i < totalChunks; i++) {
-				List<Entry> files = Lists.newArrayListWithCapacity(concurrencyLevels[i]);
+				List<Entry> files = Lists.newArrayListWithCapacity(channelAllocations[i]);
 				//setup channels for each chunk
 				XferList xl = chunks.get(i).getRecords();
-				for (int j= 0; j < concurrencyLevels[i]; j++ ) {
+				for (int j= 0; j < channelAllocations[i]; j++ ) {
 					files.add(xl.pop());
 				}
 				firstFilesToSend.add(files);
 			}
-			client.ccs = new ArrayList<ChannelPair>(cc);
+			client.ccs = new ArrayList<ChannelPair>(totalChannels);
 			int currentChannelId = 0;
 			Collection<Future<?>> futures = new LinkedList<Future<?>>();
+			long start = System.currentTimeMillis();
 			for (int i = 0; i < totalChunks; i++) {
 				XferList xl = chunks.get(i).getRecords();
 				int[] bestParams = xl.params;
-				for (int j= 0; j < concurrencyLevels[i]; j++ ){
+				for (int j= 0; j < channelAllocations[i]; j++ ){
 					Entry firstFile = synchronizedPop(firstFilesToSend.get(i));
-					Runnable transferChannel = new TransferChannel(currentChannelId++, bestParams[2], bestParams[1], bestParams[3], xl, i, firstFile);
+					LOG.info("Initializing a channel "+ bestParams[2] + " " +  bestParams[1] + " " + bestParams[3]);
+					Runnable transferChannel = new TransferChannel(currentChannelId++, bestParams[2], bestParams[1],
+							bestParams[3], xl, i, firstFile);
 					futures.add(executor.submit(transferChannel));
 				}
 			}
@@ -1240,7 +1238,9 @@ public class CooperativeModule  {
 			for (Future<?> future:futures) {
 			    future.get();
 			}	
-			
+			long finish = System.currentTimeMillis();
+			double thr = totalDataSize*8 / ((finish - start)/1000.0);
+			LOG.info(" Time:" + ((finish - start)/1000.0) + " sec Thr:" + (thr /(1000*1000)));
 			// Close channels
 			for (ChannelPair cp : client.ccs) {
 				cp.close();
@@ -1337,8 +1337,9 @@ public class CooperativeModule  {
 		}
 		
 		private void initializeMonitoring(){
-			for (int i = 0; i <client.chunks.size() ; i++) {
+			for (int i = 0; i < client.chunks.size(); i++) {
 				XferList xl = client.chunks.get(i);
+				LOG.info("Chunk "+i+":\t"+xl.count()+" files\t"+printSize(xl.size()));
 				int [] pars = xl.params;
 				System.out.println("Chunk "+i+":\t"+xl.count()+" files\t"+printSize(xl.size())
 					+" cc:" + pars[0] + " p:" + pars[1] + " ppq:"+ pars[2]);
