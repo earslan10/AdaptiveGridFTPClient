@@ -12,7 +12,6 @@ import com.google.common.annotations.VisibleForTesting;
 
 import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.Partition;
-import didclab.cse.buffalo.log.LogManager;
 import didclab.cse.buffalo.utils.Utils;
 import matlabcontrol.MatlabProxy;
 import matlabcontrol.MatlabProxyFactory;
@@ -23,6 +22,7 @@ import stork.util.XferList;
 public class Hysterisis {
 	
 	private static final Log LOG = LogFactory.getLog(Hysterisis.class);
+	private MatlabProxy proxy;
 
 	static List<List<Entry>> entries;
 	private GridFTPTransfer gridFTPClient;
@@ -34,6 +34,7 @@ public class Hysterisis {
 	public Hysterisis(GridFTPTransfer gridFTPClient) {
 		// TODO Auto-generated constructor stub
 		this.gridFTPClient = gridFTPClient;
+		new Thread(new InitializeMatlabConnection()).start();
 	}
 	
 	@VisibleForTesting
@@ -171,38 +172,24 @@ public class Hysterisis {
 	 * 		   maxParams---- For each chunk, maximum observed cc, p and ppq values in logs
 	 * Output: results-- it holds estimated values of cc,p and ppq for each chunk set
 	 */
-	public Object [][] polyFitbyMatlab(List<Partition>  chunks, int []logFilesCount,
-			double []sampleThroughputs){
-		Object[][] results = null;
-		MatlabProxyFactoryOptions options = new MatlabProxyFactoryOptions.Builder()
-        .setUsePreviouslyControlledSession(true)
-        .setHidden(true)
-        .setMatlabLocation(ConfigurationParams.MATLAB_DIR+"/matlab")
-        .build();
-    	MatlabProxyFactory factory = new MatlabProxyFactory(options);
-    	MatlabProxy proxy = null;
-    	try {
-    		proxy = factory.getProxy();
-    		if(proxy == null){
-    			LogManager.writeToLog("Matlab connection is not valid", ConfigurationParams.STDOUT_ID);
-    			return null;
-    		}
-    		results = new Object[chunks.size()][];
-    		LOG.info("chunks :" + chunks.size());
-    		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
-		    	int []sampleTransferValues = chunks.get(chunkNumber).getSamplingParameters();
-				proxy.eval("cd "+ConfigurationParams.MATLAB_SCRIPT_DIR);
-				String filePath = ConfigurationParams.OUTPUT_DIR + "/chunk_" + chunkNumber;
-				String command = "analyzeAndEvaluate('"+filePath+"',"+sampleThroughputs[chunkNumber]+
-								  ",["+sampleTransferValues[0]+","+sampleTransferValues[1] +
-								  ","+sampleTransferValues[2]+"]"+")";
-				LOG.info("Matlab command:" + command);
+	public Object [][] polyFitbyMatlab(List<Partition>  chunks, 
+			int []logFilesCount, double []sampleThroughputs){
+		if(proxy == null){
+			LOG.fatal("Matlab connection is not valid");
+		}
+		Object[][] results = new Object[chunks.size()][];
+		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
+	    	int []sampleTransferValues = chunks.get(chunkNumber).getSamplingParameters();
+			String filePath = ConfigurationParams.OUTPUT_DIR + "/chunk_" + chunkNumber;
+			String command = "analyzeAndEvaluate('"+filePath+"',"+sampleThroughputs[chunkNumber]+
+							  ",["+sampleTransferValues[0]+","+sampleTransferValues[1] +
+							  ","+sampleTransferValues[2]+"]"+")";
+			LOG.info("Matlab command:" + command);
+			try {
 				results[chunkNumber] = proxy.returningEval(command,3);
-    		}
-			
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
     	proxy.disconnect();
     	return results;
@@ -210,6 +197,37 @@ public class Hysterisis {
 	
 	public double[] getEstimatedThroughputs(){
 		return estimatedThroughputs;
+	}
+	
+	public int[][] getEstimatedParams(){
+		return estimatedParamsForChunks;
+	}
+	
+	public class InitializeMatlabConnection implements Runnable {
+		@Override
+		public void run() {
+			LOG.info("Initializing matlab daemon...");
+			MatlabProxyFactoryOptions options = new MatlabProxyFactoryOptions.Builder()
+			        .setUsePreviouslyControlledSession(true)
+			        .setHidden(true)
+			        .setMatlabLocation(ConfigurationParams.MATLAB_DIR+"/matlab")
+			        .build();
+	    	MatlabProxyFactory factory = new MatlabProxyFactory(options);
+	    	try {
+		    	proxy = factory.getProxy();
+	    		if(proxy == null){
+	    			LOG.fatal("Matlab connection is not valid");
+	    		}
+				proxy.eval("cd "+ConfigurationParams.MATLAB_SCRIPT_DIR);
+				LOG.info("Matlab daemon is started successfuly.");
+
+	    	} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+		}
+		
 	}
 	
 }

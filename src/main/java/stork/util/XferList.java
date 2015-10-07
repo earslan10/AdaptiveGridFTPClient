@@ -21,6 +21,8 @@ public class XferList implements Iterable<XferList.Entry> {
   public int onAir= 0;
   public boolean isReadyToTransfer = false;
   public Density density;
+  
+  public int parallelism = -1, pipelining = -1, concurrency = -1, bufferSize = -1;
 
   // Create an XferList for a directory.
   public XferList(String src, String dest) {
@@ -38,6 +40,13 @@ public class XferList implements Iterable<XferList.Entry> {
     root = new Entry("", size);
     list.add(root);
     this.size += size;
+  }
+  
+  public void setTransferParameters(int[] parameters){
+	  concurrency = parameters[0];
+	  parallelism = parameters[1];
+	  pipelining = parameters[2];
+	  bufferSize = parameters[3];
   }
 
   // An entry (file or directory) in the list.
@@ -244,5 +253,8 @@ public class XferList implements Iterable<XferList.Entry> {
 			else
 				e.setdpath(dp+e.path);
   	}
+  }
+  public void shuffleList(){
+	  Collections.shuffle(list);
   }
 }

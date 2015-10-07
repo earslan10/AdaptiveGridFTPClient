@@ -28,14 +28,14 @@ import org.globus.ftp.vanilla.*;
 import org.ietf.jgss.*;
 
 import com.google.common.collect.Lists;
-import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader.Array;
+import com.sun.javafx.logging.PulseLogger;
 
 import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.Partition;
-import didclab.cse.buffalo.CooperativeChannels.Density;
 import didclab.cse.buffalo.utils.Utils;
 import stork.util.*;
 import stork.util.XferList.Entry;
+import sun.net.ProgressListener;
 
 import org.gridforum.jgss.*;
 
@@ -365,6 +365,8 @@ public class CooperativeModule  {
 		private boolean dc_ready = false;
 		private int id;
 		private int xferListIndex= 0; //index of file list which this channel will use to get file
+		public boolean isChunkChanged = false;
+		public int newxferListIndex = -1;
 		Queue<Entry> inTransitFiles = new LinkedList<Entry>();
 		//private XferList.Entry first;
 		//private double bytesTransferred = 0;
@@ -618,14 +620,17 @@ public class CooperativeModule  {
 		// Watch a transfer as it takes place, intercepting status messages
 		// and reporting any errors. Use this for pipelined transfers.
 		// TODO: I'm sure this can be done better...
-		void watchTransfer(TransferProgress p) throws Exception {
+		void watchTransfer(ProgressListener p) throws Exception {
 			MonitorThread rmt, omt;
 
 			rmt = new MonitorThread(rc);
 			omt = new MonitorThread(oc);
 
 			rmt.pair(omt);
-			rmt.progress = p;
+			if(p !=null){
+				rmt.pl = p;
+				rmt.chunkId = this.xferListIndex;
+			}
 
 			omt.start();
 			rmt.run();
@@ -652,6 +657,9 @@ public class CooperativeModule  {
 		public TransferProgress progress = null;
 		private MonitorThread other = this;
 		public Exception error = null;
+		
+		ProgressListener pl = null;
+		int chunkId;
 
 		public MonitorThread(ControlChannel cc) {
 			this.cc = cc;
@@ -683,7 +691,10 @@ public class CooperativeModule  {
 					case 111:  // Restart marker
 						break;   // Just ignore for now...
 					case 112:  // Progress marker
-						//pl.markerArrived(new PerfMarker(r.getMessage()));
+						if(pl != null) {
+							long diff =pl._markerArrived(new PerfMarker(r.getMessage()));
+							pl.client.updateChunk(chunkId, diff);
+						}
 						break;
 					case 125:  // Transfer complete!
 						break;
@@ -706,6 +717,55 @@ public class CooperativeModule  {
 			}
 		}
 	}
+	
+	// Listens for markers from GridFTP servers and updates transfer
+		// progress statistics accordingly.
+		private static class ProgressListener implements MarkerListener {
+			long last_bytes = 0;
+			TransferProgress prog;
+			StorkFTPClient client;
+
+			public ProgressListener(TransferProgress prog) {
+				this.prog = prog;
+			}
+
+			public ProgressListener(StorkFTPClient client) {
+				this.client = client;
+			}
+
+			// When we've received a marker from the server.
+			public void markerArrived(Marker m) {
+				if (m instanceof PerfMarker) try {
+					PerfMarker pm = (PerfMarker) m;
+					long cur_bytes = pm.getStripeBytesTransferred();
+					long diff = cur_bytes-last_bytes;
+
+					last_bytes = cur_bytes;
+					if(prog!=null)
+						prog.done(diff);
+				} catch (Exception e) {
+					// Couldn't get bytes transferred...
+				}
+			}
+			public long _markerArrived(Marker m) {
+				if (m instanceof PerfMarker) try {
+					PerfMarker pm = (PerfMarker) m;
+					long cur_bytes = pm.getStripeBytesTransferred();
+					long diff = cur_bytes-last_bytes;
+					// System.out.println("Progress update :"+ProActiveCooperativeChannels.printSize(cur_bytes)+
+					//		"\tdiff:"+ProActiveCooperativeChannels.printSize(diff));
+
+					last_bytes = cur_bytes;
+					if(prog!=null)
+						prog.done(diff);
+					return diff;
+				} catch (Exception e) {
+					// Couldn't get bytes transferred...
+					return -1;
+				}
+				return -1;
+			}
+		}
 
 	// Wraps a URI and a credential into one object and makes sure the URI
 	// represents a supported protocol. Also parses out a bunch of stuff.
@@ -949,23 +1009,36 @@ public class CooperativeModule  {
 					if (!cc.dc.local) cc.dc.read();
 				} catch (Exception ex) {
 				} else {
-					cc.watchTransfer(null); 
-					updateChunk(cc.xferListIndex,e.size);
+					ProgressListener prog = new ProgressListener(this);
+					cc.watchTransfer(prog); 
+					updateChunk(cc.xferListIndex, e.size - prog.last_bytes);
 					updateOnAir(cc.xferListIndex, -1);
-					// Transfer is acknowledged, send a new file
-					pullAndSendAFile(cc);
+					// Transfer is acknowledged, send a new file unless it is assinged to different chunk
+					if(!cc.isChunkChanged)
+						pullAndSendAFile(cc);
+					if(cc.isChunkChanged && cc.inTransitFiles.isEmpty()){
+						cc.xferListIndex = cc.newxferListIndex;
+						cc.pipelining = chunks.get(cc.xferListIndex).pipelining;
+						cc.setParallelism(chunks.get(cc.xferListIndex).parallelism);
+						for (int i = 0; i< cc.pipelining + 1 ; i++) {
+							pullAndSendAFile(cc);
+						}
+						System.out.println("channel " + cc.id+" joined to Chunk "+cc.xferListIndex + "");
+						cc.isChunkChanged = false;
+					}
 				} 
 				// The transfer of the channel's assigned chunks is completed.
 				// Check if other chunks have any outstanding files. If so, help!
 				if(cc.inTransitFiles.isEmpty()){
-					findChunkInNeed(cc);
+					synchronized (this) {
+						findChunkInNeed(cc);
+					}
 				}
 			}
-
-			//System.out.println(id+" is done of Chunk "+xferListID+" at:"+(System.currentTimeMillis()-CooperativeChannels.init)/1000.0+"\n");
-			//	chunks.get(cc.xferListIndex).channels.remove(new Integer(cc.id));
-			log.flush();
-
+			synchronized (chunks.get(cc.xferListIndex)) {
+				if (!chunks.get(cc.xferListIndex).channels.remove(new Integer(cc.id)))
+					LOG.fatal("channel is not found in chunk "+ cc.xferListIndex);
+			}
 		}
 
 		Entry getNextFile(int index){
@@ -996,14 +1069,15 @@ public class CooperativeModule  {
 			updateOnAir(cc.xferListIndex, +1);
 			return true;
 		}
-		void findChunkInNeed(ChannelPair cc) throws Exception{
-			int index= -1;
-			double max = Double.MIN_VALUE;
+		 void findChunkInNeed(ChannelPair cc) throws Exception{				
+			double max = -1;
 			boolean found = false;
 			
 			while(!found){
+				int index= -1;
 				//System.out.println("total chunks:"+chunks.size());
 				for (int i = 0; i < chunks.size(); i++) {
+					System.out.println("Estimated finish time of chunk:" + i +" "+chunks.get(i).estimatedFinishTime);
 					if((chunks.get(i).estimatedFinishTime > max  || chunks.get(i).channels.size() == 0) && 
 							chunks.get(i).count() > 0 && chunks.get(i).isReadyToTransfer){
 						max = chunks.get(i).estimatedFinishTime;
@@ -1014,22 +1088,27 @@ public class CooperativeModule  {
 				if(index == -1)
 					break;
 				if(index != -1 && chunks.get(index).count() > 0){
-					int []params = Utils.getBestParams(chunks.get(index));
-					chunks.get(cc.xferListIndex).channels.remove(new Integer(cc.id));
-					LOG.info("Thread "+cc.id+" transferred from chunk "+cc.xferListIndex);
+					int oldChunkId = cc.xferListIndex;
+					System.out.println(oldChunkId + "is transferring a chunk out of "+ chunks.get(cc.xferListIndex).channels.size());
+					if (!chunks.get(cc.xferListIndex).channels.remove(new Integer(cc.id))){
+						for (int i=0; i< chunks.get(cc.xferListIndex).channels.size(); i++)
+							LOG.info(chunks.get(cc.xferListIndex).channels.get(i));
+						LOG.fatal("Chunk "+cc.xferListIndex + "could not remove channel" + cc.id);
+					}
 					cc.xferListIndex = index;
-					cc.pipelining = params[0];
-					cc.setParallelism(params[1]);
+					cc.pipelining = chunks.get(index).pipelining;
+					cc.setParallelism(chunks.get(index).parallelism);
 					chunks.get(index).channels.add(cc.id);
+					System.out.println("Channel "+cc.id+" transferred from chunk "+oldChunkId + " to " + index
+							+ " " + chunks.get(index).channels.size()+" "+ chunks.get(oldChunkId).channels.size());
 					// pipe ppq commands for new chunk
-					for (int i = 0; i < cc.pipelining; i++) {
+					for (int i = 0; i < cc.pipelining + 1; i++) {
 						 pullAndSendAFile(cc);
 					}
 					// check if this chunk is successfully fetched and piped files
 					// from new chunk
 					if(cc.inTransitFiles.size() > 0)
 						found = true;
-					LOG.info("------>"+ cc.xferListIndex+" new pipelining"+ cc.pipelining );
 				}
 			}
 		}
@@ -1049,6 +1128,8 @@ public class CooperativeModule  {
 
 		volatile int rv = -1;
 		volatile String message = null;
+		
+		static int fastChunkId = -1, slowChunkId = -1, period = 0;
 		
 		public ExecutorService executor;
 		//List<Entry> firstFilesToSend;
@@ -1146,7 +1227,7 @@ public class CooperativeModule  {
 			Collection<Future<?>> futures = new LinkedList<Future<?>>();
 			for (int i = 0; i < cc; i++) {
 				Entry firstFile = synchronizedPop(firstFilesToSend);
-				Runnable transferChannel = new TransferChannel(i, ppq, p, bufSize, xl, chunkId, firstFile);
+				Runnable transferChannel = new TransferChannel(p, ppq, bufSize, i, xl, chunkId, firstFile);
 				//LOG.info("Starting executor "  + i + " at "+ManagementFactory.getRuntimeMXBean().getUptime());
 				futures.add(executor.submit(transferChannel));
 			}
@@ -1159,15 +1240,14 @@ public class CooperativeModule  {
 					for (Entry e : firstFilesToSend)
 						xl.add(e.path, e.size);
 				}
-			}
-			
+			}			
 			for (Future<?> future:futures) {
 			    future.get();
 			}	
 				
 			double timeSpent = (System.currentTimeMillis()-init)/1000.0;
 			double throughputInMb = (fileSize*8/timeSpent)/(1000*1000);
-			double throughput = fileSize*8/timeSpent;
+			double throughput = (fileSize * 8) /timeSpent;
 			LOG.info("Time spent:"+ timeSpent+" chunk size:" + Utils.printSize(fileSize, true) +
 					" cc:" + client.getChannelCount() + 
 					" Throughput:" + throughputInMb);
@@ -1185,9 +1265,6 @@ public class CooperativeModule  {
 			}
 		}
 		
-		
-		
-
 		public void runMultiChunkTransfer(List<Partition> chunks, int[] channelAllocations) throws Exception{
 			int totalChannels = 0;
 			for (int channelAllocation : channelAllocations)
@@ -1198,6 +1275,7 @@ public class CooperativeModule  {
 			client.chunks.clear();
 			for (int i = 0; i < totalChunks; i++) {
 				XferList xl = chunks.get(i).getRecords();
+				xl.shuffleList();
 				totalDataSize += xl.size();
 				xl.initialSize = xl.size();
 				xl.updateDestinationPaths();
@@ -1224,15 +1302,16 @@ public class CooperativeModule  {
 			long start = System.currentTimeMillis();
 			for (int i = 0; i < totalChunks; i++) {
 				XferList xl = chunks.get(i).getRecords();
-				int[] bestParams = xl.params;
+				LOG.info(channelAllocations[i] + " channels will bre create for chunk " + i);
 				for (int j= 0; j < channelAllocations[i]; j++ ){
 					Entry firstFile = synchronizedPop(firstFilesToSend.get(i));
-					LOG.info("Initializing a channel "+ bestParams[2] + " " +  bestParams[1] + " " + bestParams[3]);
-					Runnable transferChannel = new TransferChannel(currentChannelId++, bestParams[2], bestParams[1],
-							bestParams[3], xl, i, firstFile);
+					Runnable transferChannel = new TransferChannel(xl.parallelism, xl.pipelining,
+							xl.bufferSize, currentChannelId, xl, i, firstFile);
+					currentChannelId++;
 					futures.add(executor.submit(transferChannel));
 				}
 			}
+			LOG.info("Created "  + client.ccs.size() + "channels");
 			//this is monitoring thread which measures throughput of each chunk in every 3 seconds
 			executor.submit(new TransferMonitor());
 			for (Future<?> future:futures) {
@@ -1250,10 +1329,12 @@ public class CooperativeModule  {
 		
 		
 		public class TransferChannel implements Runnable {
-			final int p, ppq, bufSize, doStriping, channelId, chunkId;
+			final int p, ppq, bufSize, doStriping;
+			int channelId;
+			final int chunkId;
 			Entry firstFileToTransfer;
 			XferList xl;
-			public TransferChannel(int channelId, int ppq, int p, int bufSize, XferList xl, int chunkId, Entry file) {
+			public TransferChannel(int p, int ppq, int bufSize, int channelId, XferList xl, int chunkId, Entry file) {
 				this.ppq = ppq;
 				this.p = p;
 				this.channelId = channelId;
@@ -1275,9 +1356,12 @@ public class CooperativeModule  {
 					else {
 						channel = new ChannelPair(su, du);
 					}
-					client.ccs.add(channel);
+					synchronized (client) {
+						channelId = client.ccs.size();
+						client.ccs.add(channel);
+						LOG.info("Channel "+ channelId + " for chunk " + chunkId + " Total chunks "+client.ccs.size());
+					}
 					setupChannelConf(channel, p, ppq, bufSize, doStriping, channelId, chunkId, xl, firstFileToTransfer);
-					//LOG.info("Channel "  + channelId + " is ready at "+ManagementFactory.getRuntimeMXBean().getUptime());
 					client.transferList(channel); 
 				}
 				catch (Exception e) { e.printStackTrace(); }
@@ -1295,7 +1379,9 @@ public class CooperativeModule  {
 				cc.setBufferSize(bufSize);
 				cc.doStriping = doStriping;
 				cc.xferListIndex = chunkIndex;	// chunk id of this channel
-				xl.channels.add(channelId); // add channel id to chunks's list
+				synchronized (xl){
+					xl.channels.add(channelId); // add channel id to chunks's list
+				}
 				
 				if(!cc.dc_ready){
 					if (cc.dc.local || !cc.gridftp)
@@ -1340,41 +1426,43 @@ public class CooperativeModule  {
 			for (int i = 0; i < client.chunks.size(); i++) {
 				XferList xl = client.chunks.get(i);
 				LOG.info("Chunk "+i+":\t"+xl.count()+" files\t"+printSize(xl.size()));
-				int [] pars = xl.params;
 				System.out.println("Chunk "+i+":\t"+xl.count()+" files\t"+printSize(xl.size())
-					+" cc:" + pars[0] + " p:" + pars[1] + " ppq:"+ pars[2]);
+					+" cc:" + xl.concurrency + " p:" + xl.parallelism + " ppq:"+ xl.pipelining);
 				xl.instantTransferredSize = xl.totalTransferredSize;
 			}
 		}
 		private void  monitorChannels(int interval) throws IOException{
 			DecimalFormat df = new DecimalFormat("###.##");
-
+			double [] estimatedCompletionTimes = new double[client.chunks.size()];
 			for (int i = 0; i <client.chunks.size() ; i++) {
-				double estimatedDuration = -1 ;
+				double estimatedCompletionTime = -1 ;
 				XferList xl = client.chunks.get(i);
 				double throughput;
 				if(xl.interval !=  0 && xl.totalTransferredSize - xl.instantTransferredSize > 0){
 					throughput = (xl.totalTransferredSize - xl.instantTransferredSize)/xl.interval;
 					xl.interval = 0;
 				}
-				else 
+				else {
 					throughput = (xl.totalTransferredSize - xl.instantTransferredSize)/interval;
+				}
 				if(throughput == 0) {
 					if(xl.totalTransferredSize == xl.initialSize){ //this chunk finished
 						xl.weighted_throughput = 0;
 					}
 					else if(xl.weighted_throughput != 0){										// this chunk is running but current file has not been transferred
-						xl.instant_throughput = 0;
-						estimatedDuration = (xl.size()-xl.interval*xl.weighted_throughput)/xl.weighted_throughput;
-						xl.estimatedFinishTime = estimatedDuration;
-						xl.interval +=3;
+						//xl.instant_throughput = 0;
+						estimatedCompletionTime = ((xl.initialSize - xl.totalTransferredSize)-xl.interval*xl.instant_throughput)/xl.instant_throughput;
+						xl.estimatedFinishTime = estimatedCompletionTime - interval;
+						xl.interval += 3;
 						System.out.println("Chunk "+i+"\t threads:"+xl.channels.size()+"\t count:"+xl.count()+"\t total:"+printSize(xl.size())
 								+"\t interval:"+xl.interval+"\t onAir:"+xl.onAir);
 						//System.out.println(printSize(xl.totalTransferredSize)+" out of "+ printSize(xl.initialSize)+" transferred");
 					}
-					else
+					else {
 						System.out.println("Chunk "+i+"\t threads:"+xl.channels.size()+"\t count:"+xl.count()+"\t total:"+printSize(xl.size())
 								+"\t onAir:"+xl.onAir);
+						xl.interval += 3;
+					}
 				}
 				else{
 					xl.instant_throughput = throughput;
@@ -1382,15 +1470,72 @@ public class CooperativeModule  {
 						xl.weighted_throughput = throughput;
 					else
 						xl.weighted_throughput = xl.weighted_throughput * .5 + xl.instant_throughput * .5;
-					estimatedDuration = xl.size()/xl.weighted_throughput;
-					xl.estimatedFinishTime = estimatedDuration;
+					estimatedCompletionTime = (xl.initialSize - xl.totalTransferredSize)/xl.instant_throughput;
+					xl.estimatedFinishTime = estimatedCompletionTime;
 					printSize(throughput);
 					System.out.println("Chunk "+i+"\t threads:"+xl.channels.size()+"\t count:"+xl.count()+"\t finished:"+printSize(xl.totalTransferredSize)+"/"
-							+printSize(xl.initialSize)+"\t throughput:"+printSize(xl.weighted_throughput)+"\testimated time:"+df.format(estimatedDuration)+"\t onAir:"+xl.onAir);
+							+printSize(xl.initialSize)+"\t throughput:"+printSize(xl.weighted_throughput)+"\testimated time:"+df.format(estimatedCompletionTime)+"\t onAir:"+xl.onAir);
 					xl.instantTransferredSize = xl.totalTransferredSize;
 				}
+				estimatedCompletionTimes[i] = estimatedCompletionTime;
 			}
 			System.out.println("*******************");
+			if(client.chunks.size() > 1)
+				checkIfChannelReallocationRequired(estimatedCompletionTimes);
+		}
+		
+		public void checkIfChannelReallocationRequired(double[] estimatedCompletionTimes){
+
+			double maxDuration = Double.NEGATIVE_INFINITY;
+			double minDuration = Double.POSITIVE_INFINITY;
+			int curSlowChunkId= -1, curFastChunkId = -1;
+			for (int i = 0; i < estimatedCompletionTimes.length; i++) {
+				if (estimatedCompletionTimes[i] == -1){
+					continue;
+				}
+				if(estimatedCompletionTimes[i] > maxDuration ){
+					maxDuration = estimatedCompletionTimes[i];
+					curSlowChunkId = i;
+				}
+				if(estimatedCompletionTimes[i] < minDuration  && client.chunks.get(i).channels.size() > 1){
+					minDuration = estimatedCompletionTimes[i];
+					curFastChunkId = i;
+				}
+			}
+			System.out.println("slow Chunk "+curSlowChunkId+" fastChunkId "+curFastChunkId +
+					" slowChunkId" + slowChunkId + " fastChunkId" + fastChunkId);
+			if(curSlowChunkId == -1 || curFastChunkId == -1 || curSlowChunkId == curFastChunkId){
+				for (int i = 0; i < estimatedCompletionTimes.length; i++) {
+					System.out.println("Estimated time of :" + i + " " + estimatedCompletionTimes[i]);
+				}
+				return;
+			}
+			XferList slowChunk = client.chunks.get(curSlowChunkId);
+			XferList fastChunk = client.chunks.get(curFastChunkId);
+			period++;
+			if (period >= 3 && (curSlowChunkId == slowChunkId || curFastChunkId == fastChunkId) && slowChunk.estimatedFinishTime >=  fastChunk.estimatedFinishTime + 20){
+				System.out.println("total chunks  " + client.ccs.size());
+				int channelId  = fastChunk.channels.get(fastChunk.channels.size() - 1);
+				synchronized (client) {
+					slowChunk.channels.add(channelId);
+					if(!fastChunk.channels.remove(new Integer(channelId))){
+						for (int i=0; i< fastChunk.channels.size(); i++)
+							LOG.info(fastChunk.channels.get(i));
+						LOG.fatal("channel "+ channelId + "no found!");
+
+					}
+					client.ccs.get(channelId).newxferListIndex = curSlowChunkId;
+					client.ccs.get(channelId).isChunkChanged = true;
+				}
+				System.out.println("Chunk "+curFastChunkId+" is giving channel "+channelId+" to chunk "+curSlowChunkId);
+				period = 0;
+			}
+			else if(curSlowChunkId != slowChunkId && curFastChunkId != fastChunkId){
+				period = 1;
+			}
+			fastChunkId = curFastChunkId ;
+			slowChunkId = curSlowChunkId ;
+			
 		}
 
 		private void abort() {

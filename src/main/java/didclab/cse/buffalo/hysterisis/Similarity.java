@@ -101,7 +101,7 @@ public class Similarity {
 						entry.setNote( record[attributeIndices.get("Note")] );
 					if(entry.getBandwidth() < Math.pow(10, 6))
 						entry.setBandwidth(entry.getBandwidth() * Math.pow(10, 6));
-					entry.setDensity( Entry.findDensityOfList(entry.getFileSize(), (entry.getBandwidth()*entry.getRtt()/8.0)) );
+					entry.setDensity(Entry.findDensityOfList(entry.getFileSize(), (entry.getBandwidth()*entry.getRtt()/8.0)) );
 					entry.setNote(fileName);
 				}
 				catch (Exception e){
@@ -492,7 +492,7 @@ public class Similarity {
 		if(list.size() >= 6*6*2)
 			trials.add(list);
 		Collections.shuffle(trials);
-		int trainingCount = Math.round(trials.size() * 0.7f);
+		int trainingCount = Math.round(trials.size() * 0.8f);
 		List<List<Entry>> training_trials =  trials.subList(0, trainingCount);
 		List<List<Entry>> testing_trials =  trials.subList(trainingCount, trials.size());
 		writeToFile("outputs/chunk_"+chunkNumber + "_training.txt", training_trials);

@@ -49,8 +49,8 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         return
     end
         
-    fprintf('Total entry set list l %d\n', size(entrySetList));
-    disp(strcat('TOTAL entry set list l', ' ', num2str(size(entrySetList))));
+    %fprintf('Total entry set list l %d\n', size(entrySetList));
+    %disp(strcat('TOTAL entry set list l', ' ', num2str(size(entrySetList))));
     
     
     %errors
@@ -136,7 +136,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         thrEstimation = newEstimation;
         subOptimalP = round(t(2));
         if subOptimalP >= 1 
-             for subOptimalP = 1:round(t(2))
+             for subOptimalP = 0:round(t(2))
                  newEstimation = f([subOptimalCC,subOptimalP,t(3)]);
                  %disp(strcat('CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
                  if newEstimation > thrEstimation  * 0.9

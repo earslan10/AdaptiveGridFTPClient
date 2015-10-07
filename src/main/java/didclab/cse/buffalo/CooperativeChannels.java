@@ -5,15 +5,18 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.globus.ftp.GridFTPClient;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 
 import didclab.cse.buffalo.hysterisis.Entry;
 import didclab.cse.buffalo.hysterisis.Hysterisis;
+import didclab.cse.buffalo.hysterisis.Hysterisis.InitializeMatlabConnection;
 import didclab.cse.buffalo.log.LogManager;
 import didclab.cse.buffalo.utils.Utils;
 import stork.module.CooperativeModule.GridFTPTransfer;
@@ -53,7 +56,7 @@ public class CooperativeChannels {
 		//LogManager.createLogFile(ConfigurationParams.INFO_LOG_ID);
 	}
 	@VisibleForTesting
-	public void setUseHysterisi(boolean bool){
+	public void setUseHysterisis(boolean bool){
 		useHysterisis = bool;
 	}
 
@@ -81,6 +84,10 @@ public class CooperativeChannels {
 			gridFTPClient.start();
 			gridFTPClient.waitFor();
 		}
+		if(useHysterisis) {
+			// this will initialize matlab connection while running hysterisis analysis
+			hysterisis = new  Hysterisis(gridFTPClient);
+		}
 		
 		//Get metadata information of dataset
 		XferList dataset = gridFTPClient.getListofFiles(su.getPath(),du.getPath());
@@ -89,7 +96,6 @@ public class CooperativeChannels {
 		ArrayList<Partition> chunks = partitionByFileSize(dataset);
 		int [][] estimatedParamsForChunks = new int[chunks.size()][4];
 		if(useHysterisis) {
-			hysterisis = new  Hysterisis(gridFTPClient);
 			estimatedParamsForChunks = hysterisis.findOptimalParameters(chunks, intendedTransfer, dataset);
 		}
 		switch (algorithm){
@@ -110,12 +116,18 @@ public class CooperativeChannels {
 				if(useHysterisis) {
 					int maxConcurrency = 0;
 					for (int i = 0; i < estimatedParamsForChunks.length; i++){
-						chunks.get(i).getRecords().params = estimatedParamsForChunks[i];
+						chunks.get(i).getRecords().setTransferParameters(estimatedParamsForChunks[i]);
 						if(estimatedParamsForChunks[i][0] > maxConcurrency)
 							maxConcurrency = estimatedParamsForChunks[i][0];
 					}
 					LOG.info(" Running MC with :" +maxConcurrency + " channels.");
 					totalChannelCount = maxConcurrency;
+				}
+				else {
+					channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
+					for (int i = 0; i < estimatedParamsForChunks.length; i++){
+						chunks.get(i).getRecords().setTransferParameters(Utils.getBestParams(chunks.get(i).getRecords()));
+					}
 				}
 				int []channelAllocation = allocateChannelsToChunks(chunks, totalChannelCount);
 				gridFTPClient.runMultiChunkTransfer(chunks, channelAllocation);
@@ -171,19 +183,19 @@ public class CooperativeChannels {
 		}
 
 		ArrayList<Partition> partitions=  new ArrayList<Partition>();
-		for (int i = 0; i < 3; i++) {
+		for (int i = 0; i < 4; i++) {
 			Partition p = new Partition();
 			partitions.add(p);
 		}
 		for (XferList.Entry e : list) {
 			if(e.size < intendedTransfer.getBDP()/2)
 				partitions.get(0).addRecord(e);
-			//else if(e.size < intendedTransfer.getBDP())
-			//	partitions.get(1).addRecord(e);
-			else if (e.size < intendedTransfer.getBDP()*10)
+			else if(e.size < intendedTransfer.getBDP())
 				partitions.get(1).addRecord(e);
-			else
+			else if (e.size < intendedTransfer.getBDP()*10)
 				partitions.get(2).addRecord(e);
+			else
+				partitions.get(3).addRecord(e);
 		}
 		mergePartitions(partitions);
 		for (int i = 0; i < partitions.size(); i++) {
@@ -224,15 +236,21 @@ public class CooperativeChannels {
 			}
 		}
 		else {
+			int [][]estimatedParams = hysterisis.getEstimatedParams();
 			double[] estimatedThroughputs = hysterisis.getEstimatedThroughputs();
+			double[] estimatedUnitThroughputs = new double[chunks.size()];
+			for (int i = 0; i < chunks.size(); i++) {
+				estimatedUnitThroughputs[i] = estimatedThroughputs[i] / estimatedParams[i][0];
+				LOG.info("estimated unit thr:" + estimatedUnitThroughputs[i]  + " "+ estimatedThroughputs[i] + " " + estimatedParams[i][0]);
+			}
 			double totalThroughput = 0;
-			for (int i = 0; i < estimatedThroughputs.length; i++) {
-				totalThroughput += estimatedThroughputs[i];
+			for (int i = 0; i < estimatedUnitThroughputs.length; i++) {
+				totalThroughput += estimatedUnitThroughputs[i];
 			}
 			double totalWeight = 0;
 			double[] chunkWeights = new double[chunks.size()];
 			for (int i = 0; i < estimatedThroughputs.length; i++) {
-				chunkWeights[i] = chunks.get(i).getTotalSize() * (totalThroughput / estimatedThroughputs[i]);
+				chunkWeights[i] = chunks.get(i).getTotalSize() * (totalThroughput / estimatedUnitThroughputs[i]);
 				totalWeight += chunkWeights[i];
 			}
 			int assignedChannelCount = 0;

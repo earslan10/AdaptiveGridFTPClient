@@ -71,7 +71,7 @@ public class CooperativeChannelsTest {
 
 	@Test
 	public void testHysterisis() throws Exception {
-		multiChunk.setUseHysterisi(true);
+		multiChunk.setUseHysterisis(true);
 		multiChunk.algorithm = TransferAlgorithm.MULTICHUNK;
 		multiChunk.transfer();
 	}
