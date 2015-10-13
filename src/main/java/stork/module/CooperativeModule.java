@@ -1155,34 +1155,26 @@ public class CooperativeModule  {
 
 		public void process() throws Exception {
 			String in = null;  // Used for better error messages.
-			if(proxyFile != null){
+			
+			// Check if we were provided a proxy. If so, load it.
+			if (usu.getScheme().compareTo("gsiftp") == 0 && proxyFile != null) try {
 				File cred_file = new File(proxyFile);
-				byte[] cred_bytes = null;
-				FileInputStream fis = null;
-				try{
-					fis = new FileInputStream(cred_file);
-					cred_bytes = new byte[(int) cred_file.length()];
-					fis.read(cred_bytes);
-				}catch(Exception e){
-					e.printStackTrace();
-				}
-				// Check if we were provided a proxy. If so, load it.
-				if (usu.getScheme().compareTo("gsiftp") == 0 || proxyFile != null) try {
-					ExtendedGSSManager gm =	(ExtendedGSSManager) ExtendedGSSManager.getInstance();
-					try{
-						cred = gm.createCredential(
-								cred_bytes,
-								ExtendedGSSCredential.IMPEXP_OPAQUE,
-								GSSCredential.DEFAULT_LIFETIME, null,
-								GSSCredential.INITIATE_AND_ACCEPT);
-						fis.close();
-					}
-					catch(Exception e){
-						e.printStackTrace();
-					}
-				} catch (Exception e) {
-					fatal("error loading x509 proxy: "+e.getMessage());
-				}
+				FileInputStream fis = new FileInputStream(cred_file);
+				byte[] cred_bytes = new byte[(int) cred_file.length()];
+				fis.read(cred_bytes);
+				//System.out.println("Setting parameters");
+				//GSSManager manager = ExtendedGSSManager.getInstance();
+				ExtendedGSSManager gm =	(ExtendedGSSManager) ExtendedGSSManager.getInstance();
+				cred = gm.createCredential(cred_bytes,	
+						ExtendedGSSCredential.IMPEXP_OPAQUE,
+						GSSCredential.DEFAULT_LIFETIME, null,
+						GSSCredential.INITIATE_AND_ACCEPT);
+				
+				
+				
+				//System.out.println("Credential:"+cred_file.);
+			} catch (Exception e) {
+				fatal("error loading x509 proxy: "+e.getMessage());
 			}
 
 			// Attempt to connect to hosts.
@@ -1193,7 +1185,6 @@ public class CooperativeModule  {
 			} catch (Exception e) {
 				fatal("couldn't connect to "+in+" server: "+e.getMessage());
 			}
-
 			// Attempt to connect to hosts.
 			// TODO: Differentiate between temporary errors and fatal errors.
 			try {
@@ -1209,7 +1200,6 @@ public class CooperativeModule  {
 			else if (su.path.endsWith("/") && !du.path.endsWith("/"))
 				fatal("src is a directory, but dest is not");
 			client.chunks =  new LinkedList<XferList>();
-
 		}
 		
 		public XferList getListofFiles(String sp, String dp) throws Exception {
