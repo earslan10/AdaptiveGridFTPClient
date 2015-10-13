@@ -83,6 +83,7 @@ public class Similarity {
 						entry.setPipelining( 0 );
 					else
 						entry.setPipelining( Integer.parseInt( record[attributeIndices.get("Pipelining")] ) );
+									
 					if(record[attributeIndices.get("Fast")].compareTo("ON") == 0 || 
 							record[attributeIndices.get("Fast")].compareTo("1") == 0)
 						entry.setFast(true);
@@ -101,7 +102,7 @@ public class Similarity {
 						entry.setNote( record[attributeIndices.get("Note")] );
 					if(entry.getBandwidth() < Math.pow(10, 6))
 						entry.setBandwidth(entry.getBandwidth() * Math.pow(10, 6));
-					entry.setDensity(Entry.findDensityOfList(entry.getFileSize(), (entry.getBandwidth()*entry.getRtt()/8.0)) );
+					entry.setDensity(Entry.findDensityOfList(entry.getFileSize(), entry.getBandwidth()));
 					entry.setNote(fileName);
 				}
 				catch (Exception e){
@@ -473,6 +474,8 @@ public class Similarity {
 				//		+e.getThroughput()+" "+e.getParameters(), ConfigurationParams.STDOUT_ID);
 				//Map<String,Similarity.Entry> copied = new HashMap<String,Similarity.Entry>(set);
 				//trials.add((LinkedList)list.clone());
+				
+				
 				if(list.size() >= 6*6*2){
 					trials.add(list);
 					//LogManager.writeToLog("Adding "+list.size(), ConfigurationParams.STDOUT_ID);

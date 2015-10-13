@@ -398,14 +398,15 @@ public class Entry{
 	}
 
 	
-	public static Density findDensityOfList(double averageFileSize, double BDP){
-			if(averageFileSize < BDP/10)
-				return Density.SMALL;
-			else if(averageFileSize < BDP)
-				return Density.MIDDLE;
-			else if (averageFileSize < 10 * BDP)
-				return Density.LARGE;
-			return Density.HUGE;
+	public static Density findDensityOfList(double averageFileSize, double bandwidth){
+		double bandwidthInMB = bandwidth / 8.0;
+		if(averageFileSize < bandwidthInMB/20)
+			return Density.SMALL;
+		else if(averageFileSize < bandwidthInMB/5)
+			return Density.MIDDLE;
+		else if (averageFileSize < bandwidthInMB * 2)
+			return Density.LARGE;
+		return Density.HUGE;
 	}	
 	int DensityToValue(Density density){
 		if(density == Density.SMALL)

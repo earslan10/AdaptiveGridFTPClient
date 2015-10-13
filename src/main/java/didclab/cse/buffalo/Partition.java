@@ -86,7 +86,9 @@ public class Partition {
     	entry.setDedicated(e.isDedicated());
     }
     public double getCentroid() {
-        return centroid;
+    	if(fileList.count() == 0)
+    		return 0;
+        return fileList.size()/fileList.count();
     }
 
     public XferList getRecords() {

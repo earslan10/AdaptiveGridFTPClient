@@ -30,13 +30,13 @@ public class Utils {
 	}
 	
 	public static int[] getBestParams(XferList xl){
-		Density density = Entry.findDensityOfList(xl.avgFileSize(), CooperativeChannels.intendedTransfer.getBDP());
+		Density density = Entry.findDensityOfList(xl.avgFileSize(), CooperativeChannels.intendedTransfer.getBandwidth());
 		xl.density = density;
 		double avgFileSize = xl.avgFileSize();
 		int fileCountToFillThePipe = (int)Math.round(CooperativeChannels.intendedTransfer.getBDP()/avgFileSize);
 		int pLevelToFillPipe = (int)Math.ceil(CooperativeChannels.intendedTransfer.getBDP()/CooperativeChannels.intendedTransfer.getBufferSize());
 		int pLevelToFillBuffer = (int)Math.ceil(avgFileSize/CooperativeChannels.intendedTransfer.getBufferSize());
-		int cc = Math.max(Math.min(Math.min(fileCountToFillThePipe, xl.count()), CooperativeChannels.intendedTransfer.getMaxConcurrency()), 2);
+		int cc = Math.max(Math.min(Math.min(fileCountToFillThePipe, CooperativeChannels.intendedTransfer.getMaxConcurrency()),  xl.count()), 2);
 		int ppq = fileCountToFillThePipe;
 		int p =Math.max(Math.min(pLevelToFillPipe, pLevelToFillBuffer) , 1);
 		p = avgFileSize > CooperativeChannels.intendedTransfer.getBDP() ? p+1 : p;

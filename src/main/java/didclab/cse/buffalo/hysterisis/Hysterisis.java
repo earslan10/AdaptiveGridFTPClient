@@ -27,14 +27,18 @@ public class Hysterisis {
 	static List<List<Entry>> entries;
 	private GridFTPTransfer gridFTPClient;
 	
+	public double optimizationAlgorithmTime = 8;
 	int [][] estimatedParamsForChunks;
 	private double [] estimatedThroughputs;
 	private double[] estimatedAccuracies;
 	
+	Thread initializerThread;
+	
 	public Hysterisis(GridFTPTransfer gridFTPClient) {
 		// TODO Auto-generated constructor stub
 		this.gridFTPClient = gridFTPClient;
-		new Thread(new InitializeMatlabConnection()).start();
+		initializerThread = new Thread(new InitializeMatlabConnection());
+		initializerThread.start();
 	}
 	
 	@VisibleForTesting
@@ -174,8 +178,18 @@ public class Hysterisis {
 	 */
 	public Object [][] polyFitbyMatlab(List<Partition>  chunks, 
 			int []logFilesCount, double []sampleThroughputs){
+		if(initializerThread.isAlive()) {
+			try {
+				initializerThread.join();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+				System.exit(-1);
+			}
+		}
 		if(proxy == null){
-			LOG.fatal("Matlab connection is not valid");
+			LOG.fatal("Matlab connection not valid");
+			System.exit(-1);
 		}
 		Object[][] results = new Object[chunks.size()][];
 		for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
@@ -224,6 +238,8 @@ public class Hysterisis {
 	    	} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+				System.err.println("Matlab could not be initialized");
+				System.exit(-1);
 			}
 			
 		}
