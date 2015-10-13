@@ -204,47 +204,38 @@ public class CooperativeModule  {
 
 
 
-	// differences between local and remote transfers.
 	private static class ControlChannel {
-		public final boolean local, gridftp;
+		public final boolean local, gridftp, hasCred;
 		public final FTPServerFacade facade;
 		public final FTPControlChannel fc;
 		public final BasicClientControlChannel cc;
 
 
-		public ControlChannel(FTPURI u) {
+		public ControlChannel(FTPURI u) throws Exception {
 			if (u.file)
 				throw new Error("making remote connection to invalid URL");
 			local = false;
 			facade = null;
 			gridftp = u.gridftp;
-			try {
-				if (u.gridftp) {
-					GridFTPControlChannel gc;
-					cc = fc = gc = new GridFTPControlChannel(u.host, u.port);
-					gc.open();
-	
-					if (u.cred != null) {
-						gc.authenticate(u.cred, u.user);
-					} else {
-						Reply r = exchange("USER", u.user);
-						if (Reply.isPositiveIntermediate(r)) try {
-							execute("PASS", u.pass);
-						} catch (Exception e) {
-							throw new Exception("bad password");
-						} else if (!Reply.isPositiveCompletion(r)) {
-							throw new Exception("bad username");
+			hasCred = u.cred != null;
+			if (u.gridftp) {
+				GridFTPControlChannel gc;
+				cc = fc = gc = new GridFTPControlChannel(u.host, u.port);
+				gc.open();
+				if (u.cred != null) {
+					try{
+						
+						//gc.authenticate(u.cred, u.user);
+						gc.authenticate(u.cred);
 						}
-					}
-	
-					exchange("SITE CLIENTINFO appname="+MODULE_NAME+
-							";appver="+MODULE_VERSION+";schema=gsiftp;");
+						catch (Exception e){
+							e.printStackTrace();
+							System.exit(0);
+						}
 				} else {
 					String user = (u.user == null) ? "anonymous" : u.user;
-					cc = fc = new FTPControlChannel(u.host, u.port);
-					fc.open();
-	
-					Reply r = exchange("USER", user);
+                    String pass = (u.pass == null) ? "" : u.pass;
+                    Reply r = exchange("USER", user);
 					if (Reply.isPositiveIntermediate(r)) try {
 						execute("PASS", u.pass);
 					} catch (Exception e) {
@@ -253,12 +244,25 @@ public class CooperativeModule  {
 						throw new Exception("bad username");
 					}
 				}
-			} catch (Exception e) {
-				LOG.warn("Client could not be establieshed. Exiting...");
-				e.printStackTrace();
-				System.exit(-1);
-				throw new ExceptionInInitializerError(e);
+				exchange("SITE CLIENTINFO appname="+MODULE_NAME+
+						";appver="+MODULE_VERSION+";schema=gsiftp;");
+
+				//server.run();
+			} else {
+				String user = (u.user == null) ? "anonymous" : u.user;
+				cc = fc = new FTPControlChannel(u.host, u.port);
+				fc.open();
+
+				Reply r = exchange("USER", user);
+				if (Reply.isPositiveIntermediate(r)) try {
+					execute("PASS", u.pass);
+				} catch (Exception e) {
+					throw new Exception("bad password");
+				} else if (!Reply.isPositiveCompletion(r)) {
+					throw new Exception("bad username");
+				}
 			}
+
 		}
 
 		// Make a local control channel connection to a remote control channel.
@@ -267,14 +271,18 @@ public class CooperativeModule  {
 				throw new Error("making local facade for local channel");
 			local = true;
 			gridftp = rc.gridftp;
-			if (gridftp)
-				facade = new GridFTPServerFacade((GridFTPControlChannel) rc.fc);
+			hasCred = rc.hasCred;
+             if (gridftp){
+                     facade = new GridFTPServerFacade((GridFTPControlChannel) rc.fc);
+                     if (!hasCred)
+                             ((GridFTPServerFacade)facade).setDataChannelAuthentication(DataChannelAuthentication.NONE);
+             }
+
 			else
 				facade = new FTPServerFacade(rc.fc);
 			cc = facade.getControlChannel();
 			fc = null;
 		}
-
 		// Dumb thing to convert mode/type chars into JGlobus mode ints...
 		private static int modeIntValue(char m) throws Exception {
 			switch (m) {
