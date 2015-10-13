@@ -330,6 +330,7 @@ public class Similarity {
 					target.printEntry("");
 					System.exit(-1);
 				}
+				/*
 				if(e.getDensity() == target.getDensity() && similarityValue < .4){
 					LOG.info("Unexpected similarity value:"+similarityValue);
 					e.printEntry("");
@@ -343,7 +344,7 @@ public class Similarity {
 						similarityValue, ConfigurationParams.INFO_LOG_ID);
 					System.exit(-1);
 				}
-
+				*/
 
 				//e.specVector.remove(e.specVector.size()-1);
 				//End of cosine-similarity

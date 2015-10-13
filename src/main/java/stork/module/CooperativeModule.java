@@ -1209,7 +1209,7 @@ public class CooperativeModule  {
 		public double runTransfer(final int cc, final int p, final int ppq,
 				final int bufSize, final XferList xl, int chunkId){
 			// Set full destination path of files
-			LOG.info("Transferring chunk " + chunkId +" params:" + cc+ " " + p + " "+ ppq + " size:"+(xl.size()/(1024*1024*1024))
+			LOG.info("Transferring chunk " + chunkId +" params:" + cc+ " " + p + " "+ ppq + " size:"+(xl.size()/(1024.0*1024))
 					+" files:" + xl.count());
 			double fileSize = xl.size();
 			xl.updateDestinationPaths();
