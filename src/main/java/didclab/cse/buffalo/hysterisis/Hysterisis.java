@@ -86,7 +86,7 @@ public class Hysterisis {
     		Partition chunk =  chunks.get(chunkNumber);
 
         	XferList sample_files = new XferList("", "") ;
-        	double MINIMUM_SAMPLING_SIZE = 40 * intendedTransfer.getBDP();
+        	double MINIMUM_SAMPLING_SIZE = intendedTransfer.getBandwidth() / 2;
         	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
         		XferList.Entry file = chunk.getRecords().pop();
         		sample_files.add(file.path, file.size);
