@@ -236,13 +236,13 @@ public class CooperativeChannels {
 		return partitions;
 	}
 	
-	private int[] allocateChannelsToChunks(List<Partition> chunks, int channelCount){
+	private int[] allocateChannelsToChunks(List<Partition> chunks, final int channelCount){
 		int totalChunks = chunks.size();
 		int[] concurrencyLevels = new int[totalChunks];
 		if(channelDistPolicy == ChannelDistributionPolicy.ROUND_ROBIN){
 			int modulo = (totalChunks + 1) /2 ;
 			int count = 0;
-			for (int i = 0; count <channelCount ; i++){
+			for (int i = 0; count < channelCount ; i++){
 				int index = i % modulo ;
 				concurrencyLevels[index]++;
 				count++;
@@ -302,10 +302,17 @@ public class CooperativeChannels {
 			}
 			
 			int assignedChannelCount = 0;
-			for (int i = 0; i < chunks.size(); i++) {
+			for (int i = 0; i < (totalChunks + 1 /2) && assignedChannelCount < channelCount; i++) {
 				double propChunkWeight = (chunkWeights[i]*1.0/totalWeight);
-				concurrencyLevels[i] = (int) Math.floor(channelCount * propChunkWeight);
+				int remaining_channels = channelCount - assignedChannelCount;
+				concurrencyLevels[i] = Math.min(remaining_channels, (int) Math.floor(channelCount * propChunkWeight));
 				assignedChannelCount += concurrencyLevels[i];
+				if(i < totalChunks - i - 1 && assignedChannelCount < channelCount){
+					propChunkWeight = (chunkWeights[totalChunks - i - 1]*1.0/totalWeight);
+					remaining_channels = channelCount - assignedChannelCount;
+					concurrencyLevels[totalChunks - i - 1] = Math.min(remaining_channels, (int) Math.floor(channelCount * propChunkWeight));
+					assignedChannelCount += concurrencyLevels[totalChunks - i - 1];
+				}
 			}
 			
 			// Since we take floor when calculating, total channels might be unassigned.
@@ -319,6 +326,8 @@ public class CooperativeChannels {
 						i = 0;
 					}
 				}
+				if(assignedChannelCount >= channelCount)
+					break;
 				//find the chunks with minimum assignedChannelCount
 				int minChannelCount = Integer.MAX_VALUE;
 				int chunkIdWithMinChannel = -1;
