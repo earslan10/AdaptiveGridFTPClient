@@ -109,7 +109,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         objectiveF = @(x)eval(newEq);
         [t,val] = fmincon(objectiveF,[1,1,0],[],[],[],[],[1,1,0],entrySet.maxParamValues,[], options);
         if -1*val > 10^3 | -1*val < 10
-            %disp(strcat('Skipping:',num2str(entrySet.note) , ' estimation:', num2str(val)));
+            disp(strcat('SKIPPING:',num2str(entrySet.note) , ' estimation:', num2str(val)));
             continue;
         end
         %weight = targetThroughput / (targetThroughput + entrySet.closeness);
@@ -195,7 +195,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
                end
            end
     end
-    
+    cc
     cc = round( cc / totalWeight);
     p = round( p / totalWeight);
     ppq = round( ppq/ totalWeight);

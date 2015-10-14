@@ -240,20 +240,18 @@ public class CooperativeChannels {
 		int totalChunks = chunks.size();
 		int[] concurrencyLevels = new int[totalChunks];
 		if(channelDistPolicy == ChannelDistributionPolicy.ROUND_ROBIN){
-			List<Partition> reordered_chunks =Lists.newArrayListWithCapacity(totalChunks);
-			for (int i = 0; i < (totalChunks + 1) /2  ; i++){
-				reordered_chunks.add(chunks.get(i));
-				if (i < totalChunks - i  - 1 )
-					reordered_chunks.add(chunks.get(totalChunks - i - 1));
+			int modulo = (totalChunks + 1) /2 ;
+			int count = 0;
+			for (int i = 0; count <channelCount ; i++){
+				int index = i % modulo ;
+				concurrencyLevels[index]++;
+				count++;
+				if (index < totalChunks - index  - 1) {
+					concurrencyLevels[totalChunks - index - 1]++;
+					count++;
+				}
 			}
-			chunks = reordered_chunks;
-			// Find channel distribution to chunks. Revised round-robin
-			// e.g if cc= 6 and there're 4 chunks then, iterate as: 0-3-1-2-0-3
-			// thus channel assignments becomes: 2-1-1-2
-			for (int i = 0; i < channelCount; i++) {
-				int chunkId = i % totalChunks;
-				concurrencyLevels[chunkId]++;
-			}
+			
 			for (int i = 0; i < totalChunks; i++) {
 				System.out.println("Chunk "+i + ":"+ concurrencyLevels[i] +"channels");
 			}
