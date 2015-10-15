@@ -1025,7 +1025,6 @@ public class CooperativeModule  {
 				} else {
 					ProgressListener prog = new ProgressListener(this);
 					cc.watchTransfer(prog); 
-					LOG.info("channel:"+cc.id+" got transferred "+e.path);
 					updateChunk(cc.xferListIndex, e.size - prog.last_bytes);
 					updateOnAir(cc.xferListIndex, -1);
 					// Transfer is acknowledged, send a new file unless it is assinged to different chunk
@@ -1408,7 +1407,6 @@ public class CooperativeModule  {
 						cc.setActive(hp);
 					}
 				}
-				LOG.info("Channel" +cc.id +"Piping:"+firstFileToTransfer.path());
 				cc.pipeTransfer(firstFileToTransfer);
 				cc.inTransitFiles.add(firstFileToTransfer);
 			} catch (Exception ex) {
@@ -1520,8 +1518,8 @@ public class CooperativeModule  {
 						curFastChunkId = i;
 					}
 				}
-				System.out.println("cur slow "+curSlowChunkId+" cur fast "+curFastChunkId +
-						" slow " + slowChunkId + " fast" + fastChunkId + " period "+(period+1));
+				System.out.println("cur slow chunk "+curSlowChunkId+" cur fast chunk "+curFastChunkId +
+						" prev slow chunk" + slowChunkId + " prev fast chunk" + fastChunkId + " period "+(period+1));
 				if(curSlowChunkId == -1 || curFastChunkId == -1 || curSlowChunkId == curFastChunkId){
 					for (int i = 0; i < estimatedCompletionTimes.length; i++) {
 						System.out.println("Estimated time of :" + i + " " + estimatedCompletionTimes[i]);
@@ -1535,7 +1533,7 @@ public class CooperativeModule  {
 				double fastChunkProjectedFinishTime = fastChunk.estimatedFinishTime * fastChunk.channels.size()  / (fastChunk.channels.size() - 1); 
 				if (period >= 3 && (curSlowChunkId == slowChunkId || curFastChunkId == fastChunkId)){
 					if(slowChunkProjectedFinishTime >=  fastChunkProjectedFinishTime * 2) {
-						System.out.println("total chunks  " + client.ccs.size());
+						//System.out.println("total chunks  " + client.ccs.size());
 						int channelId  = fastChunk.channels.get(fastChunk.channels.size() - 1);
 						synchronized (client) {
 							slowChunk.channels.add(channelId);
@@ -1543,7 +1541,6 @@ public class CooperativeModule  {
 								for (int i=0; i< fastChunk.channels.size(); i++)
 									LOG.info(fastChunk.channels.get(i));
 								LOG.fatal("channel "+ channelId + "no found!");
-		
 							}
 							client.ccs.get(channelId).newxferListIndex = curSlowChunkId;
 							client.ccs.get(channelId).isChunkChanged = true;

@@ -90,7 +90,6 @@ public class Hysterisis {
         	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
         		XferList.Entry file = chunk.getRecords().pop();
         		sample_files.add(file.path, file.size);
-        		LOG.info(file.path());
         	}
         	
         	sample_files.sp = dataset.sp;
