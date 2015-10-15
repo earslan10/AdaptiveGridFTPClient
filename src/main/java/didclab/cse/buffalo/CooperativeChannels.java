@@ -265,7 +265,7 @@ public class CooperativeChannels {
 				double[] estimatedUnitThroughputs = new double[chunks.size()];
 				for (int i = 0; i < chunks.size(); i++) {
 					estimatedUnitThroughputs[i] = estimatedThroughputs[i] / estimatedParams[i][0];
-					LOG.info("estimated unit thr:" + estimatedUnitThroughputs[i]  + " "+ estimatedThroughputs[i] + " " + estimatedParams[i][0]);
+					LOG.info("estimated unit thr:" + estimatedUnitThroughputs[i]  + " " + estimatedParams[i][0]);
 				}
 				double totalThroughput = 0;
 				for (int i = 0; i < estimatedUnitThroughputs.length; i++) {

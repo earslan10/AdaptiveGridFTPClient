@@ -1025,6 +1025,7 @@ public class CooperativeModule  {
 				} else {
 					ProgressListener prog = new ProgressListener(this);
 					cc.watchTransfer(prog); 
+					LOG.info("channel:"+cc.id+" got transferred "+e.path);
 					updateChunk(cc.xferListIndex, e.size - prog.last_bytes);
 					updateOnAir(cc.xferListIndex, -1);
 					// Transfer is acknowledged, send a new file unless it is assinged to different chunk
@@ -1406,6 +1407,7 @@ public class CooperativeModule  {
 						HostPort hp = cc.setPassive();
 						cc.setActive(hp);
 					}
+					LOG.info("Channel" +cc.id +"Piping:"+firstFileToTransfer.path());
 					cc.pipeTransfer(firstFileToTransfer);
 					cc.inTransitFiles.add(firstFileToTransfer);
 				}
