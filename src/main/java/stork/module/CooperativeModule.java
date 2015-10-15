@@ -1407,10 +1407,10 @@ public class CooperativeModule  {
 						HostPort hp = cc.setPassive();
 						cc.setActive(hp);
 					}
-					LOG.info("Channel" +cc.id +"Piping:"+firstFileToTransfer.path());
-					cc.pipeTransfer(firstFileToTransfer);
-					cc.inTransitFiles.add(firstFileToTransfer);
 				}
+				LOG.info("Channel" +cc.id +"Piping:"+firstFileToTransfer.path());
+				cc.pipeTransfer(firstFileToTransfer);
+				cc.inTransitFiles.add(firstFileToTransfer);
 			} catch (Exception ex) {
 				System.out.println("Failed to setup channel");
 				ex.printStackTrace();
