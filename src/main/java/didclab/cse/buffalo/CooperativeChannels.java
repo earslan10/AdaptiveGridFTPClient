@@ -246,7 +246,7 @@ public class CooperativeChannels {
 				int index = i % modulo ;
 				concurrencyLevels[index]++;
 				count++;
-				if (index < totalChunks - index  - 1) {
+				if (index < totalChunks - index  - 1 && count < channelCount) {
 					concurrencyLevels[totalChunks - index - 1]++;
 					count++;
 				}

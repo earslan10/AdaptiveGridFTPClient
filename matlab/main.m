@@ -122,8 +122,8 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         %disp(strcat('Final #',entrySet.note ,' error:', num2str(entrySet.closeness), ...
         %     ' R2:', num2str(entrySet.R2),' weight:',num2str(weight),...
         %    ' Val:', num2str(val)));
-        disp(strcat('Fmincon cc:',num2str(t(1)) ,' p:', num2str(round(t(2))), ...
-             ' ppq:', num2str(round(t(3))) , ' value:',num2str(-1*val)));
+        disp(strcat(entrySet.note, ' Fmincon cc:',num2str(t(1)) ,' p:', num2str(round(t(2))), ...
+             ' ppq:', num2str(round(t(3))) , ' value:',num2str(-1*val), ' closeness:' , entrySet.closeness));
          
         f = @(x)eval(entrySet.bestFitEq);
         thrEstimation = -1 * val;
@@ -131,7 +131,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         for subOptimalCC = round(t(1)) : -1 :1
             newEstimation = f([subOptimalCC,t(2),t(3)]);
             %disp(strcat('CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
-            if newEstimation < thrEstimation * 0.8
+            if newEstimation < thrEstimation * 0.9
                 subOptimalCC = subOptimalCC + 1;
                 %disp(strcat('Adjusted CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
                 break;
@@ -195,7 +195,6 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
                end
            end
     end
-    cc
     cc = round( cc / totalWeight);
     p = round( p / totalWeight);
     ppq = round( ppq/ totalWeight);
