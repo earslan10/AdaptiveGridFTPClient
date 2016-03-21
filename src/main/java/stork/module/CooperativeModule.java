@@ -28,7 +28,6 @@ import org.globus.ftp.vanilla.*;
 import org.ietf.jgss.*;
 
 import com.google.common.collect.Lists;
-import com.sun.javafx.logging.PulseLogger;
 
 import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.Partition;
@@ -1025,7 +1024,10 @@ public class CooperativeModule  {
 				} else {
 					ProgressListener prog = new ProgressListener(this);
 					cc.watchTransfer(prog); 
-					updateChunk(cc.xferListIndex, e.size - prog.last_bytes);
+					if (e.len == -1)
+						updateChunk(cc.xferListIndex, e.size - prog.last_bytes);
+					else
+						updateChunk(cc.xferListIndex, e.len - prog.last_bytes);
 					updateOnAir(cc.xferListIndex, -1);
 					// Transfer is acknowledged, send a new file unless it is assinged to different chunk
 					if(!cc.isChunkChanged)
@@ -1169,7 +1171,7 @@ public class CooperativeModule  {
 						ExtendedGSSCredential.IMPEXP_OPAQUE,
 						GSSCredential.DEFAULT_LIFETIME, null,
 						GSSCredential.INITIATE_AND_ACCEPT);
-				
+				fis.close();
 				
 				
 				//System.out.println("Credential:"+cred_file.);
@@ -1473,7 +1475,12 @@ public class CooperativeModule  {
 					else {
 						System.out.println("Chunk "+i+"\t threads:"+xl.channels.size()+"\t count:"+xl.count()+"\t total:"+printSize(xl.size())
 								+"\t onAir:"+xl.onAir);
-						xl.interval += 3;
+						if(xl.channels.size() == 0) {
+							estimatedCompletionTime = Double.POSITIVE_INFINITY;
+						}
+						else {
+							xl.interval += 3;
+						}
 					}
 				}
 				else{
@@ -1529,7 +1536,9 @@ public class CooperativeModule  {
 				XferList slowChunk = client.chunks.get(curSlowChunkId);
 				XferList fastChunk = client.chunks.get(curFastChunkId);
 				period++;
-				double slowChunkProjectedFinishTime = slowChunk.estimatedFinishTime * slowChunk.channels.size() / (slowChunk.channels.size() + 1); 
+				double slowChunkProjectedFinishTime = Double.MAX_VALUE;
+				if(slowChunk.channels.size() > 0)
+					slowChunkProjectedFinishTime = slowChunk.estimatedFinishTime * slowChunk.channels.size() / (slowChunk.channels.size() + 1); 
 				double fastChunkProjectedFinishTime = fastChunk.estimatedFinishTime * fastChunk.channels.size()  / (fastChunk.channels.size() - 1); 
 				if (period >= 3 && (curSlowChunkId == slowChunkId || curFastChunkId == fastChunkId)){
 					if(slowChunkProjectedFinishTime >=  fastChunkProjectedFinishTime * 2) {

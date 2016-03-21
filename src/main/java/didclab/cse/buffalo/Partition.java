@@ -94,6 +94,9 @@ public class Partition {
     public XferList getRecords() {
         return fileList;
     }
+    public void setXferList(XferList fileList) {
+    	this.fileList = fileList;
+    }
 
     public void addRecord(XferList.Entry e) {
         fileList.add(e.path,e.size);

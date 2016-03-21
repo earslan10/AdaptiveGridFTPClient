@@ -69,6 +69,7 @@ public class CooperativeChannels {
 		String mDynamic = useDynamicScheduling ? "Dyanmic" : "";
 		LOG.info("*************" + algorithm.name() + "************");
 		LogManager.writeToLog("*************" + algorithm.name()+ "-" + mHysterisis+ "-" + mDynamic + "************" , ConfigurationParams.INFO_LOG_ID);
+		
 		URI su = null ,du = null;
 		try {
 			su = new URI(intendedTransfer.getSource()).normalize();
@@ -107,6 +108,8 @@ public class CooperativeChannels {
 			estimatedParamsForChunks = hysterisis.findOptimalParameters(chunks, intendedTransfer, dataset);
 			for(int i = 0; i< chunks.size(); i++){
 				timeSpent += chunks.get(i).getSamplingTime();
+				if (estimatedParamsForChunks[i][0] > chunks.get(i).getRecords().count())
+					estimatedParamsForChunks[i][0] =  chunks.get(i).getRecords().count();
 			}
 			timeSpent += hysterisis.optimizationAlgorithmTime;
 			//estimatedParamsForChunks[0][2] = 17;
@@ -233,20 +236,43 @@ public class CooperativeChannels {
 					+"\t"+Utils.printSize(partitions.get(i).getRecords().size(), true)+" Density:" +
 					chunk.entry.getDensity());
 		}
+		/*
+		for (int i = 0; i < partitions.size(); i++) {
+			XferList newList = partitions.get(i).getRecords().sliceLargeFiles(ConfigurationParams.MAXIMUM_SINGLE_FILE_SIZE);
+			 partitions.get(i).setXferList(newList);
+		}
+		
+		for (int i = 0; i < partitions.size(); i++) {
+			Partition chunk = partitions.get(i);
+			LOG.info("Chunk "+i+":\tfiles:"+partitions.get(i).getRecords().count()+"\t avg:"+
+					Utils.printSize(partitions.get(i).getCentroid(), true)
+					+"\t"+Utils.printSize(partitions.get(i).getRecords().size(), true)+" Density:" +
+					chunk.entry.getDensity());
+		}
+		*/
+		
+		//System.exit(-1);
 		return partitions;
 	}
 	
 	private int[] allocateChannelsToChunks(List<Partition> chunks, final int channelCount){
 		int totalChunks = chunks.size();
+		int [] fileCount = new int[totalChunks];
+		for (int i = 0; i < totalChunks; i++) { 
+			fileCount[i] = chunks.get(i).getRecords().count();
+		}
 		int[] concurrencyLevels = new int[totalChunks];
 		if(channelDistPolicy == ChannelDistributionPolicy.ROUND_ROBIN){
 			int modulo = (totalChunks + 1) /2 ;
 			int count = 0;
 			for (int i = 0; count < channelCount ; i++){
 				int index = i % modulo ;
-				concurrencyLevels[index]++;
-				count++;
-				if (index < totalChunks - index  - 1 && count < channelCount) {
+				if(concurrencyLevels[index] < fileCount[index]){
+					concurrencyLevels[index]++;
+					count++;
+				}
+				if (index < totalChunks - index  - 1 && count < channelCount 
+						&& concurrencyLevels[totalChunks - index - 1] < fileCount[totalChunks - index - 1]) {
 					concurrencyLevels[totalChunks - index - 1]++;
 					count++;
 				}
@@ -300,35 +326,26 @@ public class CooperativeChannels {
 					totalWeight +=chunkWeights[i];
 				}
 			}
+			int remainingChannelCount = channelCount;
 			
-			int assignedChannelCount = 0;
-			for (int i = 0; i < (totalChunks + 1 /2) && assignedChannelCount < channelCount; i++) {
+			for(int i = 0; i< totalChunks; i++){
 				double propChunkWeight = (chunkWeights[i]*1.0/totalWeight);
-				int remaining_channels = channelCount - assignedChannelCount;
-				concurrencyLevels[i] = Math.min(remaining_channels, (int) Math.floor(channelCount * propChunkWeight));
-				assignedChannelCount += concurrencyLevels[i];
-				if(i < totalChunks - i - 1 && assignedChannelCount < channelCount){
-					propChunkWeight = (chunkWeights[totalChunks - i - 1]*1.0/totalWeight);
-					remaining_channels = channelCount - assignedChannelCount;
-					concurrencyLevels[totalChunks - i - 1] = Math.min(remaining_channels, (int) Math.floor(channelCount * propChunkWeight));
-					assignedChannelCount += concurrencyLevels[totalChunks - i - 1];
-				}
+				concurrencyLevels[i] = Math.min(remainingChannelCount, (int) Math.floor(channelCount * propChunkWeight));
+				remainingChannelCount -= concurrencyLevels[i];
+				//System.out.println("Channel "+i + "weight:" +propChunkWeight  + "got " + concurrencyLevels[i] + "channels");
 			}
 			
 			// Since we take floor when calculating, total channels might be unassigned.
 			// If so, starting from chunks with zero channels, assign remaining channels
 			// in round robin fashion
-			while(assignedChannelCount < channelCount){
-				for (int i = 0; i < chunks.size(); i++) {
-					if(concurrencyLevels[i] == 0 && assignedChannelCount < channelCount) {
-						concurrencyLevels[i]++;
-						assignedChannelCount++;
-						i = 0;
-					}
+			for (int i = 0; i < chunks.size(); i++) {
+				if(concurrencyLevels[i] == 0 && remainingChannelCount > 0) {
+					concurrencyLevels[i]++;
+					remainingChannelCount--;
 				}
-				if(assignedChannelCount >= channelCount)
-					break;
-				//find the chunks with minimum assignedChannelCount
+			}
+			//find the chunks with minimum assignedChannelCount
+			while (remainingChannelCount > 0){
 				int minChannelCount = Integer.MAX_VALUE;
 				int chunkIdWithMinChannel = -1;
 				for (int i = 0; i < chunks.size(); i++) {
@@ -338,7 +355,7 @@ public class CooperativeChannels {
 					}
 				}
 				concurrencyLevels[chunkIdWithMinChannel]++;
-				assignedChannelCount++;
+				remainingChannelCount--;
 			}
 			for (int i = 0; i < totalChunks; i++) {
 				Partition chunk = chunks.get(i);

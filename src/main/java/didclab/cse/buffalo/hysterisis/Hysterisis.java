@@ -16,6 +16,7 @@ import didclab.cse.buffalo.utils.Utils;
 import matlabcontrol.MatlabProxy;
 import matlabcontrol.MatlabProxyFactory;
 import matlabcontrol.MatlabProxyFactoryOptions;
+import stork.module.CooperativeModule;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
 
@@ -27,7 +28,7 @@ public class Hysterisis {
 	static List<List<Entry>> entries;
 	private GridFTPTransfer gridFTPClient;
 	
-	public double optimizationAlgorithmTime = 8;
+	public double optimizationAlgorithmTime = 2;
 	int [][] estimatedParamsForChunks;
 	private double [] estimatedThroughputs;
 	private double[] estimatedAccuracies;
@@ -85,15 +86,12 @@ public class Hysterisis {
     	for (int chunkNumber = 0 ; chunkNumber < chunks.size() ; chunkNumber++) {
     		Partition chunk =  chunks.get(chunkNumber);
 
-        	XferList sample_files = new XferList("", "") ;
-        	double MINIMUM_SAMPLING_SIZE = intendedTransfer.getBandwidth() / 2;
-        	while (sample_files.size() < MINIMUM_SAMPLING_SIZE || sample_files.count() < 2){ 
-        		XferList.Entry file = chunk.getRecords().pop();
-        		sample_files.add(file.path, file.size);
-        	}
         	
-        	sample_files.sp = dataset.sp;
-        	sample_files.dp = dataset.dp;
+        	long SAMPLING_SIZE = (int)(intendedTransfer.getBandwidth() / 4);
+        	//System.out.println(chunk.getRecords().count() +" "+ chunk.getRecords().size()  + "s:" +SAMPLING_SIZE);
+        	XferList sample_files = chunk.getRecords().split(SAMPLING_SIZE);
+        	//System.out.println("Sample transfer list:" + sample_files.count() +" "+ sample_files.size()
+        	//	+" original list:" +chunk.getRecords().count() +" "+ chunk.getRecords().size() );
         	int [] samplingParams = Utils.getBestParams(sample_files);
 			// use higher concurrency values for sampling to be able to 
         	// observe available throughput better
@@ -113,10 +111,10 @@ public class Hysterisis {
 		    //TODO: handle transfer failure 
 		    if(sampleThroughputs[chunkNumber] == -1)System.exit(-1);	
     	}
-
+    	//System.exit(-1);
     	// Based on input files and sample tranfer throughput; categorize logs and fit model
     	// Then find optimal parameter values out of the model
-    	Object[][] results = runMatlabModeling(chunks, sampleThroughputs);
+    	Object[][] results = runMatlabModeling(chunks, sampleThroughputs, intendedTransfer.getBandwidth());
     	if (results == null)
     		return null;
     	
@@ -146,7 +144,7 @@ public class Hysterisis {
 	 * 2- Write each set of entries to the files
 	 * 3-Run polyfit matlab function to derive model and find optimal point that yields maximum throughput
 	 */
-	public Object[][] runMatlabModeling(List<Partition>  chunks, double []sampleThroughputs){
+	public Object[][] runMatlabModeling(List<Partition>  chunks, double []sampleThroughputs, double bandwidth){
 		int []setCounts = new int[chunks.size()];
 		Similarity.normalizeDataset3(entries, chunks);
 		//LOG.info("Entries are normalized at "+ ManagementFactory.getRuntimeMXBean().getUptime());
@@ -162,7 +160,7 @@ public class Hysterisis {
     	 * Run matlab optimization to find set of "optimal" parameters for each chunk 
     	 */
 		//return null;
-    	return polyFitbyMatlab(chunks, setCounts, sampleThroughputs);
+    	return polyFitbyMatlab(chunks, setCounts, sampleThroughputs, bandwidth);
 	}
 	
 	/*
@@ -176,7 +174,8 @@ public class Hysterisis {
 	 * Output: results-- it holds estimated values of cc,p and ppq for each chunk set
 	 */
 	public Object [][] polyFitbyMatlab(List<Partition>  chunks, 
-			int []logFilesCount, double []sampleThroughputs){
+			int []logFilesCount, double []sampleThroughputs, double bandhwidth){
+		double bandwidthInMbps = bandhwidth / (1000*1000);
 		if(initializerThread.isAlive()) {
 			try {
 				initializerThread.join();
@@ -196,7 +195,7 @@ public class Hysterisis {
 			String filePath = ConfigurationParams.OUTPUT_DIR + "/chunk_" + chunkNumber;
 			String command = "analyzeAndEvaluate('"+filePath+"',"+sampleThroughputs[chunkNumber]+
 							  ",["+sampleTransferValues[0]+","+sampleTransferValues[1] +
-							  ","+sampleTransferValues[2]+"]"+")";
+							  ","+sampleTransferValues[2]+"]" + "," + bandwidthInMbps+")";
 			LOG.info("Matlab command:" + command);
 			try {
 				results[chunkNumber] = proxy.returningEval(command,3);

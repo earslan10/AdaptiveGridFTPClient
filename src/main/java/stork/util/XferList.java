@@ -2,6 +2,7 @@ package stork.util;
 
 import java.util.*;
 
+import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.CooperativeChannels.Density;
 
 public class XferList implements Iterable<XferList.Entry> {
@@ -86,11 +87,20 @@ public class XferList implements Iterable<XferList.Entry> {
 
     public long remaining() {
       if (done || dir) return 0;
-      if (len == -1 || len > size)
+      if (off > size) return 0;
+      //if (len == -1 || len > size)
         return size - off;
-      return len - off;
+      //return len - off;
     }
-
+    
+    public long size() {
+        if (done || dir) return 0;
+        if (off > size) return 0;
+        if (len == -1)
+          return size - off;
+        return len;
+      }
+    
     public String path() {
       return XferList.this.sp + path;
     }
@@ -120,6 +130,15 @@ public class XferList implements Iterable<XferList.Entry> {
     this.count++;
   }
 
+  void addEntry(Entry e) {
+	  list.add(e);
+      if(e.len == -1)
+    	  size += e.remaining();
+      else
+    	  size += e.len;
+	  count++;
+  }
+  
   // Add another XferList's entries under this XferList.
   public void addAll(XferList ol) {
     size += ol.size;
@@ -217,19 +236,19 @@ public class XferList implements Iterable<XferList.Entry> {
       
       if (e.done) {
         iter.remove();
-      } else if (e.dir || e.remaining() <= len) {
-        nl.list.add(new Entry(e.path, e));
-        nl.size += e.remaining();
-        nl.count++;
-        len -= e.remaining();
+      } else if (e.dir || e.size() <= len || e.size() - len < (ConfigurationParams.MAXIMUM_SINGLE_FILE_SIZE/5)) {
+        nl.addEntry(new Entry(e.path, e));
+        len -= e.size();
+        iter.remove();
+        count--;
+        size -= e.size();
         e.done = true;
-      } else {  // Need to split file...
+      } 
+      else {  // Need to split file...
         e2 = new Entry(e.path, e);
         e2.len = len;
-        nl.list.add(e2);
-        nl.size += len;
-        nl.count++;
-
+        nl.addEntry(e2);
+        size -= e2.len;
         if (e.len == -1)
           e.len = e.size;
         e.len -= len;
@@ -238,6 +257,39 @@ public class XferList implements Iterable<XferList.Entry> {
       }
     } return nl;
   }
+  
+  
+  public XferList sliceLargeFiles (long sliceSize) { 
+	  Iterator<Entry> iter = iterator();
+	  XferList nl = new XferList(sp, dp);
+	  while ( iter.hasNext()) {
+		  Entry e2, e = iter.next();
+		  if(e.size() > sliceSize) {
+			  int pieceCount = (int)Math.ceil(1.0 * e.size / sliceSize);
+			  long pieceSize = (int) (e.size / pieceCount);
+			  long offset = 0;
+			  //System.out.println("Removing "+ e.path() + " " + e.off + " size:"+ e.remaining() + " " + e.len + " to insert "+ pieceCount + "pieces" + " each" + pieceSize);
+			  for (int i = 1; i < pieceCount; i++) {
+				  e2 = new Entry (e.path, e);
+				  e2.len = pieceSize;
+			      e2.off = offset;
+			      offset += pieceSize+1;
+			      nl.addEntry(e2);
+			  }
+			  e2 = new Entry (e.path, e);
+			  e2.len = -1;
+		      e2.off = offset;
+		      nl.addEntry(e2);
+			  //iter.remove();
+		  }
+		  else  {
+			  e2 = new Entry (e.path, e);
+			  nl.addEntry(e2);
+		  }
+	  }
+	  return nl;
+  }
+  
   public double avgFileSize(){
 	  return count == 0 ? 0 : size/count;
   }

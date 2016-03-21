@@ -39,7 +39,7 @@ public class Utils {
 		int cc = Math.max(Math.min(Math.min(fileCountToFillThePipe, CooperativeChannels.intendedTransfer.getMaxConcurrency()),  xl.count()), 2);
 		int ppq = fileCountToFillThePipe;
 		int p =Math.max(Math.min(pLevelToFillPipe, pLevelToFillBuffer) , 1);
-		p = avgFileSize > CooperativeChannels.intendedTransfer.getBDP() ? p+1 : p;
+		p = avgFileSize > CooperativeChannels.intendedTransfer.getBDP() ? p+2 : p;
 		return new int[] {cc,p,ppq,(int)CooperativeChannels.intendedTransfer.getBufferSize()};
 	}
 	

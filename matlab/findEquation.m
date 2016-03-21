@@ -15,6 +15,7 @@ function [equation,R2, RMSE, maxVals] = findEquation(data, degree)
         t= polyfitn([cc, p,ppq],y,degree);
         row= size(t.ModelTerms,1);
         equation = '';
+        fin_str = '';
         R2 = t.R2;
         RMSE = t.RMSE;
          % form the equation
@@ -25,11 +26,16 @@ function [equation,R2, RMSE, maxVals] = findEquation(data, degree)
              
              new = strcat('x(1).^',num2str(power1), '*', 'x(2).^',num2str(power2), '*', ...
                 'x(3).^',num2str(power3) ,'*',num2str(t.Coefficients(i)));
+            str = strcat('cc^',num2str(power1), '', 'p^',num2str(power2), ...
+                'ppq^',num2str(power3) ,num2str(t.Coefficients(i)));
             if i == 1
                 equation = new;
+                fin_str = str;
             else
                 equation = strcat (equation,'+',new);
+                fin_str = strcat (fin_str,'+',str);
             end
          end
+         disp(fin_str)
      end
 end

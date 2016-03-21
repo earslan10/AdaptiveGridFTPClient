@@ -1,13 +1,17 @@
-fileId = fopen('/Users/earslan/HysterisisBasedMC/outputs//chunk_0/trial-31.txt');      
-groupsNum = str2double(fgetl(fileId));
-groups = zeros(groupsNum);
-metadata = textscan(fileId, '%s %d\n',groupsNum );
-data= textscan(fileId, '%f %f %f %f %f', 'headerLines', groupsNum+1, 'CommentStyle', '*');
+x = 1:10;
+y = 11:20;
+z = x'*y;
+c = randi(10,10);
 
-matrix = cell2mat(data);
-offset = 1;
-for i = 1: groupsNum
-    length = metadata{2}(i);
-    test1 = matrix(offset:length,:);
-    offset = offset + length;
-end
+%surf(x,y,z,c)
+
+
+
+file = load('/Users/earslan/data.txt');
+
+cc = file(:,1);
+p = file(:,2);
+ppq = file(:,3);
+thr = file(:,4);
+
+scatter3(cc,p,ppq,thr);

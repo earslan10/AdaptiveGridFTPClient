@@ -1,5 +1,5 @@
 %clear; clc; format compact; close all
-function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, testThroughput )
+function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, testThroughput, bandwidth )
     
     targetThroughput = targetThroughput/(1000*1000);
     options = optimset('Display','off');
@@ -31,7 +31,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         f = @(x)eval(equation);
         estimation = f([sampleValues(1), sampleValues(2), sampleValues(3)]); 
         closeness = abs(targetThroughput - estimation);
-        if closeness <  10^3 && estimation <  10^3 && estimation >100  && R2 > 0.6
+        if closeness <  bandwidth && estimation <  bandwidth && estimation >100  && R2 > 0.6
             disp(strcat('Adding:',name , ' estimation:', num2str(estimation),...
                 ' error:', num2str(closeness), ' R2:', num2str(R2)));
             entrySetList(index) = EntrySet(equation, R2, maxVals, closeness, name);
@@ -73,7 +73,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         newEq = strcat(' -1 *(', entrySet.bestFitEq ,')');
         objectiveF = @(x)eval(newEq);
         [t,val] = fmincon(objectiveF,[1,1,0],[],[],[],[],[1,1,0],entrySet.maxParamValues,[], options);
-         if -1*val > 10^3 | -1*val < 10
+         if -1*val > bandwidth | -1*val < 10
             disp(strcat('SKIPPING:',num2str(entrySet.note) , ' estimation:', num2str(val)));
             continue;
         end
@@ -108,7 +108,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
         newEq = strcat(' -1 *(', entrySet.bestFitEq ,')');
         objectiveF = @(x)eval(newEq);
         [t,val] = fmincon(objectiveF,[1,1,0],[],[],[],[],[1,1,0],entrySet.maxParamValues,[], options);
-        if -1*val > 10^3 | -1*val < 10
+        if -1*val > bandwidth | -1*val < 10
             disp(strcat('SKIPPING:',num2str(entrySet.note) , ' estimation:', num2str(val)));
             continue;
         end
