@@ -361,24 +361,6 @@ public class ClassAd implements Iterable<String> {
     caw.flush();
     caw.close();
     return sw.toString();
-  }
-
-  // Convert to a pretty string for printing.
-  public String toString(boolean compact) {
-    StringWriter sw = new StringWriter();
-    int flags = ClassAdWriter.READABLE & ~ClassAdWriter.NO_ESCAPE_STRINGS;
-
-    // Set up ad writer
-    ClassAdWriter caw = new ClassAdWriter(sw);
-
-    if (!compact) {
-      caw.setFormatFlags(flags);
-    }
-
-    caw.print(record);
-    caw.flush();
-    caw.close();
-    return sw.toString();
   }  // Constructors
 
   // Default to non-compact representation.
