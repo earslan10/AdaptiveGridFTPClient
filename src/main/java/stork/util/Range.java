@@ -1,21 +1,22 @@
 package stork.util;
 
-import java.util.*;
+import java.util.Iterator;
 
 // Isn't crazy that Java doesn't have one of these natively?!
 
-public class Range implements Iterable<Integer> {
+class Range implements Iterable<Integer> {
   private boolean empty = true;
   private int start = 0, end = 0;
   private Range subrange = null;
 
-  public Range() { }
+  private Range() {
+  }
 
   public Range(int i) {
     become(i, i);
   }
 
-  public Range(int s, int e) {
+  private Range(int s, int e) {
     become(s, e);
   }
 
@@ -32,46 +33,64 @@ public class Range implements Iterable<Integer> {
     int s = -1, e = -1;
     Range r = new Range();
 
-    for (String a : str.split(",")) try {
-      String[] b = a.split("-", 3);
-      switch (b.length) {
-        default: return null;
-        case 1: s = e = Integer.parseInt(b[0]); break;
-        case 2: s = Integer.parseInt(b[0]);
-                e = Integer.parseInt(b[1]);
-      } r.swallow(s, e);
-    } catch (Exception ugh) {
-      return null;
-    } return r;
+    for (String a : str.split(","))
+      try {
+        String[] b = a.split("-", 3);
+        switch (b.length) {
+          default:
+            return null;
+          case 1:
+            s = e = Integer.parseInt(b[0]);
+            break;
+          case 2:
+            s = Integer.parseInt(b[0]);
+            e = Integer.parseInt(b[1]);
+        }
+        r.swallow(s, e);
+      } catch (Exception ugh) {
+        return null;
+      }
+    return r;
   }
 
   // Swallow (s,e) into this range so that this range includes
   // all of (s,e) in order and with minimal number of subranges.
   public Range swallow(int s, int e) {
-    if (s > e) return swallow(e, s);
-    if (empty) return become(s, e);
+    if (s > e) {
+      return swallow(e, s);
+    }
+    if (empty) {
+      return become(s, e);
+    }
 
     // Eat as much of (s,e) as we can with this range.
     if (s < start) {  // Consider inserting before...
-      if (e+1 < start) {  // Independent. Shuffle down ranges...
+      if (e + 1 < start) {  // Independent. Shuffle down ranges...
         Range r = new Range(this);
-        start = s; end = e; subrange = r; s = r.end;
+        start = s;
+        end = e;
+        subrange = r;
+        s = r.end;
       } else {  // Overlapping or adjacent! Easy mode.
-        start = s; s = end;
+        start = s;
+        s = end;
       }
-    } if (e > end) {  // Consider inserting after...
+    }
+    if (e > end) {  // Consider inserting after...
       // Let subrange have it, if we have one.
-      if (subrange != null)
+      if (subrange != null) {
         subrange.swallow(s, e);
-      else
+      } else {
         subrange = new Range(s, e);
+      }
 
       // Now see if we can swallow subrange.
-      while (subrange != null && end+1 >= subrange.start) {
+      while (subrange != null && end + 1 >= subrange.start) {
         end = subrange.end;
         subrange = subrange.subrange;
       }
-    } return this;
+    }
+    return this;
   }
 
   public Range swallow(int i) {
@@ -80,12 +99,14 @@ public class Range implements Iterable<Integer> {
 
   // Swallow a range, subrange by subrange.
   public Range swallow(Range r) {
-    if (empty)
+    if (empty) {
       return become(r);
+    }
     while (r != null && !r.empty) {
       swallow(r.start, r.end);
       r = r.subrange;
-    } return this;
+    }
+    return this;
   }
 
   // Check if a range contains an integer or range of integers.
@@ -94,25 +115,39 @@ public class Range implements Iterable<Integer> {
   }
 
   public boolean contains(int s, int e) {
-    if (empty) return false;
-    if (s > e) { int t = s; s = e; e = t; }
+    if (empty) {
+      return false;
+    }
+    if (s > e) {
+      int t = s;
+      s = e;
+      e = t;
+    }
     return (start <= s && e <= end) ||
-           (subrange != null && subrange.contains(s, e));
+            (subrange != null && subrange.contains(s, e));
   }
 
   // Take on the characteristics of a given range. Return self.
   // Does nothing when passed null.
   private Range become(Range r) {
     if (r != null) {
-      start = r.start; end = r.end;
-      empty = r.empty; subrange = r.subrange;
-    } return this;
+      start = r.start;
+      end = r.end;
+      empty = r.empty;
+      subrange = r.subrange;
+    }
+    return this;
   }
 
   // As above, but for integers.
   private Range become(int s, int e) {
-    if (s > e) become(e, s);
-    start = s; end = e; empty = false; subrange = null;
+    if (s > e) {
+      become(e, s);
+    }
+    start = s;
+    end = e;
+    empty = false;
+    subrange = null;
     return this;
   }
 
@@ -122,11 +157,13 @@ public class Range implements Iterable<Integer> {
 
   // Get the size of the range.
   public int size() {
-    if (empty)
+    if (empty) {
       return 0;
-    if (subrange == null)
-      return end-start+1+subrange.size();
-    return end-start+1;
+    }
+    if (subrange == null) {
+      return end - start + 1 + subrange.size();
+    }
+    return end - start + 1;
   }
 
   public int min() {
@@ -148,9 +185,11 @@ public class Range implements Iterable<Integer> {
   // Return a string representation of this range. This string
   // can be parsed back into a range.
   public String toString() {
-    if (empty) return "";
-    return ((start == end) ? ""+start : start+"-"+end) +
-           ((subrange != null) ? ","+subrange : "");
+    if (empty) {
+      return "";
+    }
+    return ((start == end) ? "" + start : start + "-" + end) +
+            ((subrange != null) ? "," + subrange : "");
   }
 
   // Get an iterator for this range.
@@ -158,21 +197,37 @@ public class Range implements Iterable<Integer> {
     return new Iterator<Integer>() {
       Range r = Range.this;
       int i = r.start;
+
       private void nextSubrange() {
-        if (r == null) return;
+        if (r == null) {
+          return;
+        }
         r = r.subrange;
-        if (r != null) i = r.start;
+        if (r != null) {
+          i = r.start;
+        }
       }
+
       public boolean hasNext() {
         return i <= r.end || r.subrange != null;
       }
+
       public Integer next() {
-        if (r == null)  return null;
-        if (r.empty)    return null;
-        if (i <= r.end) return new Integer(i++);
-        nextSubrange(); return next();
+        if (r == null) {
+          return null;
+        }
+        if (r.empty) {
+          return null;
+        }
+        if (i <= r.end) {
+          return new Integer(i++);
+        }
+        nextSubrange();
+        return next();
       }
-      public void remove() { }
+
+      public void remove() {
+      }
     };
   }
 }

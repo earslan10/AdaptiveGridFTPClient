@@ -26,16 +26,16 @@ function [equation,R2, RMSE, maxVals] = findEquation(data, degree)
              
              new = strcat('x(1).^',num2str(power1), '*', 'x(2).^',num2str(power2), '*', ...
                 'x(3).^',num2str(power3) ,'*',num2str(t.Coefficients(i)));
-            str = strcat('cc^',num2str(power1), '', 'p^',num2str(power2), ...
+             str = strcat('cc^',num2str(power1), '', 'p^',num2str(power2), ...
                 'ppq^',num2str(power3) ,num2str(t.Coefficients(i)));
-            if i == 1
+             if i == 1
                 equation = new;
                 fin_str = str;
-            else
+             else
                 equation = strcat (equation,'+',new);
                 fin_str = strcat (fin_str,'+',str);
-            end
+             end
          end
-         disp(fin_str)
+         %disp(fin_str)
      end
 end

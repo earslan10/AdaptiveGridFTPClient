@@ -2,22 +2,26 @@ package stork.util;
 
 // Class representing progress for an arbitrary statistic.
 
-public class Progress {
-  public long done = 0, total = 0;
+class Progress {
+  long done = 0, total = 0;
 
-  public Progress() { }
+  Progress() {
+  }
 
   public Progress(long total) {
     this.total = total;
   }
 
-  public long remaining() {
+  long remaining() {
     return done - total;
   }
 
   public void add(long d, long t) {
-    done += d; total += t;
-    if (done > 0) done = total;
+    done += d;
+    total += t;
+    if (done > 0) {
+      done = total;
+    }
   }
 
   public void add(Progress p) {
@@ -29,14 +33,16 @@ public class Progress {
   }
 
   public String toPercent() {
-    if (total <= 0)
+    if (total <= 0) {
       return null;
+    }
     return String.format("%.2f%%", (double) done / total);
   }
 
   public String toString() {
-    if (total <= 0)
+    if (total <= 0) {
       return null;
-    return done+"/"+total;
+    }
+    return done + "/" + total;
   }
 }
