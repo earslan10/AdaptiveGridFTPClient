@@ -11,6 +11,10 @@ import org.apache.commons.logging.LogFactory;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -21,11 +25,11 @@ public class CooperativeChannels {
 
   private static final Log LOG = LogFactory.getLog(CooperativeChannels.class);
   public static Entry intendedTransfer;
-  static String proxyFile;
   static double totalTransferTime = 0;
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
-  ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
-  Hysterisis hysterisis;
+  private String proxyFile;
+  private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
+  private Hysterisis hysterisis;
   private GridFTPTransfer gridFTPClient;
   private boolean useHysterisis = false;
   private boolean useDynamicScheduling = false;
@@ -47,12 +51,12 @@ public class CooperativeChannels {
 
   public static void main(String[] args) throws Exception {
     CooperativeChannels multiChunk = new CooperativeChannels();
-    multiChunk.parseArguments(args);
+    multiChunk.parseArguments();
     multiChunk.transfer();
   }
 
   @VisibleForTesting
-  public void setUseHysterisis(boolean bool) {
+  void setUseHysterisis(boolean bool) {
     useHysterisis = bool;
   }
 
@@ -70,8 +74,8 @@ public class CooperativeChannels {
       du = new URI(intendedTransfer.getDestination()).normalize();
     } catch (URISyntaxException e) {
       e.printStackTrace();
+      System.exit(-1);
     }
-
     // create Control Channel to source and destination server
     double startTime = System.currentTimeMillis();
     if (gridFTPClient == null) {
@@ -164,7 +168,7 @@ public class CooperativeChannels {
     return sum;
   }
 
-  ArrayList<Partition> mergePartitions(ArrayList<Partition> partitions) {
+  private ArrayList<Partition> mergePartitions(ArrayList<Partition> partitions) {
     for (int i = 0; i < partitions.size(); i++) {
       Partition p = partitions.get(i);
       if (p.getRecords().count() <= 2 || p.getRecords().size() < 5 * intendedTransfer.getBDP()) {  //merge small chunk with the the chunk with closest centroid
@@ -190,7 +194,7 @@ public class CooperativeChannels {
     return partitions;
   }
 
-  ArrayList<Partition> partitionByFileSize(XferList list) {
+  private ArrayList<Partition> partitionByFileSize(XferList list) {
 
     //remove folders from the list and send mkdir command to destination
     for (int i = 0; i < list.count(); i++) {
@@ -199,7 +203,7 @@ public class CooperativeChannels {
       }
     }
 
-    ArrayList<Partition> partitions = new ArrayList<Partition>();
+    ArrayList<Partition> partitions = new ArrayList<>();
     for (int i = 0; i < 4; i++) {
       Partition p = new Partition();
       partitions.add(p);
@@ -289,8 +293,8 @@ public class CooperativeChannels {
           LOG.info("estimated unit thr:" + estimatedUnitThroughputs[i] + " " + estimatedParams[i][0]);
         }
         double totalThroughput = 0;
-        for (int i = 0; i < estimatedUnitThroughputs.length; i++) {
-          totalThroughput += estimatedUnitThroughputs[i];
+        for (double estimatedUnitThroughput : estimatedUnitThroughputs) {
+          totalThroughput += estimatedUnitThroughput;
         }
         for (int i = 0; i < estimatedThroughputs.length; i++) {
           chunkWeights[i] = chunks.get(i).getTotalSize() * (totalThroughput / estimatedUnitThroughputs[i]);
@@ -362,130 +366,163 @@ public class CooperativeChannels {
     return concurrencyLevels;
   }
 
-  void parseArguments(String[] args) {
-    int i = 0;
-    String arg;
-    while (i < args.length && args[i].startsWith("-")) {
-      arg = args[i++];
-      // use this type of check for arguments that require arguments
-      if (arg.equals("-s") || arg.equals("-source")) {
-        if (i < args.length) {
-          intendedTransfer.setSource(args[i++]);
-        } else {
-          LOG.fatal("-source requires source address");
+  private void parseArguments() {
+    try (BufferedReader br = new BufferedReader(new FileReader("config.cfg"))) {
+      String line;
+      while ((line = br.readLine()) != null) {
+        String[] args = line.split("\\s+");
+        String config = args[0];
+        switch (config) {
+          case "-s":
+          case "-source":
+            if (args.length > 1) {
+              intendedTransfer.setSource(args[1]);
+            } else {
+              LOG.fatal("-source requires source address");
+            }
+            LOG.info("source  = " + intendedTransfer.getSource());
+            break;
+          case "-d":
+          case "-destination":
+            if (args.length > 1) {
+              intendedTransfer.setDestination(args[1]);
+            } else {
+              LOG.fatal("-destination requires a destination address");
+            }
+            LOG.info("destination = " + intendedTransfer.getDestination());
+            break;
+          case "-proxy":
+            if (args.length > 1) {
+              proxyFile = args[1];
+            } else {
+              LOG.fatal("-path requires path of file/directory to be transferred");
+            }
+            LOG.info("proxyFile = " + proxyFile);
+            break;
+          case "-bw":
+          case "-bandwidth":
+            if (args.length > 1 || Double.parseDouble(args[1]) > 100) {
+              intendedTransfer.setBandwidth(Math.pow(10, 9) * Double.parseDouble(args[1]));
+            } else {
+              LOG.fatal("-bw requires bandwidth in GB");
+            }
+            LOG.info("bandwidth = " + intendedTransfer.getBandwidth() + " GB");
+            break;
+          case "-rtt":
+            if (args.length > 1) {
+              intendedTransfer.setRtt(Double.parseDouble(args[1]));
+            } else {
+              LOG.fatal("-rtt requires round trip time in millisecond");
+            }
+            LOG.info("rtt = " + intendedTransfer.getRtt() + " ms");
+            break;
+          case "-maxcc":
+          case "-max-concurrency":
+            if (args.length > 1) {
+              intendedTransfer.setMaxConcurrency(Integer.parseInt(args[1]));
+            } else {
+              LOG.fatal("-cc needs integer");
+            }
+            LOG.info("cc = " + intendedTransfer.getMaxConcurrency());
+            break;
+          case "-bs":
+          case "-buffer-size":
+            if (args.length > 1) {
+              intendedTransfer.setBufferSize(Integer.parseInt(args[1]) * 1024 * 1024); //in MB
+            } else {
+              LOG.fatal("-bs needs integer");
+            }
+            LOG.info("bs = " + intendedTransfer.getBufferSize());
+            break;
+          case "-testbed":
+            if (args.length > 1) {
+              intendedTransfer.setTestbed(args[1]);
+            } else {
+              LOG.fatal("-testbed needs testbed name");
+            }
+            LOG.info("Testbed name is = " + intendedTransfer.getTestbed());
+            break;
+          case "-matlab-exec":
+            if (args.length > 1) {
+              ConfigurationParams.MATLAB_DIR = args[1];
+            } else {
+              LOG.fatal("-matlab installation path requires a full path name");
+            }
+            LOG.info("Matlab installation directory is = " + ConfigurationParams.MATLAB_DIR);
+            break;
+          case "-input":
+            if (args.length > 1) {
+              ConfigurationParams.INPUT_DIR = args[1];
+            } else {
+              LOG.fatal("-historical data input file path has to be passed");
+            }
+            LOG.info("Historical data path = " + ConfigurationParams.INPUT_DIR);
+            break;
+          case "-use-hysterisis":
+            useHysterisis = true;
+            LOG.info("Use hysterisis based approach");
+            break;
+          case "-single-chunk":
+            algorithm = TransferAlgorithm.SINGLECHUNK;
+            LOG.info("Use single chunk transfer approach");
+            break;
+          case "-channel-distribution-policy":
+            if (args.length > 1) {
+              if (args[1].compareTo("roundrobin") == 0) {
+                channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
+              } else if (args[1].compareTo("weighted") == 0) {
+                channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
+              } else {
+                LOG.fatal("-channel-distribution-policy can be either \"roundrobin\" or \"weighted\"");
+              }
+            } else {
+              LOG.fatal("-channel-distribution-policy has to be specified as \"roundrobin\" or \"weighted\"");
+            }
+            break;
+          case "-use-dynamic-scheduling":
+            useDynamicScheduling = true;
+            LOG.info("Dynamic scheduling enabled.");
+            break;
+          default:
+            System.err.println("Unrecognized input parameter " + config);
+            System.exit(-1);
         }
-        LOG.info("source  = " + intendedTransfer.getSource());
-      } else if (arg.equals("-d") || arg.equals("-destination")) {
-        if (i < args.length) {
-          intendedTransfer.setDestination(args[i++]);
-        } else {
-          LOG.fatal("-destination requires a destination address");
-        }
-        LOG.info("destination = " + intendedTransfer.getDestination());
-      } else if (arg.equals("-proxy")) {
-        if (i < args.length) {
-          proxyFile = args[i++];
-        } else {
-          LOG.fatal("-path requires path of file/directory to be transferred");
-        }
-        LOG.info("proxyFile = " + proxyFile);
-      } else if (arg.equals("-bw")) {
-        if (i < args.length) {
-          intendedTransfer.setBandwidth(Math.pow(10, 9) * Double.parseDouble(args[i++]));
-        } else {
-          LOG.fatal("-bw requires bandwidth in GB");
-        }
-        LOG.info("bandwidth = " + intendedTransfer.getBandwidth() + " GB");
-      } else if (arg.equals("-rtt")) {
-        if (i < args.length) {
-          intendedTransfer.setRtt(Double.parseDouble(args[i++]));
-        } else {
-          LOG.fatal("-rtt requires round trip time in millisecond");
-        }
-        LOG.info("rtt = " + intendedTransfer.getRtt() + " ms");
-      } else if (arg.equals("-cc")) {
-        if (i < args.length) {
-          intendedTransfer.setMaxConcurrency(Integer.parseInt(args[i++]));
-        } else {
-          LOG.fatal("-cc needs integer");
-        }
-        LOG.info("cc = " + intendedTransfer.getMaxConcurrency());
-      } else if (arg.equals("-bs")) {
-        if (i < args.length) {
-          intendedTransfer.setBufferSize(Integer.parseInt(args[i++]) * 1024 * 1024); //in MB
-        } else {
-          LOG.fatal("-bs needs integer");
-        }
-        LOG.info("bs = " + intendedTransfer.getBufferSize());
-      } else if (arg.equals("-testbed")) {
-        if (i < args.length) {
-          intendedTransfer.setTestbed(args[i++]);
-        } else {
-          LOG.fatal("-testbed needs testbed name");
-        }
-        LOG.info("Testbed name is = " + intendedTransfer.getTestbed());
-      } else if (arg.equals("-matlab")) {
-        if (i < args.length) {
-          ConfigurationParams.MATLAB_DIR = args[i++];
-        } else {
-          LOG.fatal("-matlab installation path requires a full path name");
-        }
-        LOG.info("Matlab installation directory is = " + ConfigurationParams.MATLAB_DIR);
-      } else if (arg.equals("-home")) {
-        if (i < args.length) {
-          ConfigurationParams.HOME_DIR = args[i++];
-        } else {
-          LOG.fatal("-matlab installation path requires a full path name");
-        }
-        LOG.info("Project directory = " + ConfigurationParams.HOME_DIR);
-      } else if (arg.equals("-input")) {
-        if (i < args.length) {
-          ConfigurationParams.INPUT_DIR = args[i++];
-        } else {
-          LOG.fatal("-historical data input file path has to be passed");
-        }
-        LOG.info("Historical data path = " + ConfigurationParams.INPUT_DIR);
-      } else if (arg.equals("-use-hysterisis")) {
-        useHysterisis = true;
-        LOG.info("Use hysterisis based approach");
-      } else if (arg.equals("-single-chunk")) {
-        algorithm = TransferAlgorithm.SINGLECHUNK;
-        LOG.info("Use single chunk transfer approach");
-      } else if (arg.equals("-channel-distribution-policy")) {
-        if (i < args.length) {
-          if (args[i++].compareTo("roundrobin") == 0) {
-            channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
-          } else if (args[i++].compareTo("weighted") == 0) {
-            channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
-          } else {
-            LOG.fatal("-channel-distribution-policy can be either \"roundrobin\" or \"weighted\"");
-          }
-        } else {
-          LOG.fatal("-channel-distribution-policy has to be specified as \"roundrobin\" or \"weighted\"");
-        }
-      } else if (arg.equals("-use-dynamic-scheduling")) {
-        useDynamicScheduling = true;
-        LOG.info("Dynamic scheduling enabled.");
-      } else {
-        System.err.println("Unrecognized input parameter " + arg);
-        System.exit(-1);
       }
+    } catch (IOException e) {
+      e.printStackTrace();
     }
-    if (i != args.length) {
-      LOG.fatal("Usage: ParseCmdLine [-verbose] [-xn] [-output afile] filename");
-      LOG.info(args[i]);
-      System.exit(0);
-    } else {
-      LOG.info("Success!");
-      ConfigurationParams.init();
+    if (null == proxyFile) {
+      int uid = findUserId();
+      proxyFile = "/tmp/x509up_u" + uid;
     }
+    ConfigurationParams.init();
   }
 
-  public enum TransferAlgorithm {SINGLECHUNK, MULTICHUNK}
+  private int findUserId() {
+    String userName = null;
+    int uid = -1;
+    try {
+      userName = System.getProperty("user.name");
+      String command = "id -u " + userName;
+      Process child = Runtime.getRuntime().exec(command);
+      BufferedReader stdInput = new BufferedReader(new InputStreamReader(child.getInputStream()));
+      String s;
+      while ((s = stdInput.readLine()) != null) {
+        uid = Integer.parseInt(s);
+      }
+      stdInput.close();
+    } catch (IOException e) {
+      System.err.print("Proxy file for user " + userName + " not found!" + e.getMessage());
+      System.exit(-1);
+    }
+    return uid;
+  }
+
+  enum TransferAlgorithm {SINGLECHUNK, MULTICHUNK}
 
   public enum Density {SMALL, MIDDLE, LARGE, HUGE}
 
-  public enum ChannelDistributionPolicy {ROUND_ROBIN, WEIGHTED}
+  private enum ChannelDistributionPolicy {ROUND_ROBIN, WEIGHTED}
 
 
 }

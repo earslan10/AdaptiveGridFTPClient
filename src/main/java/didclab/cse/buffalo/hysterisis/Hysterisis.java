@@ -20,10 +20,10 @@ import java.util.List;
 public class Hysterisis {
 
   private static final Log LOG = LogFactory.getLog(Hysterisis.class);
-  static List<List<Entry>> entries;
+  private static List<List<Entry>> entries;
   public double optimizationAlgorithmTime = 2;
-  int[][] estimatedParamsForChunks;
-  Thread initializerThread;
+  private int[][] estimatedParamsForChunks;
+  private Thread initializerThread;
   private MatlabProxy proxy;
   private GridFTPTransfer gridFTPClient;
   private double[] estimatedThroughputs;
@@ -49,18 +49,17 @@ public class Hysterisis {
   }
 
 
-  public void parseInputFiles() {
+  private void parseInputFiles() {
     File folder = new File(ConfigurationParams.INPUT_DIR);
     File[] listOfFiles = folder.listFiles();
     List<String> historicalDataset = new ArrayList<>(listOfFiles.length);
-    entries = new ArrayList<List<Entry>>();
-    for (int i = 0; i < listOfFiles.length; i++) {
-      if (listOfFiles[i].isFile()) {
-        historicalDataset.add(ConfigurationParams.INPUT_DIR + listOfFiles[i].getName());
+    entries = new ArrayList<>();
+    for (File listOfFile : listOfFiles) {
+      if (listOfFile.isFile()) {
+        historicalDataset.add(ConfigurationParams.INPUT_DIR + listOfFile.getName());
       }
     }
-    for (int i = 0; i < historicalDataset.size(); i++) {
-      String fileName = historicalDataset.get(i);
+    for (String fileName : historicalDataset) {
       List<Entry> fileEntries = Similarity.readFile(fileName);
       if (!fileEntries.isEmpty()) {
         entries.add(fileEntries);
@@ -97,10 +96,8 @@ public class Hysterisis {
       chunk.setSamplingParameters(samplingParams);
       long start = System.currentTimeMillis();
       //LOG.info("Sample transfer called at "+ManagementFactory.getRuntimeMXBean().getUptime());
-
       sampleThroughputs[chunkNumber] = gridFTPClient.runTransfer(samplingParams[0], samplingParams[1],
               samplingParams[2], samplingParams[3], sample_files, chunkNumber);
-
       chunk.setSamplingTime((System.currentTimeMillis() - start) / 1000.0);
       //LOG.info( chunk.getSamplingTime() + " "+  chunk.getSamplingSize());
       //TODO: handle transfer failure
@@ -108,7 +105,6 @@ public class Hysterisis {
         System.exit(-1);
       }
     }
-    //System.exit(-1);
     // Based on input files and sample tranfer throughput; categorize logs and fit model
     // Then find optimal parameter values out of the model
     Object[][] results = runMatlabModeling(chunks, sampleThroughputs, intendedTransfer.getBandwidth());
@@ -141,14 +137,14 @@ public class Hysterisis {
    * 2- Write each set of entries to the files
    * 3-Run polyfit matlab function to derive model and find optimal point that yields maximum throughput
    */
-  public Object[][] runMatlabModeling(List<Partition> chunks, double[] sampleThroughputs, double bandwidth) {
+  private Object[][] runMatlabModeling(List<Partition> chunks, double[] sampleThroughputs, double bandwidth) {
     int[] setCounts = new int[chunks.size()];
     Similarity.normalizeDataset3(entries, chunks);
     //LOG.info("Entries are normalized at "+ ManagementFactory.getRuntimeMXBean().getUptime());
     for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
       List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
       //Categorize selected entries based on log date
-      List<List<Entry>> trials = new LinkedList<List<Entry>>();
+      List<List<Entry>> trials = new LinkedList<>();
       Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
       setCounts[chunkNumber] = trials.size();
       //LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
@@ -170,8 +166,8 @@ public class Hysterisis {
    * 		   maxParams---- For each chunk, maximum observed cc, p and ppq values in logs
    * Output: results-- it holds estimated values of cc,p and ppq for each chunk set
    */
-  public Object[][] polyFitbyMatlab(List<Partition> chunks,
-                                    int[] logFilesCount, double[] sampleThroughputs, double bandhwidth) {
+  private Object[][] polyFitbyMatlab(List<Partition> chunks,
+                                     int[] logFilesCount, double[] sampleThroughputs, double bandhwidth) {
     double bandwidthInMbps = bandhwidth / (1000 * 1000);
     if (initializerThread.isAlive()) {
       try {
@@ -212,7 +208,7 @@ public class Hysterisis {
     return estimatedParamsForChunks;
   }
 
-  public class InitializeMatlabConnection implements Runnable {
+  private class InitializeMatlabConnection implements Runnable {
     @Override
     public void run() {
       LOG.info("Initializing matlab daemon...");
