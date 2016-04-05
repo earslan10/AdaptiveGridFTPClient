@@ -1329,7 +1329,7 @@ public class CooperativeModule {
     public double runTransfer(final int cc, final int p, final int ppq,
                               final int bufSize, final XferList xl, int chunkId) {
       // Set full destination path of files
-      LOG.info("Transferring chunk " + chunkId + " params:" + cc + " " + p + " " + ppq + " size:" + (xl.size() / (1024.0 * 1024))
+      LOG.info("Transferring chunk " + chunkId + " params:" + cc + "\t" + p + "\t" + ppq + " size:" + (xl.size() / (1024.0 * 1024))
               + " files:" + xl.count());
       double fileSize = xl.size();
       xl.updateDestinationPaths();
@@ -1382,6 +1382,7 @@ public class CooperativeModule {
       LOG.info("Time spent:" + timeSpent + " chunk size:" + Utils.printSize(fileSize, true) +
               " cc:" + client.getChannelCount() +
               " Throughput:" + throughputInMb);
+      LOG.info(+ cc + "\t" + p + "\t" + ppq + "\t" + throughputInMb);
       for (int i = 1; i < client.ccs.size(); i++) {
         client.ccs.get(i).close();
       }

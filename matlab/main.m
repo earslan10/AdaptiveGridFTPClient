@@ -20,21 +20,19 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
     
     %entrySetList(1,numGroups) = EntrySet();
     degree = 1;
-    RsquareList = zeros(numGroups,1);
+    %RsquareList = zeros(numGroups,1);
     for degree = 3:3
         tmp = 1;
         index = 1;
         % Find equation for each entry set (es)
         offset = 1;
+        tic
         for i = 1:numGroups
             name = cell2mat(metadata{1}(i));
             count = metadata{2}(i);
             %disp(strcat('name:', name, ' count:', num2str(count)));
             subMatrix = matrix(offset:offset + count -1,:);
-            [equation, R2, ~, maxVals] = findEquation(subMatrix, degree);
-
-            RsquareList(tmp) = R2;
-            tmp = tmp + 1;
+            [equation, R2, RMSE, maxVals] = findEquation(subMatrix, degree);
 
             f = @(x)eval(equation);
             estimation = f([sampleValues(1), sampleValues(2), sampleValues(3)]); 
@@ -44,6 +42,8 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
                 %    ' error:', num2str(closeness), ' R2:', num2str(R2)));
                 entrySetList(index) = EntrySet(equation, R2, maxVals, closeness, name);
                 errors(index) = closeness;
+                RsquareList(index) = R2;
+                RMSEList(index) = RMSE;
                 index = index + 1;
             else
                 %disp(strcat('Skipping:',name , ' estimation:', num2str(estimation),...
@@ -51,8 +51,9 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
             end
             offset = offset + count;
         end
+        
         %disp(strcat(num2str(mean(RsquareList)), blanks(4), num2str(std(RsquareList))));
-        fprintf('%f\t%f\n', mean(RsquareList), std(RsquareList));
+        %fprintf('%f\t%f \t %f\n', mean(RsquareList), std(RsquareList), (toc/numGroups)*1000);
     end
     if ~exist('entrySetList', 'var') | size(entrySetList) == 0
         %disp('No entry found similar to the target! Exiting...')
@@ -60,7 +61,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
     end
     %fprintf('Total entry set list l %d\n', size(entrySetList));
     %disp(strcat('TOTAL entry set list l', ' ', num2str(size(entrySetList))));
-    
+    %return
     clusterSize = min(5, length(errors));
     [idx,cntr] = kmeanspp(errors,clusterSize);
     

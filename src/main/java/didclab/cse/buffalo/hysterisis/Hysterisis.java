@@ -126,8 +126,8 @@ public class Hysterisis {
       estimatedAccuracies[i] = ((double[]) result[2])[0];
       estimatedThroughputs[i] = ((double[]) result[1])[0];
       LOG.info("Estimated params cc:" + paramValues[0] + " p:" + paramValues[1] +
-              " ppq:" + paramValues[2] + " throughput:" + estimatedThroughputs[i] +
-              " Accuracy:" + estimatedAccuracies[i]);
+              " ppq:" + paramValues[2] + " throughput: " + estimatedThroughputs[i] +
+              " Accuracy: " + estimatedAccuracies[i]);
     }
     return estimatedParamsForChunks;
   }
