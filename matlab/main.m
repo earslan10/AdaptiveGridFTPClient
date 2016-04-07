@@ -16,49 +16,49 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
     metadata = textscan(fileId, '%s %d\n',numGroups );
     data= textscan(fileId, '%f %f %f %f %f', 'CommentStyle', '*');
     matrix = cell2mat(data);
-    warning off;
+    %warning off;
     
     %entrySetList(1,numGroups) = EntrySet();
-    degree = 1;
+    degree = 3;
     %RsquareList = zeros(numGroups,1);
-    for degree = 3:3
-        tmp = 1;
-        index = 1;
-        % Find equation for each entry set (es)
-        offset = 1;
-        tic
-        for i = 1:numGroups
-            name = cell2mat(metadata{1}(i));
-            count = metadata{2}(i);
-            %disp(strcat('name:', name, ' count:', num2str(count)));
-            subMatrix = matrix(offset:offset + count -1,:);
-            [equation, R2, RMSE, maxVals] = findEquation(subMatrix, degree);
+    tic
+    %for degree = 3:3
+    index = 1;
+    offset = 1;
 
-            f = @(x)eval(equation);
-            estimation = f([sampleValues(1), sampleValues(2), sampleValues(3)]); 
-            closeness = abs(targetThroughput - estimation);
-            if closeness <  bandwidth && estimation <  bandwidth && estimation > 100  && R2 > 0.6
-                %disp(strcat('Adding:',name , ' estimation:', num2str(estimation),...
-                %    ' error:', num2str(closeness), ' R2:', num2str(R2)));
-                entrySetList(index) = EntrySet(equation, R2, maxVals, closeness, name);
-                errors(index) = closeness;
-                RsquareList(index) = R2;
-                RMSEList(index) = RMSE;
-                index = index + 1;
-            else
-                %disp(strcat('Skipping:',name , ' estimation:', num2str(estimation),...
-                %    ' error:', num2str(abs(targetThroughput - estimation)), ' R2:', num2str(R2)));
-            end
-            offset = offset + count;
+    for i = 1:numGroups
+        name = cell2mat(metadata{1}(i));
+        count = metadata{2}(i);
+        %disp(strcat('name:', name, ' count:', num2str(count)));
+        subMatrix = matrix(offset:offset + count -1,:);
+        [equation, R2, RMSE, maxVals] = findEquation(subMatrix, degree);
+
+        f = @(x)eval(equation);
+        estimation = f([sampleValues(1), sampleValues(2), sampleValues(3)]); 
+        closeness = abs(targetThroughput - estimation);
+        if closeness <  bandwidth && estimation <  bandwidth && estimation > 100  && R2 > 0.6
+            %disp(strcat('Adding:',name , ' estimation:', num2str(estimation),...
+            %    ' error:', num2str(closeness), ' R2:', num2str(R2)));
+            entrySetList(index,1) = EntrySet(equation, R2, maxVals, closeness, name);
+            errors(index) = closeness;
+            %RsquareList(index) = R2;
+            %RMSEList(index) = RMSE;
+            index = index + 1;
+        else
+            %disp(strcat('Skipping:',name , ' estimation:', num2str(estimation),...
+            %    ' error:', num2str(abs(targetThroughput - estimation)), ' R2:', num2str(R2)));
         end
+        offset = offset + count;
+    end
         
         %disp(strcat(num2str(mean(RsquareList)), blanks(4), num2str(std(RsquareList))));
         %fprintf('%f\t%f \t %f\n', mean(RsquareList), std(RsquareList), (toc/numGroups)*1000);
-    end
+    %end
     if ~exist('entrySetList', 'var') | size(entrySetList) == 0
         %disp('No entry found similar to the target! Exiting...')
         return
     end
+    toc
     %fprintf('Total entry set list l %d\n', size(entrySetList));
     %disp(strcat('TOTAL entry set list l', ' ', num2str(size(entrySetList))));
     %return
@@ -77,32 +77,28 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
     end
     totalWeight = 0;
     index = 0;
-    for entrySet = entrySetList
+    for i = 1:size(entrySetList)
+        entrySet = entrySetList(i);
         index = index + 1;
         newEq = strcat(' -1 *(', entrySet.bestFitEq ,')');
         objectiveF = @(x)eval(newEq);
         [t,val] = fmincon(objectiveF,[1,1,0],[],[],[],[],[1,1,0],entrySet.maxParamValues,[], options);
-         if -1*val > bandwidth || -1*val < 10
-            disp(strcat('SKIPPING:',num2str(entrySet.note) , ' estimation:', num2str(val)));
+        entrySet.optimalParams = t;
+        entrySet.maximumThroughput = -1*val;
+        entrySetList(i) = entrySet;
+        if -1*val > bandwidth || -1*val < 10
+            disp(strcat('SKIPPING:',num2str(entrySet.note) , ' estimation:', num2str(-1*val)));
             continue;
-         end
+        end
         weight = 2^(new_idx(idx(index))-1);
         %weight = targetThroughput / (targetThroughput + entrySet.closeness);
         %weight = 1 / entrySet.closeness;
         totalWeight = totalWeight + weight;
-        disp(strcat('Weight:',num2str(weight) , ' total:', num2str(totalWeight)));
+        %disp(strcat('Weight:',num2str(weight) , ' total:', num2str(totalWeight)));
     end
+    toc
     %return
-    
-    %sumd = zeros(size(errors));
-    %for i = 1:size(errors')
-    %    sumd(i) = abs(errors(i) - cntr(idx(i)));
-    %end
-           
-    %cntr
-    %sorted_cntr
-    %original_index
-    %sumd
+
     cc = 0;
     p = 0;
     ppq = 0;
@@ -110,89 +106,68 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
     totalThrouhput = 0;
     errorRate = 0;
     index = 0;
-    for entrySet = entrySetList
+    for i = 1:size(entrySetList)
+        entrySet = entrySetList(i);
         index = index + 1;
-        %entrySet.maxParamValues
-        %entrySet.bestFitEq
-        newEq = strcat(' -1 *(', entrySet.bestFitEq ,')');
-        objectiveF = @(x)eval(newEq);
-        [t,val] = fmincon(objectiveF,[1,1,0],[],[],[],[],[1,1,0],entrySet.maxParamValues,[], options);
-        if -1*val > bandwidth || -1*val < 10
-            disp(strcat('SKIPPING:',num2str(entrySet.note) , ' estimation:', num2str(val)));
+        optimalParams = entrySet.optimalParams;
+        maximumThroughput = entrySet.maximumThroughput;
+        if maximumThroughput > bandwidth || maximumThroughput < 10
+            disp(strcat('SKIPPING:',num2str(entrySet.note) , ' estimation:', num2str(maximumThroughput)));
             continue;
         end
-        %weight = targetThroughput / (targetThroughput + entrySet.closeness);
-        %weight = (1 / entrySet.closeness);
-        %entrySet.closeness
-        %new_idx(idx(index))
         weight = 2^(new_idx(idx(index)) -1 );
-        disp(strcat('Weight:',num2str(weight) , ' total:', num2str(totalWeight)));
-        %weight
-        %disp(strcat('Final #',entrySet.note ,' error:', num2str(entrySet.closeness), ...
-        %     ' R2:', num2str(entrySet.R2),' weight:',num2str(weight),...
-        %    ' Val:', num2str(val)));
-        disp(strcat(entrySet.note, ' Fmincon cc:',num2str(t(1)) ,' p:', num2str(round(t(2))), ...
-             ' ppq:', num2str(round(t(3))) , ' value:',num2str(-1*val), ' closeness:' , ...
-             num2str(entrySet.closeness)));
+        fprintf('Estimated params %d %d %d %f %f %f %f\n', round(optimalParams(1)), round(optimalParams(2)),...
+            round(optimalParams(3)), maximumThroughput, entrySet.closeness, weight, entrySet.R2);
          
         f = @(x)eval(entrySet.bestFitEq);
-        thrEstimation = -1 * val;
-        
-        for subOptimalCC = round(t(1)) : -1 :1
-            newEstimation = f([subOptimalCC,t(2),t(3)]);
+        estCC = optimalParams(1);
+        estP = optimalParams(2);
+        estPP = optimalParams(3);
+        thrEstimation = maximumThroughput;
+        for subOptimalCC = round(estCC) : -1 :1
+            newEstimation = f([subOptimalCC,estP,estPP]);
             %disp(strcat('CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
             if newEstimation < thrEstimation * 0.9
                 subOptimalCC = subOptimalCC + 1;
-                newEstimation = f([subOptimalCC,t(2),t(3)]);
-                disp(strcat('Adjusted CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
+                newEstimation = f([subOptimalCC,estP,estPP]);
+                %disp(strcat('Adjusted CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
                 break;
             end
-         end
+        end
          
         thrEstimation = newEstimation;
-        subOptimalP = round(t(2));
-        if subOptimalP >= 1 
-             for subOptimalP = round(t(2)) : -1 :0 
-                 newEstimation = f([subOptimalCC,subOptimalP,t(3)]);
-                 %disp(strcat('CC:',num2str(subOptimalCC) ,' estimation:',num2str(newEstimation)));
+             for subOptimalP = round(estP) : -1 : 0
+                 newEstimation = f([subOptimalCC, subOptimalP, estPP]);
+                 %disp(strcat('P:',num2str(subOptimalP) ,' estimation:',num2str(newEstimation)));
                  if newEstimation < thrEstimation  * 0.9
                      subOptimalP = subOptimalP + 1;
-                     newEstimation = f([subOptimalCC,subOptimalP,t(3)]);
-                     disp(strcat('Adjusted P:',num2str(subOptimalP) ,' estimation:',num2str(newEstimation)));
+                     newEstimation = f([subOptimalCC, subOptimalP, estPP]);
+                     %disp(strcat('Adjusted P:',num2str(subOptimalP) ,' estimation:',num2str(newEstimation)));
                      break;
                  end
              end
-        end
         
         thrEstimation = newEstimation;
-        subOptimalPPQ = round(t(3));
-        if subOptimalPPQ >= 1
-            for subOptimalPPQ = round(t(3)) : -1 :0 
+        for subOptimalPPQ = round(estPP) : -1 :0 
+            newEstimation = f([subOptimalCC,subOptimalP,subOptimalPPQ]);
+            %disp(strcat('Adjusted PPQ:',num2str(subOptimalPPQ) ,' estimation:',num2str(newEstimation)));
+            if newEstimation < thrEstimation * 0.99
+                subOptimalPPQ = subOptimalPPQ +1;
                 newEstimation = f([subOptimalCC,subOptimalP,subOptimalPPQ]);
                 %disp(strcat('Adjusted PPQ:',num2str(subOptimalPPQ) ,' estimation:',num2str(newEstimation)));
-                if newEstimation > thrEstimation * 0.90
-                    subOptimalPPQ = subOptimalPPQ -1;
-                    newEstimation = f([subOptimalCC,subOptimalP,subOptimalPPQ]);
-                    disp(strcat('Adjusted PPQ:',num2str(subOptimalPPQ) ,' estimation:',num2str(newEstimation)));
-                    break;
-                end
-            end
+                break;
+            end 
         end
          cc = cc + subOptimalCC * weight;
-         %p = p + t(2) * weight;
          p = p + subOptimalP * weight;
-         %ppq = ppq + t(3) * weight;
          ppq = ppq + subOptimalPPQ * weight;
 
          totalThrouhput = totalThrouhput + f([subOptimalCC,subOptimalP,subOptimalPPQ]) * weight;
 
-         %totalWeight = totalWeight + weight;
-
-         disp(strcat('All Adjusted cc:',num2str(subOptimalCC), ' p:',...
-             num2str(subOptimalP), ' ppq:',num2str(subOptimalPPQ), 'estimation:', num2str(newEstimation)));
+         disp(strcat('All Adjusted ', entrySet.note, ' cc:',num2str(subOptimalCC), ' p:',...
+             num2str(subOptimalP), ' ppq:',num2str(subOptimalPPQ), ' estimation:', num2str(newEstimation)));
            if isempty(testPcp) == 0
                maxParamValue = entrySet.maxParamValues;
-               %testPcp
                if maxParamValue(1) < testPcp(1) || maxParamValue(2) < testPcp(2) || maxParamValue(3) < testPcp(3)
                    %disp(strcat('Skipping trial ', num2str(entrySet.note)));
                else
@@ -208,6 +183,7 @@ function [final,val] = main(filename, targetThroughput, sampleValues, testPcp, t
                end
            end
     end
+    toc
     cc = round( cc / totalWeight);
     p = round( p / totalWeight);
     ppq = round( ppq/ totalWeight);
