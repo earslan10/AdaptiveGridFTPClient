@@ -3,12 +3,15 @@ package didclab.cse.buffalo.utils;
 import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.CooperativeChannels.Density;
 import didclab.cse.buffalo.hysterisis.Entry;
+import stork.module.CooperativeModule;
 import stork.util.XferList;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.DecimalFormat;
+import java.util.LinkedList;
+import java.util.List;
 
 public class Utils {
 
@@ -38,7 +41,7 @@ public class Utils {
     int fileCountToFillThePipe = (int) Math.round(CooperativeChannels.intendedTransfer.getBDP() / avgFileSize);
     int pLevelToFillPipe = (int) Math.ceil(CooperativeChannels.intendedTransfer.getBDP() / CooperativeChannels.intendedTransfer.getBufferSize());
     int pLevelToFillBuffer = (int) Math.ceil(avgFileSize / CooperativeChannels.intendedTransfer.getBufferSize());
-    int cc = Math.max(Math.min(Math.min(fileCountToFillThePipe, CooperativeChannels.intendedTransfer.getMaxConcurrency()), xl.count()), 2);
+    int cc = Math.min(Math.min(Math.max(fileCountToFillThePipe, 2), xl.count()), CooperativeChannels.intendedTransfer.getMaxConcurrency());
     int ppq = fileCountToFillThePipe;
     int p = Math.max(Math.min(pLevelToFillPipe, pLevelToFillBuffer), 1);
     p = avgFileSize > CooperativeChannels.intendedTransfer.getBDP() ? p + 2 : p;
@@ -61,5 +64,13 @@ public class Utils {
     }
     br.close();
     return fileEntries;
+  }
+
+  public static List<Integer> getListOfChannelsOfAChunk(XferList xl) {
+    List<Integer> list = new LinkedList<Integer>();
+    for (CooperativeModule.ChannelPair channel : xl.channels) {
+      list.add(channel.getId());
+    }
+    return list;
   }
 }

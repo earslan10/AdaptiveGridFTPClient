@@ -2,6 +2,7 @@ package stork.util;
 
 import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.CooperativeChannels.Density;
+import stork.module.CooperativeModule;
 
 import java.util.Collections;
 import java.util.Iterator;
@@ -12,12 +13,10 @@ public class XferList implements Iterable<XferList.Entry> {
   private final Entry root;
   public String sp, dp;
   public double totalTransferredSize = 0, instantTransferredSize = 0;
-  public int totalTransferredCount = 0, instantTransferredCount = 0;
   public double estimatedFinishTime = 0;
-  public double instant_throughput = 0, overall_throughput = 0, weighted_throughput = 0;
+  public double instant_throughput = 0, weighted_throughput = 0;
   public long initialSize = 0;
-  public List<Integer> channels;
-  public int[] params;
+  public List<CooperativeModule.ChannelPair> channels;
   public int interval = 0;
   public int onAir = 0;
   public boolean isReadyToTransfer = false;

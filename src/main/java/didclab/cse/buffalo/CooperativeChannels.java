@@ -8,6 +8,9 @@ import didclab.cse.buffalo.log.LogManager;
 import didclab.cse.buffalo.utils.Utils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.math3.ml.clustering.Cluster;
+import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
+import org.apache.commons.math3.ml.clustering.DoublePoint;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
 
@@ -18,6 +21,7 @@ import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 
@@ -51,7 +55,7 @@ public class CooperativeChannels {
 
   public static void main(String[] args) throws Exception {
     CooperativeChannels multiChunk = new CooperativeChannels();
-    multiChunk.parseArguments();
+    multiChunk.parseArguments(args);
     multiChunk.transfer();
   }
 
@@ -66,7 +70,7 @@ public class CooperativeChannels {
     String mHysterisis = useHysterisis ? "Hysterisis" : "";
     String mDynamic = useDynamicScheduling ? "Dynamic" : "";
     LOG.info("*************" + algorithm.name() + "************");
-    LogManager.writeToLog("*************" + algorithm.name() + "-" + mHysterisis + "-" + mDynamic + "************", ConfigurationParams.INFO_LOG_ID);
+    LogManager.writeToLog("*************" + algorithm.name() + "-" + mHysterisis + "-" + mDynamic + "************" + intendedTransfer.getMaxConcurrency(), ConfigurationParams.INFO_LOG_ID);
 
     URI su = null, du = null;
     try {
@@ -95,7 +99,18 @@ public class CooperativeChannels {
 
     //Get metadata information of dataset
     XferList dataset = gridFTPClient.getListofFiles(su.getPath(), du.getPath());
-    LOG.info("mlsr completed at:" + ((System.currentTimeMillis() - startTime) / 1000.0) + "set size:" + dataset.size());
+
+    LOG.info("mlsr completed at:" + ((System.currentTimeMillis() - startTime) / 1000.0) + "set size:" + dataset.size() );
+
+    DBSCANClusterer dbscan = new DBSCANClusterer(intendedTransfer.getBDP()/100.0, 2);
+    List<Cluster<DoublePoint>> cluster = dbscan.cluster(getGPS(dataset));
+
+    System.out.println(cluster.size() + "**" + intendedTransfer.getBDP());
+    for(Cluster<DoublePoint> c: cluster){
+      System.out.println(c.getPoints().get(0));
+    }
+
+    System.exit(-1);
 
     long datasetSize = dataset.size();
     ArrayList<Partition> chunks = partitionByFileSize(dataset);
@@ -146,6 +161,7 @@ public class CooperativeChannels {
             chunks.get(i).getRecords().setTransferParameters(Utils.getBestParams(chunks.get(i).getRecords()));
           }
         }
+        LOG.info(" Running MC with :" + totalChannelCount + " channels.");
         int[] channelAllocation = allocateChannelsToChunks(chunks, totalChannelCount);
         long start = System.currentTimeMillis();
         gridFTPClient.runMultiChunkTransfer(chunks, channelAllocation);
@@ -160,12 +176,20 @@ public class CooperativeChannels {
     gridFTPClient.stop();
   }
 
-  double totalChunksSize(Partition p) {
-    double sum = 0;
-    for (int i = 0; i < p.getRecords().count(); i++) {
-      sum += p.getRecords().getItem(i).size;
+  private static List<DoublePoint> getGPS(XferList list){
+
+    List<DoublePoint> points = new ArrayList<DoublePoint>();
+    double[] d = new double[1];
+    int index = 0;
+    Iterator<XferList.Entry> it = list.iterator();
+    while (it.hasNext()) {
+      XferList.Entry e =  it.next();
+      System.out.println(e.path + "--" + e.size);
+      d[0] = e.size;
+      points.add(new DoublePoint(d));
     }
-    return sum;
+    //points.add(new DoublePoint(d));
+    return points;
   }
 
   private ArrayList<Partition> mergePartitions(ArrayList<Partition> partitions) {
@@ -366,8 +390,10 @@ public class CooperativeChannels {
     return concurrencyLevels;
   }
 
-  private void parseArguments() {
-    try (BufferedReader br = new BufferedReader(new FileReader("config.cfg"))) {
+  private void parseArguments(String[] arguments) {
+    String configFile  = arguments.length > 0 ? arguments[0] : "config.cfg";
+    boolean noProxy = false;
+    try (BufferedReader br = new BufferedReader(new FileReader(configFile))) {
       String line;
       while ((line = br.readLine()) != null) {
         String[] args = line.split("\\s+");
@@ -398,6 +424,9 @@ public class CooperativeChannels {
               LOG.fatal("-path requires path of file/directory to be transferred");
             }
             LOG.info("proxyFile = " + proxyFile);
+            break;
+          case "-no-proxy":
+            noProxy = true;
             break;
           case "-bw":
           case "-bandwidth":
@@ -491,7 +520,8 @@ public class CooperativeChannels {
     } catch (IOException e) {
       e.printStackTrace();
     }
-    if (null == proxyFile) {
+
+    if (null == proxyFile && !noProxy) {
       int uid = findUserId();
       proxyFile = "/tmp/x509up_u" + uid;
     }
