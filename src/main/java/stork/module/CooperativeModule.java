@@ -14,6 +14,7 @@ import org.globus.ftp.exception.UnexpectedReplyCodeException;
 import org.globus.ftp.extended.GridFTPControlChannel;
 import org.globus.ftp.extended.GridFTPServerFacade;
 import org.globus.ftp.vanilla.*;
+import org.globus.gsi.X509Credential;
 import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
 import org.ietf.jgss.GSSCredential;
@@ -244,9 +245,8 @@ public class CooperativeModule {
         gc.open();
         if (u.cred != null) {
           try {
-
-            //gc.authenticate(u.cred, u.user);
-            gc.authenticate(u.cred);
+            gc.authenticate(u.cred, u.user);
+            //gc.authenticate(u.cred);
           } catch (Exception e) {
             e.printStackTrace();
             System.exit(0);
@@ -930,7 +930,6 @@ public class CooperativeModule {
   // operations and provides some more responsive transfer methods.
   public static class StorkFTPClient {
     public LinkedList<XferList> chunks;
-    BufferedWriter log;
     volatile boolean aborted = false;
     LinkedList<Thread> threads;
 
@@ -985,9 +984,6 @@ public class CooperativeModule {
       dirs.add("");
 
       cc.rc.exchange("OPTS MLST type;size;");
-
-      FileWriter fstream = new FileWriter("transfer.log");
-      log = new BufferedWriter(fstream);
       // Keep listing and building subdirectory lists.
       // TODO: Replace with pipelining structure.
       while (!dirs.isEmpty()) {
@@ -1675,9 +1671,6 @@ public class CooperativeModule {
         for (ChannelPair cc : client.ccs) {
           cc.close();
         }
-        client.log.flush();
-        client.log.close();
-
       } catch (Exception e) {
       }
     }
@@ -1755,7 +1748,7 @@ public class CooperativeModule {
             client.ccs.add(channel);
           }
           setupChannelConf(channel, p, ppq, bufSize, doStriping, channelId, chunkId, xl, firstFileToTransfer);
-          LOG.info("Channel "+ channelId + " for chunk " + chunkId + " Total chunks:"+client.ccs.size() + " Channels:" + xl.channels);
+          //LOG.info("Channel "+ channelId + " for chunk " + chunkId + " Total chunks:"+client.ccs.size() + " Channels:" + xl.channels);
           client.transferList(channel);
         } catch (Exception e) {
           e.printStackTrace();

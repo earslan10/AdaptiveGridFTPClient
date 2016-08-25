@@ -38,6 +38,8 @@ public class Similarity {
         attributeIndices.put(header[i], i);
       int id = 0;
       String[] record = null;
+      int groupNumber = fname.hashCode();
+      Entry prev = null;
       while ((record = reader.readNext()) != null) {
         Entry entry = new Entry();
         try {
@@ -111,6 +113,11 @@ public class Similarity {
           System.exit(0);
         }
         entry.calculateSpecVector();
+        if (prev != null && entry.getIdentity().compareTo(prev.getIdentity()) != 0) {
+          groupNumber++;
+        }
+        entry.setGroupNumber(groupNumber);
+        prev = entry;
         entries.add(entry);
       }
       reader.close();
@@ -301,8 +308,8 @@ public class Similarity {
 			 * 1. Entry's network or data set characteristics is seen for the first time
 			 * 2. Already seen entry type's repeating parameter values
 			 */
-      if (e.getIdentity().compareTo(prev.getIdentity()) != 0 || (set.contains(e.getParameters()) &&
-              e.getParameters().compareTo(prev.getParameters()) != 0 && list.size() >= 6 * 6 * 6 - 1)) {
+      if (e.getIdentity().compareTo(prev.getIdentity()) != 0 || e.getGroupNumber() != prev.getGroupNumber() ||
+              (set.contains(e.getParameters()) && e.getParameters().compareTo(prev.getParameters()) != 0 && list.size() >= 6 * 6 * 6 - 1)) {
         //Entry s = set.get(e.getIdentity());
         //LogManager.writeToLog("New entry "+e.getSimilarityValue()+" "+e.printSpecVector()+" "+e.getIdentity()+" "
         //		+e.getThroughput()+" "+e.getParameters(), ConfigurationParams.STDOUT_ID);
@@ -330,23 +337,38 @@ public class Similarity {
       trials.add(list);
     }
     Collections.shuffle(trials);
-    int trainingCount = Math.round(trials.size() * 0.8f);
-    List<List<Entry>> training_trials = trials.subList(0, trainingCount);
-    List<List<Entry>> testing_trials = trials.subList(trainingCount, trials.size());
-    writeToFile("outputs/chunk_" + chunkNumber + "_training.txt", training_trials);
-    writeToFile("outputs/chunk_" + chunkNumber + "_testing.txt", testing_trials);
+    //int trainingCount = Math.round(trials.size() * 0.8f);
+    //List<List<Entry>> training_trials = trials.subList(0, trainingCount);
+    //List<List<Entry>> testing_trials = trials.subList(trainingCount, trials.size());
+    //writeToFile("outputs/chunk_" + chunkNumber + "_training.txt", training_trials);
+    //writeToFile("outputs/chunk_" + chunkNumber + "_testing.txt", testing_trials);
+    File theDir = new File("out");
+
+    // if the directory does not exist, create it
+    if (!theDir.exists()) {
+      try{
+        theDir.mkdir();
+      }
+      catch(SecurityException se){
+        //handle it
+      }
+    }
+    writeToFile(theDir.getPath() + "/chunk_" + chunkNumber + ".txt", trials);
   }
 
   private static void writeToFile(String fileName, List<List<Entry>> trials) {
     try {
       FileWriter writer = new FileWriter(fileName);
-      writer.write(trials.size() + "\n");
+
+      //writer.write(trials.size() + "\n");
       // Write metadata of each trial first.
-      for (List<Entry> subset : trials)
-        writer.write(subset.get(0).getNote() + " " + subset.size() + "\n");
+      //for (List<Entry> subset : trials)
+      //  writer.write(subset.get(0).getNote() + " " + subset.size() + "\n");
       // Write entries of each trial
       for (int i = 0; i < trials.size(); i++) {
         List<Entry> subset = trials.get(i);
+        // Write metadata first
+        writer.write(subset.get(0).getNote() + " " + subset.size() + "\n");
         for (Entry entry : subset) {
 					/* Max parameters observed in the logs */
           int pipelining = entry.getPipelining() == -1 ? 0 : entry.getPipelining();
@@ -356,9 +378,6 @@ public class Similarity {
           pipelining = (int) Math.min(entry.getPipelining(), (Math.max(entry.getFileCount() - entry.getConcurrency(), 0)));
           int fast = entry.getFast() == true ? 1 : 0;
           writer.write(concurrency + " " + parallelism + " " + pipelining + " " + fast + " " + entry.getThroughput() + "\n");
-        }
-        if (i != trials.size() - 1) {
-          writer.write("*\n");
         }
       }
       writer.flush();

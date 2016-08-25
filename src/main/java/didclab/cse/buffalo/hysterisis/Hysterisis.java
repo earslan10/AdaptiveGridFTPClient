@@ -12,7 +12,10 @@ import org.apache.commons.logging.LogFactory;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -32,8 +35,8 @@ public class Hysterisis {
   public Hysterisis(GridFTPTransfer gridFTPClient) {
     // TODO Auto-generated constructor stub
     this.gridFTPClient = gridFTPClient;
-    initializerThread = new Thread(new InitializeMatlabConnection());
-    initializerThread.start();
+    //initializerThread = new Thread(new InitializeMatlabConnection());
+    //initializerThread.start();
   }
 
   @VisibleForTesting
@@ -74,13 +77,25 @@ public class Hysterisis {
     if (entries.isEmpty()) {  // Make sure there are log files to run hysterisis
       LOG.fatal("No input entries found to run hysterisis analysis. Exiting...");
     }
+
+    // Find out similar entries
+    int[] setCounts = new int[chunks.size()];
+    Similarity.normalizeDataset3(entries, chunks);
+    //LOG.info("Entries are normalized at "+ ManagementFactory.getRuntimeMXBean().getUptime());
+    for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
+      List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
+      //Categorize selected entries based on log date
+      List<List<Entry>> trials = new LinkedList<>();
+      Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
+      setCounts[chunkNumber] = trials.size();
+      //LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
+    }
+
     double[] sampleThroughputs = new double[chunks.size()];
     // Run sample transfer to learn current network load
     // Create sample dataset to and transfer to measure current load on the network
     for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
       Partition chunk = chunks.get(chunkNumber);
-
-
       long SAMPLING_SIZE = (int) (intendedTransfer.getBandwidth() / 4);
       //System.out.println(chunk.getRecords().count() +" "+ chunk.getRecords().size()  + "s:" +SAMPLING_SIZE);
       XferList sample_files = chunk.getRecords().split(SAMPLING_SIZE);
@@ -107,7 +122,7 @@ public class Hysterisis {
     }
     // Based on input files and sample tranfer throughput; categorize logs and fit model
     // Then find optimal parameter values out of the model
-    Object[][] results = runMatlabModeling(chunks, sampleThroughputs, intendedTransfer.getBandwidth());
+    double[][] results = runModelling(chunks, sampleThroughputs);
     if (results == null) {
       return null;
     }
@@ -115,19 +130,18 @@ public class Hysterisis {
     estimatedThroughputs = new double[chunks.size()];
     estimatedAccuracies = new double[chunks.size()];
     for (int i = 0; i < results.length; i++) {
-      Object[] result = results[i];
-      double[] paramValues = (double[]) result[0];
+      double[] paramValues = results[i];
+      //double[] paramValues =  result[0];
       //Convert from double to int
-      int[] parameters = new int[paramValues.length + 1];
-      for (int j = 0; j < paramValues.length; j++)
+      int[] parameters = new int[paramValues.length];
+      for (int j = 0; j < paramValues.length-1; j++)
         parameters[j] = (int) paramValues[j];
-      parameters[paramValues.length] = (int) intendedTransfer.getBufferSize();
+      parameters[paramValues.length-1] = (int) intendedTransfer.getBufferSize();
       estimatedParamsForChunks[i] = parameters;
-      estimatedAccuracies[i] = ((double[]) result[2])[0];
-      estimatedThroughputs[i] = ((double[]) result[1])[0];
+      //estimatedAccuracies[i] = ((double[]) result[2])[0];
+      estimatedThroughputs[i] = paramValues[paramValues.length-1];
       LOG.info("Estimated params cc:" + paramValues[0] + " p:" + paramValues[1] +
-              " ppq:" + paramValues[2] + " throughput: " + estimatedThroughputs[i] +
-              " Accuracy: " + estimatedAccuracies[i]);
+              " ppq:" + paramValues[2] + " throughput: " + estimatedThroughputs[i]);
     }
     return estimatedParamsForChunks;
   }
@@ -149,10 +163,7 @@ public class Hysterisis {
       setCounts[chunkNumber] = trials.size();
       //LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
     }
-    /*
-    	 * Run matlab optimization to find set of "optimal" parameters for each chunk 
-    	 */
-    //return null;
+    // Run matlab optimization to find set of "optimal" parameters for each chunk
     return polyFitbyMatlab(chunks, setCounts, sampleThroughputs, bandwidth);
   }
 
@@ -199,6 +210,41 @@ public class Hysterisis {
     proxy.disconnect();
     return results;
   }
+
+  public double [][] runModelling(List<Partition> chunks, double[] sampleThroughputs) {
+    double [][]outputList = new double[chunks.size()][4];
+    try{
+      for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
+        int[] sampleTransferValues = chunks.get(chunkNumber).getSamplingParameters();
+        double sampleThroughputinMb = sampleThroughputs[chunkNumber] / Math.pow(10, 6);
+        ProcessBuilder pb = new ProcessBuilder("python", "src/main/python/optimizer.py",
+                "-f", "chunk_"+chunkNumber+".txt",
+                "-c", "" + sampleTransferValues[0],
+                "-p", "" + sampleTransferValues[1],
+                "-q", ""+sampleTransferValues[2],
+                "-t", "" + sampleThroughputinMb);
+        System.out.println("input:" + pb.command());
+        Process p = pb.start();
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
+        String output = in.readLine();
+        if (output == null) {
+          in = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+          while(( output = in.readLine()) !=  null){
+            System.out.println("Output:" + output);
+          }
+        }
+        String []values = output.replaceAll("\\[", "").replaceAll("\\]", "").split("\\s+");
+        for (int i = 0; i < values.length; i++) {
+          outputList[chunkNumber][i] = Double.parseDouble(values[i]);
+        }
+
+      }
+    }catch(Exception e) {
+      System.out.println(e);
+    }
+    return outputList;
+}
 
   public double[] getEstimatedThroughputs() {
     return estimatedThroughputs;

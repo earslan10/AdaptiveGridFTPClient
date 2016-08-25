@@ -8,20 +8,13 @@ import didclab.cse.buffalo.log.LogManager;
 import didclab.cse.buffalo.utils.Utils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.commons.math3.ml.clustering.Cluster;
-import org.apache.commons.math3.ml.clustering.DBSCANClusterer;
-import org.apache.commons.math3.ml.clustering.DoublePoint;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 
@@ -55,7 +48,7 @@ public class CooperativeChannels {
 
   public static void main(String[] args) throws Exception {
     CooperativeChannels multiChunk = new CooperativeChannels();
-    multiChunk.parseArguments(args);
+    multiChunk.parseArguments(args, multiChunk);
     multiChunk.transfer();
   }
 
@@ -102,15 +95,6 @@ public class CooperativeChannels {
 
     LOG.info("mlsr completed at:" + ((System.currentTimeMillis() - startTime) / 1000.0) + "set size:" + dataset.size() );
 
-    DBSCANClusterer dbscan = new DBSCANClusterer(intendedTransfer.getBDP()/100.0, 2);
-    List<Cluster<DoublePoint>> cluster = dbscan.cluster(getGPS(dataset));
-
-    System.out.println(cluster.size() + "**" + intendedTransfer.getBDP());
-    for(Cluster<DoublePoint> c: cluster){
-      System.out.println(c.getPoints().get(0));
-    }
-
-    System.exit(-1);
 
     long datasetSize = dataset.size();
     ArrayList<Partition> chunks = partitionByFileSize(dataset);
@@ -176,21 +160,6 @@ public class CooperativeChannels {
     gridFTPClient.stop();
   }
 
-  private static List<DoublePoint> getGPS(XferList list){
-
-    List<DoublePoint> points = new ArrayList<DoublePoint>();
-    double[] d = new double[1];
-    int index = 0;
-    Iterator<XferList.Entry> it = list.iterator();
-    while (it.hasNext()) {
-      XferList.Entry e =  it.next();
-      System.out.println(e.path + "--" + e.size);
-      d[0] = e.size;
-      points.add(new DoublePoint(d));
-    }
-    //points.add(new DoublePoint(d));
-    return points;
-  }
 
   private ArrayList<Partition> mergePartitions(ArrayList<Partition> partitions) {
     for (int i = 0; i < partitions.size(); i++) {
@@ -390,10 +359,11 @@ public class CooperativeChannels {
     return concurrencyLevels;
   }
 
-  private void parseArguments(String[] arguments) {
-    String configFile  = arguments.length > 0 ? arguments[0] : "config.cfg";
+  private void parseArguments(String[] arguments, CooperativeChannels multiChunk) {
+    ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+    InputStream is = classloader.getResourceAsStream("config.cfg");
     boolean noProxy = false;
-    try (BufferedReader br = new BufferedReader(new FileReader(configFile))) {
+    try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
       String line;
       while ((line = br.readLine()) != null) {
         String[] args = line.split("\\s+");

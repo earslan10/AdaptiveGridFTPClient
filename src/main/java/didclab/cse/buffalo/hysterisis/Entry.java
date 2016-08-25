@@ -36,6 +36,8 @@ public class Entry {
   private boolean isEmulation;
   private boolean isDedicated;
   private String note;
+  // Used to distinguish same dataset runs with different times.
+  private int groupNumber;
   private int maxConcurrency;
 
   public Entry() {
@@ -453,6 +455,14 @@ public class Entry {
 
   String getParameters() {
     return parallellism + "*" + concurrency + "*" + pipelining + "*" + fast;
+  }
+
+  public int getGroupNumber() {
+    return groupNumber;
+  }
+
+  public void setGroupNumber(int groupNumber) {
+    this.groupNumber = groupNumber;
   }
 
   @Override
