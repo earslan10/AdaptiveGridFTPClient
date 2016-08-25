@@ -1376,7 +1376,6 @@ public class CooperativeModule {
       //LinkedList<Thread> threads = new LinkedList<Thread>();
 
       Collection<Future<?>> futures = new LinkedList<Future<?>>();
-      System.out.println("Concurrency:" + cc);
       for (int i = 0; i < cc; i++) {
         Entry firstFile = synchronizedPop(firstFilesToSend);
         Runnable transferChannel = new TransferChannel(p, ppq, bufSize, i, xl, chunkId, firstFile);

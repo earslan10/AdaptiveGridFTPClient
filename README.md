@@ -1,6 +1,7 @@
 
 # Dynamic Protocol Tuning Algorithms
 1. Import the project to Intellij
+  * Tested with Java 1.8 and Python 2.7
 2. Edit configurations in config.cfg in src/main/resources folder as follows
 
   **-s** $Source_GridFTP_Server  

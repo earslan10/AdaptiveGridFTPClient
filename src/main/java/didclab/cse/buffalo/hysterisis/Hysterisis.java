@@ -1,12 +1,8 @@
 package didclab.cse.buffalo.hysterisis;
 
-import com.google.common.annotations.VisibleForTesting;
 import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.Partition;
 import didclab.cse.buffalo.utils.Utils;
-import matlabcontrol.MatlabProxy;
-import matlabcontrol.MatlabProxyFactory;
-import matlabcontrol.MatlabProxyFactoryOptions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import stork.module.CooperativeModule.GridFTPTransfer;
@@ -14,7 +10,6 @@ import stork.util.XferList;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -26,29 +21,12 @@ public class Hysterisis {
   private static List<List<Entry>> entries;
   public double optimizationAlgorithmTime = 2;
   private int[][] estimatedParamsForChunks;
-  private Thread initializerThread;
-  private MatlabProxy proxy;
   private GridFTPTransfer gridFTPClient;
   private double[] estimatedThroughputs;
-  private double[] estimatedAccuracies;
 
   public Hysterisis(GridFTPTransfer gridFTPClient) {
     // TODO Auto-generated constructor stub
     this.gridFTPClient = gridFTPClient;
-    //initializerThread = new Thread(new InitializeMatlabConnection());
-    //initializerThread.start();
-  }
-
-  @VisibleForTesting
-  public void setGridFTP(GridFTPTransfer gridFTPClient) {
-    this.gridFTPClient = gridFTPClient;
-  }
-
-  /**
-   * @return the entries
-   */
-  public List<List<Entry>> getEntries() {
-    return entries;
   }
 
 
@@ -128,7 +106,6 @@ public class Hysterisis {
     }
     estimatedParamsForChunks = new int[chunks.size()][4];
     estimatedThroughputs = new double[chunks.size()];
-    estimatedAccuracies = new double[chunks.size()];
     for (int i = 0; i < results.length; i++) {
       double[] paramValues = results[i];
       //double[] paramValues =  result[0];
@@ -144,71 +121,6 @@ public class Hysterisis {
               " ppq:" + paramValues[2] + " throughput: " + estimatedThroughputs[i]);
     }
     return estimatedParamsForChunks;
-  }
-
-  /*
-   * 1-It first categorizes the historical dataset based on similarity to each chunk
-   * 2- Write each set of entries to the files
-   * 3-Run polyfit matlab function to derive model and find optimal point that yields maximum throughput
-   */
-  private Object[][] runMatlabModeling(List<Partition> chunks, double[] sampleThroughputs, double bandwidth) {
-    int[] setCounts = new int[chunks.size()];
-    Similarity.normalizeDataset3(entries, chunks);
-    //LOG.info("Entries are normalized at "+ ManagementFactory.getRuntimeMXBean().getUptime());
-    for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
-      List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
-      //Categorize selected entries based on log date
-      List<List<Entry>> trials = new LinkedList<>();
-      Similarity.categorizeEntries(chunkNumber, trials, similarEntries);
-      setCounts[chunkNumber] = trials.size();
-      //LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
-    }
-    // Run matlab optimization to find set of "optimal" parameters for each chunk
-    return polyFitbyMatlab(chunks, setCounts, sampleThroughputs, bandwidth);
-  }
-
-  /*
-   * For each chunk, run model fitting (polyfit) function then extract
-   * combination of cc,p and ppq values for best throughput
-   *
-   * Inputs: chunk-- file groups partitioned based on file size
-   * 		   logFileCount-- the number of set of logs (based on date) that are similar to chunks characteristics
-   * 		   sampleThroughputs-- sample throughput results obtained by transferring small piece of each chunks
-   * 		   maxParams---- For each chunk, maximum observed cc, p and ppq values in logs
-   * Output: results-- it holds estimated values of cc,p and ppq for each chunk set
-   */
-  private Object[][] polyFitbyMatlab(List<Partition> chunks,
-                                     int[] logFilesCount, double[] sampleThroughputs, double bandhwidth) {
-    double bandwidthInMbps = bandhwidth / (1000 * 1000);
-    if (initializerThread.isAlive()) {
-      try {
-        initializerThread.join();
-      } catch (InterruptedException e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-        System.exit(-1);
-      }
-    }
-    if (proxy == null) {
-      LOG.fatal("Matlab connection not valid");
-      System.exit(-1);
-    }
-    Object[][] results = new Object[chunks.size()][];
-    for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
-      int[] sampleTransferValues = chunks.get(chunkNumber).getSamplingParameters();
-      String filePath = ConfigurationParams.OUTPUT_DIR + "/chunk_" + chunkNumber;
-      String command = "analyzeAndEvaluate('" + filePath + "'," + sampleThroughputs[chunkNumber] +
-              ",[" + sampleTransferValues[0] + "," + sampleTransferValues[1] +
-              "," + sampleTransferValues[2] + "]" + "," + bandwidthInMbps + ")";
-      LOG.info("Matlab command:" + command);
-      try {
-        results[chunkNumber] = proxy.returningEval(command, 3);
-      } catch (Exception e) {
-        e.printStackTrace();
-      }
-    }
-    proxy.disconnect();
-    return results;
   }
 
   public double [][] runModelling(List<Partition> chunks, double[] sampleThroughputs) {
@@ -252,35 +164,6 @@ public class Hysterisis {
 
   public int[][] getEstimatedParams() {
     return estimatedParamsForChunks;
-  }
-
-  private class InitializeMatlabConnection implements Runnable {
-    @Override
-    public void run() {
-      LOG.info("Initializing matlab daemon...");
-      MatlabProxyFactoryOptions options = new MatlabProxyFactoryOptions.Builder()
-              .setUsePreviouslyControlledSession(true)
-              .setHidden(true)
-              .setMatlabLocation(ConfigurationParams.MATLAB_DIR + "/matlab")
-              .build();
-      MatlabProxyFactory factory = new MatlabProxyFactory(options);
-      try {
-        proxy = factory.getProxy();
-        if (proxy == null) {
-          LOG.fatal("Matlab connection is not valid");
-        }
-        proxy.eval("cd " + ConfigurationParams.MATLAB_SCRIPT_DIR);
-        LOG.info("Matlab daemon is started successfuly.");
-
-      } catch (Exception e) {
-        // TODO Auto-generated catch block
-        e.printStackTrace();
-        System.err.println("Matlab could not be initialized");
-        System.exit(-1);
-      }
-
-    }
-
   }
 
 }
