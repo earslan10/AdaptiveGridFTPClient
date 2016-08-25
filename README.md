@@ -8,9 +8,9 @@
   **-d** $Destination_GridFTP_Server  
   **-proxy** $Proxy_file_path (Default will try to read from /tmp for running user id)  
   **-cc** $maximum_allowed_concurrency  
-  **-rtt** $rtt (round trip time between source and destination)  
-  **-bw** $bw (Maximum bandwidth between source and destination)  
-  **-bs** $buffer_size (TCP buffer size of minimum of source's read and destination's write)  
+  **-rtt** $rtt (round trip time between source and destination) in ms  
+  **-bw** $bw (Maximum bandwidth between source and destination) in Gbps  
+  **-bs** $buffer_size (TCP buffer size of minimum of source's read and destination's write in MB)  
   **[-single-chunk]** (Will use Single Chunk [SC](http://dl.acm.org/citation.cfm?id=2529904) approach to schedule transfer. Will transfer one chunk at a time)  
   **[-useHysterisis]** (Will use historical data to run modelling and estimate transfer parameters. [HARP]. Requires python to be installed with scipy and sklearn packages)  
   **[-use-dynamic-scheduling]** (Provides dynamic channel reallocation between chunks while transfer is running [ProMC](http://dl.acm.org/citation.cfm?id=2529904))
@@ -22,7 +22,7 @@
   -cc 10  
   -rtt 0.04  
   -bw 10  
-  -bs** 32  
+  -bs 32  
   -useHysterisis  
   -use-dynamic-scheduling
 
