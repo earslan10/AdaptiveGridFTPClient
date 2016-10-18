@@ -46,6 +46,7 @@ public class XferList implements Iterable<XferList.Entry> {
     root = new Entry("", size);
     list.add(root);
     this.size += size;
+    count ++;
   }
 
   public void setTransferParameters(int[] parameters) {
@@ -67,7 +68,7 @@ public class XferList implements Iterable<XferList.Entry> {
     this.count++;
   }
 
-  void addEntry(Entry e) {
+  public void addEntry(Entry e) {
     list.add(e);
     if (e.len == -1) {
       size += e.remaining();
@@ -82,7 +83,7 @@ public class XferList implements Iterable<XferList.Entry> {
     size += ol.size;
     count += ol.count;
     for (Entry e : ol)
-      list.add(new Entry(e.path, e.size));
+      list.add(e);
     //list.addAll(ol.list);
   }
 

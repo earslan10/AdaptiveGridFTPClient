@@ -1,7 +1,5 @@
 package stork.module;
 
-//import stork.stat.InvQuadRegression;
-
 import com.google.common.collect.Lists;
 import didclab.cse.buffalo.Partition;
 import didclab.cse.buffalo.utils.Utils;
@@ -14,7 +12,6 @@ import org.globus.ftp.exception.UnexpectedReplyCodeException;
 import org.globus.ftp.extended.GridFTPControlChannel;
 import org.globus.ftp.extended.GridFTPServerFacade;
 import org.globus.ftp.vanilla.*;
-import org.globus.gsi.X509Credential;
 import org.gridforum.jgss.ExtendedGSSCredential;
 import org.gridforum.jgss.ExtendedGSSManager;
 import org.ietf.jgss.GSSCredential;
@@ -27,11 +24,11 @@ import stork.util.XferList.Entry;
 import java.io.*;
 import java.net.URI;
 import java.text.DecimalFormat;
+import java.text.NumberFormat;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import static didclab.cse.buffalo.utils.Utils.getListOfChannelsOfAChunk;
 
@@ -245,11 +242,10 @@ public class CooperativeModule {
         gc.open();
         if (u.cred != null) {
           try {
-            gc.authenticate(u.cred, u.user);
-            //gc.authenticate(u.cred);
+            gc.authenticate(u.cred);
           } catch (Exception e) {
             e.printStackTrace();
-            System.exit(0);
+            System.exit(-1);
           }
         } else {
           String user = (u.user == null) ? "anonymous" : u.user;
@@ -416,10 +412,8 @@ public class CooperativeModule {
   public static class ChannelPair {
     //public final FTPURI su, du;
     public final boolean gridftp;
-    public boolean isChunkChanged = false;
-    public int newxferListIndex = -1;
     Queue<Entry> inTransitFiles = new LinkedList<Entry>();
-    private int parallelism = 1, pipelining = 1;// trev = 5;
+    private int parallelism = 1, pipelining = 1, trev = 5;
     private char mode = 'S', type = 'A';
     private boolean dc_ready = false;
     private int id;
@@ -436,6 +430,10 @@ public class CooperativeModule {
     // Source/dest view of control channels.
     // Either one of these may be local (but not both).
     private ControlChannel sc, dc;
+
+    public boolean isChunkChanged = false;
+    public int newxferListIndex = -1;
+    public boolean enableCheckSum = false;
 
     // Create a control channel pair. TODO: Check if they can talk.
     public ChannelPair(FTPURI su, FTPURI du) {
@@ -631,13 +629,11 @@ public class CooperativeModule {
     }
 
     // Set event frequency for this pair.
-    /*
 		void setPerfFreq(int f) throws Exception {
 			if (!rc.gridftp || trev == f) return;
 			trev = f = (f < 1) ? 1 : f;
 			rc.exchange("TREV", "PERF", f);
 		}
-		*/
 
     // Make a directory on the destination.
     void pipeMkdir(String path) throws Exception {
@@ -654,7 +650,13 @@ public class CooperativeModule {
         if (e.dir) {
           pipeMkdir(e.dpath());
         } else {
+          String checksum = null;
+          if (enableCheckSum) {
+            checksum = pipeGetCheckSum(e.path());
+          }
           pipeRetr(e.path(), e.off, e.len);
+          if (enableCheckSum && checksum != null)
+            pipeStorCheckSum(checksum);
           pipeStor(e.dpath(), e.off, e.len);
         }
       } catch (Exception err) {
@@ -692,14 +694,34 @@ public class CooperativeModule {
       }
     }
 
+    String pipeGetCheckSum(String path) throws Exception {
+      String parameters = String.format("MD5 %d %d %s", 0,-1,path);
+      Reply r = sc.exchange("CKSM", parameters);
+      if (!Reply.isPositiveCompletion(r)) {
+        throw new Exception("Error:" + r.getMessage());
+      }
+      return r.getMessage();
+    }
+
+
+    void pipeStorCheckSum(String checksum) throws Exception {
+      String parameters = String.format("MD5 %s", checksum);
+      Reply cksumReply = dc.exchange("SCKS", parameters);
+      if( !Reply.isPositiveCompletion(cksumReply) ) {
+        throw new ServerException(ServerException.SERVER_REFUSED,
+                cksumReply.getMessage());
+      }
+      return;
+    }
+
     // Watch a transfer as it takes place, intercepting status messages
     // and reporting any errors. Use this for pipelined transfers.
     // TODO: I'm sure this can be done better...
-    void watchTransfer(ProgressListener p) throws Exception {
+    void watchTransfer(ProgressListener p, Entry e) throws Exception {
       MonitorThread rmt, omt;
 
-      rmt = new MonitorThread(rc);
-      omt = new MonitorThread(oc);
+      rmt = new MonitorThread(rc, e);
+      omt = new MonitorThread(oc, e);
 
       rmt.pair(omt);
       if (p != null) {
@@ -748,9 +770,11 @@ public class CooperativeModule {
     int chunkId;
     private ControlChannel cc;
     private MonitorThread other = this;
+    Entry e;
 
-    public MonitorThread(ControlChannel cc) {
+    public MonitorThread(ControlChannel cc, Entry e) {
       this.cc = cc;
+      this.e  = e;
     }
 
     public void pair(MonitorThread other) {
@@ -771,8 +795,8 @@ public class CooperativeModule {
         throw other.error;
       }
 
-      if (r != null && !Reply.isPositivePreliminary(r)) {
-        error = new Exception("failed to start " + r.getMessage());
+      if (r != null && (!Reply.isPositivePreliminary(r)) ) {
+        error = new Exception("failed to start " + r.getCode() + ":" + r.getCategory() + ":" + r.getMessage());
       }
       while (other.error == null) {
         r = cc.read();
@@ -782,13 +806,15 @@ public class CooperativeModule {
               break;   // Just ignore for now...
             case 112:  // Progress marker
               if (pl != null) {
-                long diff = pl._markerArrived(new PerfMarker(r.getMessage()));
+                long diff = pl._markerArrived(new PerfMarker(r.getMessage()), e);
                 pl.client.updateChunk(chunkId, diff);
               }
               break;
             case 125:  // Transfer complete!
               break;
             case 226:  // Transfer complete!
+              return;
+            case 227:  // Entering passive mode
               return;
             default:
               throw new Exception("unexpected reply: " + r.getCode() + " " + r.getMessage());
@@ -842,15 +868,14 @@ public class CooperativeModule {
       }
     }
 
-    public long _markerArrived(Marker m) {
+    public long _markerArrived(Marker m, Entry entry) {
       if (m instanceof PerfMarker) {
         try {
           PerfMarker pm = (PerfMarker) m;
           long cur_bytes = pm.getStripeBytesTransferred();
           long diff = cur_bytes - last_bytes;
-          // System.out.println("Progress update :"+ProActiveCooperativeChannels.printSize(cur_bytes)+
-          //		"\tdiff:"+ProActiveCooperativeChannels.printSize(diff));
-
+          //NumberFormat formatter = new DecimalFormat("#0.00");
+          //System.out.println("Progress update :" + entry.path + "\t"  +Utils.printSize(diff, true) +" "+  formatter.format(ratio)  + "%");
           last_bytes = cur_bytes;
           if (prog != null) {
             prog.done(diff);
@@ -931,7 +956,6 @@ public class CooperativeModule {
   public static class StorkFTPClient {
     public LinkedList<XferList> chunks;
     volatile boolean aborted = false;
-    LinkedList<Thread> threads;
 
     //private int pipelining = 2;
     private FTPURI su, du;
@@ -939,8 +963,8 @@ public class CooperativeModule {
     //private AdSink sink = null;
     //private FTPServerFacade local;
     private ChannelPair cc;  // Main control channels.
+    private boolean checksumEnabled = false;
     public StorkFTPClient(FTPURI su, FTPURI du) throws Exception {
-
       this.su = su;
       this.du = du;
       cc = new ChannelPair(su, du);
@@ -967,12 +991,12 @@ public class CooperativeModule {
     }
 
     // Recursively list directories.
-    public XferList mlsr(String path) throws Exception {
+    public XferList mlsr() throws Exception {
       final String MLSR = "MLSR", MLSD = "MLSD";
       //String cmd = isFeatureSupported("MLSR") ? MLSR : MLSD;
       String cmd = MLSD;
       XferList list = new XferList(su.path, du.path);
-      path = list.sp;  // This will be normalized to end with /.
+      String path = list.sp;
       // Check if we need to do a local listing.
       if (cc.sc.local) {
         return StorkUtil.list(path);
@@ -1015,7 +1039,7 @@ public class CooperativeModule {
           // Try to get the listing, ignoring errors unless it was root.
           try {
             cc.oc.facade.store(sink);
-            cc.watchTransfer(null);
+            cc.watchTransfer(null, null);
           } catch (Exception e) {
             e.printStackTrace();
             if (p.isEmpty()) {
@@ -1060,6 +1084,10 @@ public class CooperativeModule {
       return Long.parseLong(r.getMessage());
     }
 
+    public void setChecksumEnabled(boolean checksumEnabled) {
+      this.checksumEnabled = checksumEnabled;
+    }
+
 
     // Call this to kill transfer.
     public void abort() {
@@ -1093,10 +1121,11 @@ public class CooperativeModule {
       // See if we're doing a directory transfer and need to build
       // a directory list.
       if (sp.endsWith("/")) {
-        xl = mlsr(sp);
+        xl = mlsr();
         xl.dp = dp;
       } else {  // Otherwise it's just one file.
         xl = new XferList(sp, dp, size(sp));
+
       }
       // Pass the list off to the transfer() which handles lists.
       return xl;
@@ -1123,7 +1152,7 @@ public class CooperativeModule {
           }
         } else {
           ProgressListener prog = new ProgressListener(this);
-          cc.watchTransfer(prog);
+          cc.watchTransfer(prog, e);
           if (e.len == -1) {
             updateChunk(cc.xferListIndex, e.size - prog.last_bytes);
           } else {
@@ -1194,7 +1223,7 @@ public class CooperativeModule {
     }
 
     private final boolean pullAndSendAFile(ChannelPair cc) {
-      Entry e = null;
+      Entry e;
       if ((e = getNextFile(cc.xferListIndex)) == null) {
         return false;
       }
@@ -1313,8 +1342,6 @@ public class CooperativeModule {
                   GSSCredential.INITIATE_AND_ACCEPT);
           fis.close();
 
-
-          //System.out.println("Credential:"+cred_file.);
         } catch (Exception e) {
           fatal("error loading x509 proxy: " + e.getMessage());
         }
@@ -1370,7 +1397,7 @@ public class CooperativeModule {
         firstFilesToSend.add(xl.pop());
       }
 
-      client.ccs = new ArrayList<ChannelPair>(cc);
+      client.ccs = new ArrayList<>(cc);
       //LOG.info("Ready to transfer "+ManagementFactory.getRuntimeMXBean().getUptime());
       long init = System.currentTimeMillis();
       //LinkedList<Thread> threads = new LinkedList<Thread>();
@@ -1388,7 +1415,7 @@ public class CooperativeModule {
         LOG.info("firstFilesToSend list has still " + firstFilesToSend.size() + "files!");
         synchronized (this) {
           for (Entry e : firstFilesToSend)
-            xl.add(e.path, e.size);
+            xl.addEntry(e);
         }
       }
       //executor.submit(new TransferMonitor());
@@ -1481,13 +1508,22 @@ public class CooperativeModule {
       client.ccs.clear();
     }
 
-    public static void setupChannelConf(ChannelPair cc, int p, int pp, int bufSize,
-                                  int doStriping, int channelId, int chunkIndex, XferList xl, Entry firstFileToTransfer) {
+    public static void setupChannelConf(ChannelPair cc,
+                                        int p,
+                                        int pp,
+                                        int bufSize,
+                                        int doStriping,
+                                        int channelId,
+                                        int chunkIndex,
+                                        XferList xl,
+                                        Entry firstFileToTransfer) {
       try {
         cc.id = channelId;
         cc.pipelining = pp;
-        cc.setParallelism(p);
+        if (cc.parallelism > 1)
+          cc.setParallelism(p);
         cc.setBufferSize(bufSize);
+        cc.setPerfFreq(1);
         cc.doStriping = doStriping;
         cc.xferListIndex = chunkIndex;  // chunk id of this channel
         synchronized (xl) {
@@ -1757,14 +1793,13 @@ public class CooperativeModule {
     }
 
     public class TransferMonitor implements Runnable {
-      final int interval = 6000;
+      final int interval = 1000;
 
       @Override
       public void run() {
         try {
           initializeMonitoring();
-          Thread.sleep(2000);
-          while (!client.ccs.isEmpty()) {
+          while (!client.ccs.isEmpty() || client.chunks.get(0).count() > 0) {
             Thread.sleep(interval);
             monitorChannels(interval / 1000);
           }

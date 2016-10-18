@@ -107,7 +107,7 @@ public class Partition {
   }
 
   public void addRecord(XferList.Entry e) {
-    fileList.add(e.path, e.size);
+    fileList.addEntry(e);
   }
 
   /**

@@ -22,7 +22,6 @@ public class CooperativeChannels {
 
   private static final Log LOG = LogFactory.getLog(CooperativeChannels.class);
   public static Entry intendedTransfer;
-  static double totalTransferTime = 0;
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
   private String proxyFile;
   private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
@@ -30,6 +29,7 @@ public class CooperativeChannels {
   private GridFTPTransfer gridFTPClient;
   private boolean useHysterisis = false;
   private boolean useDynamicScheduling = false;
+  private boolean runChecksumControl = false;
 
   public CooperativeChannels() {
     // TODO Auto-generated constructor stub
@@ -85,6 +85,7 @@ public class CooperativeChannels {
       System.exit(-1);
     }
     gridFTPClient.useDynamicScheduling = useDynamicScheduling;
+    gridFTPClient.client.setChecksumEnabled(runChecksumControl);
     if (useHysterisis) {
       // this will initialize matlab connection while running hysterisis analysis
       hysterisis = new Hysterisis(gridFTPClient);
@@ -129,7 +130,8 @@ public class CooperativeChannels {
         }
         break;
       default:
-        int totalChannelCount = intendedTransfer.getMaxConcurrency();
+        // Make sure total channels count does not exceed total file count
+        int totalChannelCount = Math.min(intendedTransfer.getMaxConcurrency(), dataset.count());
         if (useHysterisis) {
           int maxConcurrency = 0;
           for (int i = 0; i < estimatedParamsForChunks.length; i++) {
@@ -254,6 +256,7 @@ public class CooperativeChannels {
     for (int i = 0; i < totalChunks; i++) {
       fileCount[i] = chunks.get(i).getRecords().count();
     }
+
     int[] concurrencyLevels = new int[totalChunks];
     if (channelDistPolicy == ChannelDistributionPolicy.ROUND_ROBIN) {
       int modulo = (totalChunks + 1) / 2;
@@ -368,6 +371,9 @@ public class CooperativeChannels {
       while ((line = br.readLine()) != null) {
         String[] args = line.split("\\s+");
         String config = args[0];
+        if (config.startsWith("#")) {
+          continue;
+        }
         switch (config) {
           case "-s":
           case "-source":
@@ -480,6 +486,10 @@ public class CooperativeChannels {
             break;
           case "-use-dynamic-scheduling":
             useDynamicScheduling = true;
+            LOG.info("Dynamic scheduling enabled.");
+            break;
+          case "-use-checksum":
+            runChecksumControl = true;
             LOG.info("Dynamic scheduling enabled.");
             break;
           default:
