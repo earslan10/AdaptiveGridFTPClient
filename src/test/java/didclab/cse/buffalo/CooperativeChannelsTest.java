@@ -46,8 +46,6 @@ public class CooperativeChannelsTest {
   @Before
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    ConfigurationParams.MATLAB_DIR = "/Applications/MATLAB_R2014b.app/bin/";
-    ConfigurationParams.MATLAB_DIR = "/Applications/MATLAB_R2014b.app/bin/";
     multiChunk = new CooperativeChannels(mockGridFTPClient);
     CooperativeChannels.intendedTransfer = buildIntendedTransfer();
     files = Utils.readInputFilesFromFile(getClass().getResourceAsStream(sampleInputFile),

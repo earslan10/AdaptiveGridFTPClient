@@ -19,7 +19,6 @@ public class HysteresisTest {
                 "-c", "" + 2,
                 "-q", ""+ 2,
                 "-t", "" + 1210.10);
-        System.out.println("Output:" + pb.command());
         Process p = null;
         try {
             p = pb.start();
@@ -35,8 +34,7 @@ public class HysteresisTest {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.out.println("Output:" + output);
-        String []values = output.replaceAll("\\[", "").replaceAll("\\]", "").split("\\s+");
+        String []values = output.replaceAll("\\[", "").replaceAll("\\]", ""). trim().split("\\s+", -1);
         for (int i = 0; i < values.length; i++) {
             System.out.println("Value:" + Double.parseDouble(values[i]));
         }

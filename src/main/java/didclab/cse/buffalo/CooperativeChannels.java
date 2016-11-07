@@ -198,6 +198,8 @@ public class CooperativeChannels {
       }
     }
 
+    list.shuffle();
+
     ArrayList<Partition> partitions = new ArrayList<>();
     for (int i = 0; i < 4; i++) {
       Partition p = new Partition();
@@ -446,14 +448,6 @@ public class CooperativeChannels {
               LOG.fatal("-testbed needs testbed name");
             }
             LOG.info("Testbed name is = " + intendedTransfer.getTestbed());
-            break;
-          case "-matlab-exec":
-            if (args.length > 1) {
-              ConfigurationParams.MATLAB_DIR = args[1];
-            } else {
-              LOG.fatal("-matlab installation path requires a full path name");
-            }
-            LOG.info("Matlab installation directory is = " + ConfigurationParams.MATLAB_DIR);
             break;
           case "-input":
             if (args.length > 1) {

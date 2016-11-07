@@ -32,7 +32,15 @@ public class Hysterisis {
 
   private void parseInputFiles() {
     File folder = new File(ConfigurationParams.INPUT_DIR);
+    if (!folder.exists()) {
+      LOG.error("Cannot access to " + folder.getAbsoluteFile());
+      System.exit(-1);
+    }
     File[] listOfFiles = folder.listFiles();
+    if (listOfFiles.length == 0) {
+      LOG.error("No historical data found at " + folder.getAbsoluteFile());
+      System.exit(-1);
+    }
     List<String> historicalDataset = new ArrayList<>(listOfFiles.length);
     entries = new ArrayList<>();
     for (File listOfFile : listOfFiles) {
@@ -92,8 +100,8 @@ public class Hysterisis {
       sampleThroughputs[chunkNumber] = gridFTPClient.runTransfer(samplingParams[0], samplingParams[1],
               samplingParams[2], samplingParams[3], sample_files, chunkNumber);
       chunk.setSamplingTime((System.currentTimeMillis() - start) / 1000.0);
-      //LOG.info( chunk.getSamplingTime() + " "+  chunk.getSamplingSize());
-      //TODO: handle transfer failure
+      // LOG.info( chunk.getSamplingTime() + " "+  chunk.getSamplingSize());
+      // TODO: handle transfer failure
       if (sampleThroughputs[chunkNumber] == -1) {
         System.exit(-1);
       }
@@ -146,7 +154,7 @@ public class Hysterisis {
             System.out.println("Output:" + output);
           }
         }
-        String []values = output.replaceAll("\\[", "").replaceAll("\\]", "").split("\\s+");
+        String []values = output.replaceAll("\\[", "").replaceAll("\\]", "").trim().split("\\s+", -1);
         for (int i = 0; i < values.length; i++) {
           outputList[chunkNumber][i] = Double.parseDouble(values[i]);
         }

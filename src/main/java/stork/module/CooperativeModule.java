@@ -24,7 +24,6 @@ import stork.util.XferList.Entry;
 import java.io.*;
 import java.net.URI;
 import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -874,8 +873,8 @@ public class CooperativeModule {
           PerfMarker pm = (PerfMarker) m;
           long cur_bytes = pm.getStripeBytesTransferred();
           long diff = cur_bytes - last_bytes;
-          //NumberFormat formatter = new DecimalFormat("#0.00");
-          //System.out.println("Progress update :" + entry.path + "\t"  +Utils.printSize(diff, true) +" "+  formatter.format(ratio)  + "%");
+          //System.out.println("Progress update :" + entry.path + "\t"  +Utils.printSize(diff, true) + "/" +
+          //    Utils.printSize(entry.size, true) + " at:" + startTime/1000.0 + " by:" + host);
           last_bytes = cur_bytes;
           if (prog != null) {
             prog.done(diff);
@@ -1297,8 +1296,8 @@ public class CooperativeModule {
     URI usu = null, udu = null;
     String proxyFile = null;
     volatile int rv = -1;
-    volatile String message = null;
     Collection<Future<?>> futures = new LinkedList<Future<?>>();
+    boolean monitorStarted = false;
 
     //List<Entry> firstFilesToSend;
     public GridFTPTransfer(String proxy, URI source, URI dest) {
@@ -1387,7 +1386,7 @@ public class CooperativeModule {
       xl.updateDestinationPaths();
       client.chunks.add(xl);
 
-      xl.channels = new LinkedList<ChannelPair>();
+      xl.channels = new LinkedList<>();
       xl.initialSize = xl.size();
 
       // Reserve one file for each channel, otherwise pipelining
@@ -1398,11 +1397,9 @@ public class CooperativeModule {
       }
 
       client.ccs = new ArrayList<>(cc);
-      //LOG.info("Ready to transfer "+ManagementFactory.getRuntimeMXBean().getUptime());
       long init = System.currentTimeMillis();
-      //LinkedList<Thread> threads = new LinkedList<Thread>();
 
-      Collection<Future<?>> futures = new LinkedList<Future<?>>();
+      Collection<Future<?>> futures = new LinkedList<>();
       for (int i = 0; i < cc; i++) {
         Entry firstFile = synchronizedPop(firstFilesToSend);
         Runnable transferChannel = new TransferChannel(p, ppq, bufSize, i, xl, chunkId, firstFile);
@@ -1418,7 +1415,6 @@ public class CooperativeModule {
             xl.addEntry(e);
         }
       }
-      //executor.submit(new TransferMonitor());
       try {
         for (Future<?> future : futures) {
           future.get();
@@ -1457,7 +1453,6 @@ public class CooperativeModule {
       long totalDataSize = 0;
       for (int i = 0; i < totalChunks; i++) {
         XferList xl = chunks.get(i).getRecords();
-        xl.shuffleList();
         totalDataSize += xl.size();
         xl.initialSize = xl.size();
         xl.updateDestinationPaths();
@@ -1564,54 +1559,78 @@ public class CooperativeModule {
       }
     }
 
-    private void monitorChannels(int interval) throws IOException {
+    private void monitorChannels(int interval, Writer writer, int timer) throws IOException {
       DecimalFormat df = new DecimalFormat("###.##");
       double[] estimatedCompletionTimes = new double[client.chunks.size()];
       for (int i = 0; i < client.chunks.size(); i++) {
         double estimatedCompletionTime = -1;
         XferList xl = client.chunks.get(i);
-        double throughput;
-        if (xl.interval != 0 && xl.totalTransferredSize - xl.instantTransferredSize > 0) {
-          throughput = (xl.totalTransferredSize - xl.instantTransferredSize) / xl.interval;
-          xl.interval = 0;
-        } else {
-          throughput = (xl.totalTransferredSize - xl.instantTransferredSize) / interval;
-        }
-        if (throughput == 0) {
-          if (xl.totalTransferredSize == xl.initialSize) { //this chunk finished
+        double throughputInMbps = 8 * (xl.totalTransferredSize - xl.instantTransferredSize) / (xl.interval + interval);
+
+        if (throughputInMbps == 0) {
+          if (xl.totalTransferredSize == xl.initialSize) { // This chunk has finished
             xl.weighted_throughput = 0;
-          } else if (xl.weighted_throughput != 0) {                    // this chunk is running but current file has not been transferred
+          } else if (xl.weighted_throughput != 0) { // This chunk is running but current file has not been transferred
             //xl.instant_throughput = 0;
-            estimatedCompletionTime = ((xl.initialSize - xl.totalTransferredSize) - xl.interval * xl.instant_throughput) / xl.instant_throughput;
-            xl.estimatedFinishTime = estimatedCompletionTime - interval;
-            xl.interval += 3;
-            System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() + "\t total:" + printSize(xl.size())
-                    + "\t interval:" + xl.interval + "\t onAir:" + xl.onAir);
-            //System.out.println(printSize(xl.totalTransferredSize)+" out of "+ printSize(xl.initialSize)+" transferred");
-          } else {
+            estimatedCompletionTime = ((xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput) - xl.interval;
+            xl.interval += interval;
+            System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() +
+                "\t total:" + printSize(xl.size()) + "\t interval:" + xl.interval + "\t onAir:" + xl.onAir);
+          } else { // This chunk is active but has not transferred any data yet
             System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() + "\t total:" + printSize(xl.size())
                     + "\t onAir:" + xl.onAir);
             if (xl.channels.size() == 0) {
               estimatedCompletionTime = Double.POSITIVE_INFINITY;
             } else {
-              xl.interval += 3;
+              xl.interval += interval;
             }
           }
         } else {
-          xl.instant_throughput = throughput;
+          xl.instant_throughput = throughputInMbps;
+          xl.interval = 0;
           if (xl.weighted_throughput == 0) {
-            xl.weighted_throughput = throughput;
+            xl.weighted_throughput = throughputInMbps;
           } else {
-            xl.weighted_throughput = xl.weighted_throughput * .5 + xl.instant_throughput * .5;
+            xl.weighted_throughput = xl.weighted_throughput * 0.6 + xl.instant_throughput * 0.4;
           }
-          estimatedCompletionTime = (xl.initialSize - xl.totalTransferredSize) / xl.instant_throughput;
+
+          // Check for anomaly detection in throughput
+          if (xl.statistics.getSize() >= xl.statistics.getLimit()) {
+            double mean = xl.statistics.getMean();
+            double std = xl.statistics.getStdDev();
+            double upperLimit = mean + 2 * std;
+            double lowerLimit = mean - 2 * std;
+            if ((xl.instant_throughput > upperLimit) || (xl.instant_throughput < lowerLimit)) {
+              System.out.println("Out of order throughput value:" + Utils.printSize(throughputInMbps, false) +
+                  " mean:" + Utils.printSize(mean, true) + " std:" + Utils.printSize(std, true) +
+                  " borders:" + Utils.printSize(lowerLimit, true) + "*" + Utils.printSize(upperLimit, true));
+              xl.statistics.addOutOfOrderValue(throughputInMbps);
+              if (xl.statistics.getOutOfOrderSize() >= 5) {
+                System.out.println("Will take an action now....");
+                xl.statistics.makeOutOfOrderNewNormal();
+              }
+            } else {
+              System.out.println("In order throughput value:" + Utils.printSize(throughputInMbps, false) +
+                  " mean:" + Utils.printSize(mean, true) + " std:" + Utils.printSize(std, true) + " borders:" +
+                  Utils.printSize(lowerLimit, true) + "*" + Utils.printSize(upperLimit, true));
+              xl.statistics.addValue(throughputInMbps);
+              xl.statistics.clearOutOfOrderData();
+            }
+          } else if (timer > interval){ // Don't take first value as it may not be correct representative!
+            xl.statistics.addValue(throughputInMbps);
+          }
+
+          estimatedCompletionTime = 8 * (xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput;
           xl.estimatedFinishTime = estimatedCompletionTime;
-          printSize(throughput);
-          System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() + "\t finished:" + printSize(xl.totalTransferredSize) + "/"
-                  + printSize(xl.initialSize) + "\t throughput:" + printSize(xl.weighted_throughput) + "\testimated time:" + df.format(estimatedCompletionTime) + "\t onAir:" + xl.onAir);
+          System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() + "\t finished:"
+              + printSize(xl.totalTransferredSize) + "/" + printSize(xl.initialSize) + "\t throughput:" +
+              Utils.printSize(xl.instant_throughput, false) + "/" + Utils.printSize(xl.weighted_throughput, true)
+              + "\testimated time:" + df.format(estimatedCompletionTime) + "\t onAir:" + xl.onAir);
           xl.instantTransferredSize = xl.totalTransferredSize;
         }
         estimatedCompletionTimes[i] = estimatedCompletionTime;
+        writer.write(timer + " " + (throughputInMbps)/(1000*1000.0) + "\n");
+        writer.flush();
       }
       System.out.println("*******************");
       if (client.chunks.size() > 1 && useDynamicScheduling) {
@@ -1770,7 +1789,6 @@ public class CooperativeModule {
         this.xl = xl;
         this.chunkId = chunkId;
         firstFileToTransfer = file;
-        // TODO Auto-generated constructor stub
       }
 
       @Override
@@ -1784,6 +1802,12 @@ public class CooperativeModule {
           }
           setupChannelConf(channel, p, ppq, bufSize, doStriping, channelId, chunkId, xl, firstFileToTransfer);
           //LOG.info("Channel "+ channelId + " for chunk " + chunkId + " Total chunks:"+client.ccs.size() + " Channels:" + xl.channels);
+          synchronized (this) {
+            if (!monitorStarted) {
+              executor.submit(new TransferMonitor());
+              monitorStarted = true;
+            }
+          }
           client.transferList(channel);
         } catch (Exception e) {
           e.printStackTrace();
@@ -1793,15 +1817,19 @@ public class CooperativeModule {
     }
 
     public class TransferMonitor implements Runnable {
-      final int interval = 1000;
+      final int interval = 3000;
+      int timer = 0;
+      Writer writer;
 
       @Override
       public void run() {
         try {
+          writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("list-throughput.txt"), "utf-8"));
           initializeMonitoring();
           while (!client.ccs.isEmpty() || client.chunks.get(0).count() > 0) {
             Thread.sleep(interval);
-            monitorChannels(interval / 1000);
+            timer += interval/1000;
+            monitorChannels(interval / 1000, writer, timer);
           }
         } catch (Exception e) {
           e.printStackTrace();

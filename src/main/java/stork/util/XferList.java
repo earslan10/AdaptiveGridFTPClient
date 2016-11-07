@@ -2,12 +2,10 @@ package stork.util;
 
 import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.CooperativeChannels.Density;
+import didclab.cse.buffalo.utils.Statistics;
 import stork.module.CooperativeModule;
 
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class XferList implements Iterable<XferList.Entry> {
   private final Entry root;
@@ -15,6 +13,7 @@ public class XferList implements Iterable<XferList.Entry> {
   public double totalTransferredSize = 0, instantTransferredSize = 0;
   public double estimatedFinishTime = 0;
   public double instant_throughput = 0, weighted_throughput = 0;
+  public Statistics statistics = new Statistics(10);
   public long initialSize = 0;
   public List<CooperativeModule.ChannelPair> channels;
   public int interval = 0;
@@ -141,6 +140,12 @@ public class XferList implements Iterable<XferList.Entry> {
     }
   }
 
+  public void shuffle() {
+    long seed = System.nanoTime();
+    Collections.shuffle(list, new Random(seed));
+    Collections.shuffle(list, new Random(seed));
+  }
+
   // Get the progress of the list in terms of bytes.
   public Progress byteProgress() {
     Progress p = new Progress();
@@ -247,10 +252,6 @@ public class XferList implements Iterable<XferList.Entry> {
         e.setdpath(dp + e.path);
       }
     }
-  }
-
-  public void shuffleList() {
-    Collections.shuffle(list);
   }
 
   // An entry (file or directory) in the list.
