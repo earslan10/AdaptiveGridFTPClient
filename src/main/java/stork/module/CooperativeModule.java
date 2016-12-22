@@ -1621,9 +1621,9 @@ public class CooperativeModule {
     }
 
     public static boolean setupChannelConf(ChannelPair cc,
-                                        int channelId,
-                                        Partition chunk,
-                                        Entry firstFileToTransfer) {
+                                           int channelId,
+                                           Partition chunk,
+                                           Entry firstFileToTransfer) {
       XferList fileList = chunk.getRecords();
       TunableParameters params = chunk.getTunableParameters();
       cc.chunk = chunk;
@@ -1926,36 +1926,31 @@ public class CooperativeModule {
               .build();
           chunk.addToTimeSeries(tunableParametersEstimated, params[pastLimit]);
           System.out.println("New round of " + " estimated params: " + tunableParametersEstimated.toString());
-
-          try {
-            jobQueue.remove();
-            if (chunk.getRecords().channels == null ||
-                chunk.getRecords().channels.size() != chunk.getTunableParameters().getConcurrency()) {
-              continue;
-            }
-            boolean isParallelismAdjusted = true; // Check if all channels' parallelism matches chunk's parallelism
-            for (ChannelPair channel : chunk.getRecords().channels) {
-              if (channel.parallelism != chunk.getTunableParameters().getParallelism()) {
-                chunk.popFromSeries(); // Dont insert latest probing as it was collected during transition phase
-                System.out.println("Channel " + channel.getId() + " P:" + channel.parallelism + " chunkP:" + chunk.getTunableParameters().getParallelism());
-                isParallelismAdjusted = false;
-                break;
-              }
-            }
-            if (!isParallelismAdjusted) {
-              continue;
-            }
-            checkForParameterUpdate(chunk, tunableParametersUsed);
-          } catch (Exception e) {
-            e.printStackTrace();
-          }
+          jobQueue.remove();
+          checkForParameterUpdate(chunk, tunableParametersUsed);
         }
         System.out.println("Leaving modelling thread...");
       }
 
       void checkForParameterUpdate(Partition chunk, TunableParameters currentTunableParameters) {
+        // See if previous changes has applied yet
+        if (chunk.getCountOfSeries() > 1) {
+          if (chunk.getRecords().channels == null ||
+              chunk.getRecords().channels.size() != chunk.getTunableParameters().getConcurrency()) {
+            return;
+          }
+          for (ChannelPair channel : chunk.getRecords().channels) {
+            if (channel.parallelism != chunk.getTunableParameters().getParallelism()) {
+              chunk.popFromSeries(); // Dont insert latest probing as it was collected during transition phase
+              System.out.println("Channel " + channel.getId() + " P:" + channel.parallelism + " chunkP:" + chunk.getTunableParameters().getParallelism());
+              return;
+            }
+          }
+        }
+
         List<TunableParameters> lastNEstimations = chunk.getLastNFromSeries(pastLimit);
-        if (lastNEstimations.size() < pastLimit) {
+        // If this is first estimation, use it only; otherwise make sure to have pastLimit items
+        if (chunk.getCountOfSeries() > 1 && lastNEstimations.size() < pastLimit) {
           return;
         }
 
