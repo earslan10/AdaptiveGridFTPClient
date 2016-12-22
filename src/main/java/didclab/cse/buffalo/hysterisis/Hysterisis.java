@@ -2,6 +2,7 @@ package didclab.cse.buffalo.hysterisis;
 
 import didclab.cse.buffalo.ConfigurationParams;
 import didclab.cse.buffalo.Partition;
+import didclab.cse.buffalo.utils.TunableParameters;
 import didclab.cse.buffalo.utils.Utils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -14,12 +15,12 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.*;
 
 public class Hysterisis {
 
   private static final Log LOG = LogFactory.getLog(Hysterisis.class);
   private static List<List<Entry>> entries;
-  public double optimizationAlgorithmTime = 2;
   private int[][] estimatedParamsForChunks;
   private GridFTPTransfer gridFTPClient;
   private double[] estimatedThroughputs;
@@ -57,8 +58,7 @@ public class Hysterisis {
     //System.out.println("Skipped Entry count =" + Similarity.skippedEntryCount);
   }
 
-  public int[][] findOptimalParameters(List<Partition> chunks,
-                                       Entry intendedTransfer, XferList dataset) throws Exception {
+  public void findOptimalParameters(List<Partition> chunks, Entry intendedTransfer) throws Exception {
     parseInputFiles();
     if (entries.isEmpty()) {  // Make sure there are log files to run hysterisis
       LOG.fatal("No input entries found to run hysterisis analysis. Exiting...");
@@ -77,94 +77,77 @@ public class Hysterisis {
       //LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
     }
 
+    gridFTPClient.executor.submit(new GridFTPTransfer.ModellingThread());
     double[] sampleThroughputs = new double[chunks.size()];
     // Run sample transfer to learn current network load
     // Create sample dataset to and transfer to measure current load on the network
+    GridFTPTransfer.ModellingThread thread = null;
     for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
       Partition chunk = chunks.get(chunkNumber);
       long SAMPLING_SIZE = (int) (intendedTransfer.getBandwidth() / 4);
       //System.out.println(chunk.getRecords().count() +" "+ chunk.getRecords().size()  + "s:" +SAMPLING_SIZE);
       XferList sample_files = chunk.getRecords().split(SAMPLING_SIZE);
+
+      Partition sampleChunk = new Partition();
+      sampleChunk.setXferList(sample_files);
+      sampleChunk.setChunkNumber(chunk.getChunkNumber());
       //System.out.println("Sample transfer list:" + sample_files.count() +" "+ sample_files.size()
       //	+" original list:" +chunk.getRecords().count() +" "+ chunk.getRecords().size() );
-      int[] samplingParams = Utils.getBestParams(sample_files);
+      sampleChunk.setTunableParameters(Utils.getBestParams(sample_files));
       // use higher concurrency values for sampling to be able to
       // observe available throughput better
-      int cc = samplingParams[0];
+      int cc = sampleChunk.getTunableParameters().getConcurrency();
       cc = cc > 8 ? cc : Math.min(8, sample_files.count());
-      samplingParams[0] = cc;
-      chunk.setSamplingSize(sample_files.size());
-      chunk.setSamplingParameters(samplingParams);
+      sampleChunk.getTunableParameters().setConcurrency(cc);
+
       long start = System.currentTimeMillis();
-      //LOG.info("Sample transfer called at "+ManagementFactory.getRuntimeMXBean().getUptime());
-      sampleThroughputs[chunkNumber] = gridFTPClient.runTransfer(samplingParams[0], samplingParams[1],
-              samplingParams[2], samplingParams[3], sample_files, chunkNumber);
+      sampleThroughputs[chunkNumber] = gridFTPClient.runTransfer(sampleChunk);
       chunk.setSamplingTime((System.currentTimeMillis() - start) / 1000.0);
+
+      GridFTPTransfer.ModellingThread.jobQueue.add(new GridFTPTransfer.ModellingThread.ModellingJob(
+          chunk, sampleChunk.getTunableParameters(), sampleThroughputs[chunkNumber]));
       // LOG.info( chunk.getSamplingTime() + " "+  chunk.getSamplingSize());
       // TODO: handle transfer failure
       if (sampleThroughputs[chunkNumber] == -1) {
         System.exit(-1);
       }
     }
-    // Based on input files and sample tranfer throughput; categorize logs and fit model
-    // Then find optimal parameter values out of the model
-    double[][] results = runModelling(chunks, sampleThroughputs);
-    if (results == null) {
-      return null;
+    // Make sure last chunk modelling finished before going on.
+    while (!GridFTPTransfer.ModellingThread.jobQueue.isEmpty()) {
+      Thread.sleep(1000);
     }
-    estimatedParamsForChunks = new int[chunks.size()][4];
-    estimatedThroughputs = new double[chunks.size()];
-    for (int i = 0; i < results.length; i++) {
-      double[] paramValues = results[i];
-      //double[] paramValues =  result[0];
-      //Convert from double to int
-      int[] parameters = new int[paramValues.length];
-      for (int j = 0; j < paramValues.length-1; j++)
-        parameters[j] = (int) paramValues[j];
-      parameters[paramValues.length-1] = (int) intendedTransfer.getBufferSize();
-      estimatedParamsForChunks[i] = parameters;
-      //estimatedAccuracies[i] = ((double[]) result[2])[0];
-      estimatedThroughputs[i] = paramValues[paramValues.length-1];
-      LOG.info("Estimated params cc:" + paramValues[0] + " p:" + paramValues[1] +
-              " ppq:" + paramValues[2] + " throughput: " + estimatedThroughputs[i]);
-    }
-    return estimatedParamsForChunks;
   }
 
-  public double [][] runModelling(List<Partition> chunks, double[] sampleThroughputs) {
-    double [][]outputList = new double[chunks.size()][4];
-    try{
-      for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
-        int[] sampleTransferValues = chunks.get(chunkNumber).getSamplingParameters();
-        double sampleThroughputinMb = sampleThroughputs[chunkNumber] / Math.pow(10, 6);
-        ProcessBuilder pb = new ProcessBuilder("python", "src/main/python/optimizer.py",
-                "-f", "chunk_"+chunkNumber+".txt",
-                "-c", "" + sampleTransferValues[0],
-                "-p", "" + sampleTransferValues[1],
-                "-q", ""+sampleTransferValues[2],
-                "-t", "" + sampleThroughputinMb);
-        System.out.println("input:" + pb.command());
-        Process p = pb.start();
+  public static double[] runModelling(Partition chunk, TunableParameters tunableParameters, double sampleThroughput) {
+    double []resultValues = new double[4];
+    try {
+      double sampleThroughputinMb = sampleThroughput / Math.pow(10, 6);
+      ProcessBuilder pb = new ProcessBuilder("python", "src/main/python/optimizer.py",
+          "-f", "chunk_"+chunk.getChunkNumber()+".txt",
+          "-c", "" + tunableParameters.getConcurrency(),
+          "-p", "" + tunableParameters.getParallelism(),
+          "-q", ""+ tunableParameters.getPipelining(),
+          "-t", "" + sampleThroughputinMb);
+      //System.out.println("input:" + pb.command());
+      Process p = pb.start();
 
-        BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        String output = in.readLine();
-        if (output == null) {
-          in = new BufferedReader(new InputStreamReader(p.getErrorStream()));
-          while(( output = in.readLine()) !=  null){
-            System.out.println("Output:" + output);
-          }
+      BufferedReader in = new BufferedReader(new InputStreamReader(p.getInputStream()));
+      String output = in.readLine();
+      if (output == null) {
+        in = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+        while(( output = in.readLine()) !=  null){
+          System.out.println("Output:" + output);
         }
-        String []values = output.replaceAll("\\[", "").replaceAll("\\]", "").trim().split("\\s+", -1);
-        for (int i = 0; i < values.length; i++) {
-          outputList[chunkNumber][i] = Double.parseDouble(values[i]);
-        }
-
       }
-    }catch(Exception e) {
+      String []values = output.replaceAll("\\[", "").replaceAll("\\]", "").trim().split("\\s+", -1);
+      for (int i = 0; i < values.length; i++) {
+        resultValues[i] = Double.parseDouble(values[i]);
+      }
+    } catch(Exception e) {
       System.out.println(e);
     }
-    return outputList;
-}
+    return resultValues;
+  }
 
   public double[] getEstimatedThroughputs() {
     return estimatedThroughputs;

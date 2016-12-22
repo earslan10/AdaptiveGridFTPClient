@@ -1,7 +1,10 @@
 package didclab.cse.buffalo;
 
 import didclab.cse.buffalo.hysterisis.Entry;
+import didclab.cse.buffalo.utils.TunableParameters;
 import stork.util.XferList;
+
+import java.util.*;
 
 /**
  * Represents a calculated partition. A partition contains the centroid and
@@ -15,10 +18,13 @@ public class Partition {
   /* centroid of the partition */
   private double centroid;
   private double samplingTime;
-  private long samplingSize;
-  private int[] samplingParameters;
   /* records belonging to this partition */
+  private int chunkNumber;
+  public boolean isReadyToTransfer = false;
   private XferList fileList = new XferList("", "");
+  private TunableParameters tunableParameters;
+  private List<TunableParameters> calculatedParametersSeries;
+  private List<Double> calculatedThroughputSeries;
 
   /**
    * @return the density
@@ -31,14 +37,8 @@ public class Partition {
   public Partition() {
     this.centroid = 0;
     entry = new Entry();
-  }
-
-  public int[] getSamplingParameters() {
-    return samplingParameters;
-  }
-
-  public void setSamplingParameters(int[] samplingParameters) {
-    this.samplingParameters = samplingParameters;
+    calculatedParametersSeries = new LinkedList<>();
+    calculatedThroughputSeries = new LinkedList();
   }
 
   /**
@@ -138,11 +138,51 @@ public class Partition {
     this.samplingTime = samplingTime;
   }
 
-  public long getSamplingSize() {
-    return samplingSize;
+  public int getChunkNumber() {
+    return chunkNumber;
   }
 
-  public void setSamplingSize(long samplingSize) {
-    this.samplingSize = samplingSize;
+  public void setChunkNumber(int chunkNumber) {
+    this.chunkNumber = chunkNumber;
+  }
+
+  public void setTunableParameters (TunableParameters tunableParameters) {
+    this.tunableParameters = tunableParameters;
+  }
+
+  public TunableParameters getTunableParameters() {
+    return tunableParameters;
+  }
+  public void addToTimeSeries(TunableParameters tunableParameters, double throughput) {
+    synchronized (calculatedParametersSeries) {
+      calculatedParametersSeries.add(tunableParameters);
+      calculatedThroughputSeries.add(throughput);
+    }
+    if (this.tunableParameters == null) {
+      this.tunableParameters = tunableParameters;
+      if (this.tunableParameters.getConcurrency() > fileList.count()) {
+        this.tunableParameters.setConcurrency(fileList.count());
+      }
+    }
+  }
+
+  public List<TunableParameters> getLastNFromSeries (int n) {
+    int count = Math.min(calculatedParametersSeries.size(), n);
+    List<TunableParameters> parametersSeries = new LinkedList<>();
+    synchronized (calculatedParametersSeries) {
+      for (int i = 0; i < count; i++) {
+        parametersSeries.add(calculatedParametersSeries.get(calculatedParametersSeries.size()- 1 - i));
+      }
+      return parametersSeries;
+    }
+  }
+
+  public void popFromSeries() {
+    calculatedParametersSeries.remove(calculatedParametersSeries.size() -1);
+    calculatedThroughputSeries.remove(calculatedThroughputSeries.size() -1);
+  }
+
+  public int getCountOfSeries() {
+    return calculatedParametersSeries.size();
   }
 }

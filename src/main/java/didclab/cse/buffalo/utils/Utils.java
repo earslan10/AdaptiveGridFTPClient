@@ -34,7 +34,7 @@ public class Utils {
     }
   }
 
-  public static int[] getBestParams(XferList xl) {
+  public static TunableParameters getBestParams(XferList xl) {
     Density density = Entry.findDensityOfList(xl.avgFileSize(), CooperativeChannels.intendedTransfer.getBandwidth());
     xl.density = density;
     double avgFileSize = xl.avgFileSize();
@@ -45,7 +45,12 @@ public class Utils {
     int ppq = fileCountToFillThePipe;
     int p = Math.max(Math.min(pLevelToFillPipe, pLevelToFillBuffer), 1);
     p = avgFileSize > CooperativeChannels.intendedTransfer.getBDP() ? p : p;
-    return new int[]{cc, p, ppq, (int) CooperativeChannels.intendedTransfer.getBufferSize()};
+    return new TunableParameters.Builder()
+        .setConcurrency(cc)
+        .setParallelism(p)
+        .setPipelining(ppq)
+        .setBufferSize((int) CooperativeChannels.intendedTransfer.getBufferSize())
+        .build();
   }
 
   public static XferList readInputFilesFromFile(InputStream stream, String src, String dst) throws Exception {

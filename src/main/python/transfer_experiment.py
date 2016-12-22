@@ -53,6 +53,7 @@ class TransferExperiment(object):
                 break
 
         optimal_p = int(self.optimal_point.x[1])
+        #print "Optimal p ", optimal_p, "Thr:", optimal_throughput_revised
         relaxed_p = optimal_p
         for relaxed_p in range(optimal_p-1, 0, -1):
             new_params = np.array([relaxed_cc, relaxed_p, self.optimal_point.x[2]])
@@ -62,7 +63,7 @@ class TransferExperiment(object):
                 new_params = np.array([relaxed_cc, relaxed_p, self.optimal_point.x[2]])
                 throughput = self.regression.predict(poly.fit_transform(new_params.reshape(1, -1)))
                 optimal_throughput_revised = throughput
-            break
+                break
 
         estimated_optimal_ppq = int(self.optimal_point.x[2])
         relaxed_ppq = estimated_optimal_ppq

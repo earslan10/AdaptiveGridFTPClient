@@ -18,7 +18,6 @@ public class XferList implements Iterable<XferList.Entry> {
   public List<CooperativeModule.ChannelPair> channels;
   public int interval = 0;
   public int onAir = 0;
-  public boolean isReadyToTransfer = false;
   public Density density;
   public int parallelism = -1, pipelining = -1, concurrency = -1, bufferSize = -1;
   private LinkedList<Entry> list = new LinkedList<Entry>();

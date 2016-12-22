@@ -52,8 +52,7 @@ public class CooperativeChannelsTest {
             SRC_DIR, DST_DIR);
     when(mockGridFTPClient.getListofFiles(any(String.class), any(String.class)))
             .thenReturn(files);
-    when(mockGridFTPClient.runTransfer(anyInt(), anyInt(),
-            anyInt(), anyInt(), any(XferList.class), anyInt()))
+    when(mockGridFTPClient.runTransfer(any(Partition.class)))
             .thenReturn(611.8585207)
             .thenReturn(740.0)
             .thenReturn(1437.0)

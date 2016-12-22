@@ -5,7 +5,9 @@ import com.google.common.annotations.VisibleForTesting;
 import didclab.cse.buffalo.hysterisis.Entry;
 import didclab.cse.buffalo.hysterisis.Hysterisis;
 import didclab.cse.buffalo.log.LogManager;
+import didclab.cse.buffalo.utils.TunableParameters;
 import didclab.cse.buffalo.utils.Utils;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import stork.module.CooperativeModule.GridFTPTransfer;
@@ -29,7 +31,9 @@ public class CooperativeChannels {
   private GridFTPTransfer gridFTPClient;
   private boolean useHysterisis = false;
   private boolean useDynamicScheduling = false;
+  public static boolean useOnlineTuning = false;
   private boolean runChecksumControl = false;
+  public static boolean isTransferCompleted = false;
 
   public CooperativeChannels() {
     // TODO Auto-generated constructor stub
@@ -103,31 +107,20 @@ public class CooperativeChannels {
     int[][] estimatedParamsForChunks = new int[chunks.size()][4];
     long timeSpent = 0;
     if (useHysterisis) {
-      estimatedParamsForChunks = hysterisis.findOptimalParameters(chunks, intendedTransfer, dataset);
-      for (int i = 0; i < chunks.size(); i++) {
-        timeSpent += chunks.get(i).getSamplingTime();
-        if (estimatedParamsForChunks[i][0] > chunks.get(i).getRecords().count()) {
-          estimatedParamsForChunks[i][0] = chunks.get(i).getRecords().count();
-        }
-      }
-      timeSpent += hysterisis.optimizationAlgorithmTime;
-      //estimatedParamsForChunks[0][2] = 17;
+      long start  = System.currentTimeMillis();
+      hysterisis.findOptimalParameters(chunks, intendedTransfer);
+      timeSpent += (System.currentTimeMillis() - start)/1000.0;
       gridFTPClient.client.chunks.clear();
     }
+    gridFTPClient.startTransferMonitor();
     switch (algorithm) {
       case SINGLECHUNK:
         if (!useHysterisis) {
-          for (int i = 0; i < chunks.size(); i++) {
-            estimatedParamsForChunks[i] = Utils.getBestParams(chunks.get(i).getRecords());
-          }
+          chunks.forEach(chunk -> chunk.setTunableParameters(Utils.getBestParams(chunk.getRecords())));
         }
-        for (int i = 0; i < chunks.size(); i++) {
-          int[] parameters = estimatedParamsForChunks[i];
-          long start = System.currentTimeMillis();
-          gridFTPClient.runTransfer(parameters[0], parameters[1],
-                  parameters[2], parameters[3], chunks.get(i).getRecords(), i);
-          timeSpent += ((System.currentTimeMillis() - start) / 1000.0);
-        }
+        long start = System.currentTimeMillis();
+        chunks.forEach(chunk -> gridFTPClient.runTransfer(chunk));
+        timeSpent += ((System.currentTimeMillis() - start) / 1000.0);
         break;
       default:
         // Make sure total channels count does not exceed total file count
@@ -144,17 +137,18 @@ public class CooperativeChannels {
           totalChannelCount = maxConcurrency;
         } else {
           for (int i = 0; i < estimatedParamsForChunks.length; i++) {
-            chunks.get(i).getRecords().setTransferParameters(Utils.getBestParams(chunks.get(i).getRecords()));
+            chunks.get(i).setTunableParameters(Utils.getBestParams(chunks.get(i).getRecords()));
           }
         }
         LOG.info(" Running MC with :" + totalChannelCount + " channels.");
         int[] channelAllocation = allocateChannelsToChunks(chunks, totalChannelCount);
-        long start = System.currentTimeMillis();
+        start = System.currentTimeMillis();
         gridFTPClient.runMultiChunkTransfer(chunks, channelAllocation);
         timeSpent += (System.currentTimeMillis() - start) / 1000.0;
         break;
     }
     LogManager.writeToLog("Final throughput:" + (datasetSize * 8.0) / (timeSpent * (1000.0 * 1000)), ConfigurationParams.INFO_LOG_ID);
+    isTransferCompleted = true;
     gridFTPClient.executor.shutdown();
     while (!gridFTPClient.executor.isTerminated()) {
     }
@@ -228,6 +222,7 @@ public class CooperativeChannels {
       chunk.entry.setFileCount(chunk.getRecords().count());
       chunk.entry.setDensity(Entry.findDensityOfList(avgFileSize, intendedTransfer.getBandwidth()));
       chunk.entry.calculateSpecVector();
+      chunk.setChunkNumber(i);
       LOG.info("Chunk " + i + ":\tfiles:" + partitions.get(i).getRecords().count() + "\t avg:" +
               Utils.printSize(partitions.get(i).getCentroid(), true)
               + "\t" + Utils.printSize(partitions.get(i).getRecords().size(), true) + " Density:" +
@@ -366,7 +361,11 @@ public class CooperativeChannels {
 
   private void parseArguments(String[] arguments, CooperativeChannels multiChunk) {
     ClassLoader classloader = Thread.currentThread().getContextClassLoader();
-    InputStream is = classloader.getResourceAsStream("config.cfg");
+    String configFile = "config.cfg";
+    if (arguments.length > 0) {
+      configFile = arguments[0];
+    }
+    InputStream is = classloader.getResourceAsStream(configFile);
     boolean noProxy = false;
     try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
       String line;
@@ -481,6 +480,10 @@ public class CooperativeChannels {
           case "-use-dynamic-scheduling":
             useDynamicScheduling = true;
             LOG.info("Dynamic scheduling enabled.");
+            break;
+          case "-use-online-tuning":
+            useOnlineTuning = true;
+            LOG.info("Online modelling/tuning enabled.");
             break;
           case "-use-checksum":
             runChecksumControl = true;
