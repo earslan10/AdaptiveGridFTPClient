@@ -1,6 +1,6 @@
 *.log
 .idea/
 out/
-resources/config.bk
-resources/config2.cfg
+src/main/resources/config.bk
+src/main/resources/config2.cfg
 .settings
