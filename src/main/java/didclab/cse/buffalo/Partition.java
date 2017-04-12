@@ -19,7 +19,7 @@ public class Partition {
   private double centroid;
   private double samplingTime;
   /* records belonging to this partition */
-  private int chunkNumber;
+  private CooperativeChannels.Density density;
   public boolean isReadyToTransfer = false;
   private XferList fileList = new XferList("", "");
   private TunableParameters tunableParameters;
@@ -37,8 +37,6 @@ public class Partition {
   public Partition() {
     this.centroid = 0;
     entry = new Entry();
-    calculatedParametersSeries = new LinkedList<>();
-    calculatedThroughputSeries = new LinkedList();
   }
 
   /**
@@ -138,12 +136,12 @@ public class Partition {
     this.samplingTime = samplingTime;
   }
 
-  public int getChunkNumber() {
-    return chunkNumber;
+  public CooperativeChannels.Density getDensity() {
+    return density;
   }
 
-  public void setChunkNumber(int chunkNumber) {
-    this.chunkNumber = chunkNumber;
+  public void setDensity(CooperativeChannels.Density density) {
+    this.density = density;
   }
 
   public void setTunableParameters (TunableParameters tunableParameters) {
@@ -153,7 +151,15 @@ public class Partition {
   public TunableParameters getTunableParameters() {
     return tunableParameters;
   }
+
   public void addToTimeSeries(TunableParameters tunableParameters, double throughput) {
+    // Dont insert first entry as it is mostly incorrect
+    if (calculatedParametersSeries == null) {
+      System.out.println("First entry skipped!");
+      calculatedParametersSeries = new LinkedList<>();
+      calculatedThroughputSeries = new LinkedList();
+      return;
+    }
     synchronized (calculatedParametersSeries) {
       calculatedParametersSeries.add(tunableParameters);
       calculatedThroughputSeries.add(throughput);
@@ -164,6 +170,11 @@ public class Partition {
         this.tunableParameters.setConcurrency(fileList.count());
       }
     }
+  }
+
+  public void clearTimeSeries() {
+    calculatedParametersSeries.clear();
+    calculatedThroughputSeries.clear();
   }
 
   public List<TunableParameters> getLastNFromSeries (int n) {

@@ -1,19 +1,22 @@
-import itertools
-import os
-import time
-from itertools import cycle
+import os, time,sys
+from optparse import OptionParser
 
+import itertools
 import numpy as np
+from itertools import cycle
+from operator import add
 from scipy.optimize import minimize
 from sklearn import linear_model
-from sklearn.preprocessing import PolynomialFeatures
 from sklearn.cluster import DBSCAN
-from operator import add
-from optparse import OptionParser
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.cluster import MeanShift, estimate_bandwidth
+from sklearn.neighbors.kde import KernelDensity
 
 from transfer_experiment import TransferExperiment
 
 discarded_group_counter = 0
+maxcc = -1
+maximums = []
 
 
 def parseArguments():
@@ -28,6 +31,14 @@ def parseArguments():
                       dest="sample_pipelining", help="Pipelining level used in sample transfer")
     parser.add_option("-t", "--throughput", action="store", type="float",
                       dest="sample_throughput", help="Transfer throughput obtained in sample transfer")
+    parser.add_option("-x", "--cc-rate", action="store", type="float",
+                        dest="cc_rate")
+    parser.add_option("-y", "--p-rate", action="store", type="float",
+                        dest="p_rate")
+    parser.add_option("-z", "--ppq-rate", action="store", type="float",
+                        dest="ppq_rate")
+    parser.add_option("-m", "--maxcc", action="store", type="int",
+                        dest="maxcc")
     return parser.parse_args()
 
 
@@ -42,25 +53,35 @@ def read_data_from_file(file_id):
      sg1G.csv 432
     """
     try:
-        name, size = file_id.next().strip().split()  # skip first line
+        name, size, similarity_ = file_id.next().strip().split()  # skip first line
         data = np.genfromtxt(itertools.islice(file_id, int(size)), delimiter=' ')
-        return data, name, size
+        similarity = float(similarity_)
+        return data, name, size, similarity*100
     except:
-        return None, None, None
+        return None, None, None, None
 
 
-def run_modelling(data):
+def run_modelling(data, name, first_row):
+    global maximums
     maximums = data.max(axis=0)
-    min_training_score = 0.8
+    global maxcc
+    if maxcc > 0:
+        maximums[0] = maxcc
+        #maximums[0] = min(maxcc, maximums[0])
+        #if maximums[0] < 32:
+        #    print name, maximums[0]
+    min_training_score = 0.7
     min_test_score = 0.7
-    for degree in range(4):
+    for degree in range(2, 5):
         polynomial_features = PolynomialFeatures(degree=degree)
         regression, train_score, test_score = run_regression(polynomial_features, data)
         optimal_point = find_optimal_point(polynomial_features, regression, maximums)
         optimal_point_thr = -1 * optimal_point.fun
-        if optimal_point_thr < maximums[-1] * 3 and train_score > min_training_score and test_score > min_test_score:
+        #print name, first_row, degree, train_score, test_score,optimal_point.x
+        if optimal_point_thr < maximums[-1]*2 and train_score > min_training_score and test_score > min_test_score:
+            #print degree, train_score, test_score,optimal_point.x
             return regression, degree, optimal_point
-    # print "Skipped1", estimated_thr, max_observed_throughput, train_score, test_score
+    #print "Skipped:", train_score, test_score, optimal_point_thr
     return None, None, None
 
 
@@ -91,7 +112,7 @@ def run_regression(poly, data):
 def find_optimal_point(poly, regression, maximums):
     func = convert_to_equation(poly, regression)
     bounds = (1, maximums[0]), (1, maximums[1]), (0, maximums[2])
-    guess = [1, 1, 0]
+    guess = [1, 1, 1]
     return minimize(func, guess, bounds=bounds, method='L-BFGS-B')
 
 
@@ -124,57 +145,157 @@ def main():
     sample_transfer_params = np.array([options.sample_concurrency, options.sample_parallelism,
                                             options.sample_pipelining])
     sample_transfer_throughput = options.sample_throughput
-    file_name = os.path.join(os.path.dirname(__file__), '../../../', 'out', chunk_name)
+    if options.maxcc is not None:
+        global maxcc
+        maxcc = options.maxcc
+    
+    file_name = os.path.join(os.getcwd(), 'out', chunk_name)
+    #print file_name
+    #sys.exit()
     discarded_data_counter = 0
     all_experiments = []
     fin = open(file_name, 'r')
-    data, name, size = read_data_from_file(fin)
+    data, name, size, similarity = read_data_from_file(fin)
     while data is not None:
-        regression, degree, optimal_point = run_modelling(data)
+        data_copy = np.array(data)
+        regression, degree, optimal_point = run_modelling(data_copy, name, data[0,:])
         if regression is None:
-            #print name, size
+            #print "Skipped", name, size
+            discarded_data_counter += 1
+        elif name.startswith("SB") or name.startswith("sg"):
             discarded_data_counter += 1
         else:
-            all_experiments.append(TransferExperiment(name, size, regression, degree, optimal_point))
-        data, name, size = read_data_from_file(fin)
+            all_experiments.append(TransferExperiment(name, size, similarity, regression, degree, optimal_point, data[0,:]))
+            #print "Read data point ", name, data[0,:], data
+            #sys.exit(-1)
+        data, name, size, similarity = read_data_from_file(fin)
     #print "Skipped:", discarded_data_counter,  "/", (len(all_experiments) + discarded_data_counter)
     fin.close()
 
 
     for experiment in all_experiments:
         poly = PolynomialFeatures(degree=experiment.poly_degree)
-        estimated_troughput = experiment.regression.predict(poly.fit_transform(sample_transfer_params.reshape(1, -1)))
-        experiment.set_closeness(abs(estimated_troughput-sample_transfer_throughput))
-        # print experiment.name, estimated_troughput, " diff:", (estimated_troughput-sample_transfer_throughput)
+        experiment.estimated_troughput = experiment.regression.predict(poly.fit_transform(sample_transfer_params.reshape(1, -1)))
+        experiment.set_closeness(abs(experiment.estimated_troughput-sample_transfer_throughput))
+
+    all_experiments.sort(key=lambda x: x.closeness, reverse=True)
+    for experiment in all_experiments:
+        experiment.run_parameter_relaxation(options.cc_rate, options.p_rate, options.ppq_rate)
+        #print experiment.name, experiment.estimated_troughput, " diff:", experiment.closeness, experiment.similarity, experiment.relaxed_params
 
     all_experiments.sort(key=lambda x: x.closeness, reverse=True)
     attrs = [experiment.closeness for experiment in all_experiments]
-    db = DBSCAN(eps=50, min_samples=1).fit(attrs)
-    labels = db.labels_
+
+    #print attrs
+    X = np.array(attrs, dtype=np.float)
+    #print X
+    bandwidth = estimate_bandwidth(X, quantile=0.2)
+    ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
+    ms.fit(X)
+    labels = ms.labels_
+    cluster_centers = ms.cluster_centers_
+    labels_unique = np.unique(labels)
+    n_clusters_ = len(labels_unique)
+
+
+    label = labels[0]
+
+    weight = 0
+    #for experiment in all_experiments:
+
+
+    sorted_centers = sorted(cluster_centers[:,0], reverse=True)
+    #print cluster_centers, sorted_centers
+
+    #print "Sorted indexes"
+    #for cluster_center in cluster_centers:
+    #    print sorted_centers.index(cluster_center)
+
+    #print labels
+    for k in range(n_clusters_):
+        my_members = labels == k
+        #print my_members
+        #print "cluster {0}: {1}".format(k, X[my_members, 0])
+
+
+    #sys.exit()
+
+    my_members = labels == labels[-1]
+    #similar_experiments = [experiment for experiment in all_experiments if experiment.closeness in  X[my_members]]
+    #all_experiments = similar_experiments
+
+    for experiment, label in zip(all_experiments, labels):
+        rank = sorted_centers.index(cluster_centers[label])
+        #print "Traffic similar:", experiment.name, experiment.closeness, rank
+        experiment.closeness_weight = 2 ** rank
+    #sys.exit()
+
+    ''''
+    #for attr in attrs:
+    #    print attr[0],",",
+    #import sys
+    #sys.exit()
+
+
+    print "eps max", maximums[-1]/60
+    db = DBSCAN(eps=maximums[-1]/60, min_samples=1).fit(attrs)
+    closeness_labels = db.labels_
+    print attrs, closeness_labels
+    for experiment, closeness_label in zip(all_experiments, closeness_labels):
+        print experiment.name, experiment.closeness, closeness_label
+        experiment.closeness_weight = 2 ** closeness_label
+    #all_experiments = similar_experiments
+    '''
+
+    all_experiments.sort(key=lambda x: x.similarity)
+    attrs = [experiment.similarity for experiment in all_experiments]
+    db1 = DBSCAN(eps=2, min_samples=1).fit(attrs)
+    similarity_labels = db1.labels_
+    #print attrs, similarity_labels
+    for experiment, similarity_label in zip(all_experiments, similarity_labels):
+        experiment.similarity_weight = 2 ** similarity_label
+    #print attrs, similarity
+
+
+    all_experiments.sort(key=lambda x: x.closeness)
 
     for experiment in all_experiments:
-        experiment.run_parameter_relaxation()
+        experiment.run_parameter_relaxation(options.cc_rate, options.p_rate, options.ppq_rate)
 
     total_weight = 0
     total_thr = 0
     total_params = [0, 0, 0]
 
-    for experiment, label in zip(all_experiments, labels):
-        if label == -1:
+    for experiment in all_experiments:
+        if experiment.similarity_weight < 1:
+            #print "Alo", experiment.name, experiment.closeness, experiment.closeness_weight, experiment.similarity, experiment.similarity_weight
             continue
-        weight = 2 ** label
+        weight = experiment.similarity_weight * experiment.closeness_weight
         total_weight += weight
         weighted_params = [param * weight for param in experiment.relaxed_params]
-        #print weighted_params, total_params
+        print "HEYYY", experiment.name, experiment.closeness, experiment.closeness_weight, experiment.similarity_weight, weight,  experiment.relaxed_params, experiment.first_row
         total_params = map(add, total_params, weighted_params)
-        total_thr += weight * experiment.optimal_point.fun
+        total_thr += weight * experiment.relaxed_throughput
 
-    final_params = total_params/total_weight
-    final_throughput = -1 * total_thr/total_weight
-    print final_params, final_throughput
+    #print total_params, total_weight
+    final_params = [x / (total_weight*1.0) for x in total_params]
+    #final_params = np.round(total_params/(total_weight*1.0))
+    final_throughput = total_thr/total_weight
+    return final_params, final_throughput
     #return (total_params/total_weight), (total_thr/total_weight)
 
 if __name__ == "__main__":
     start_time = time.time()
-    main()
+    total_thr = 0
+    total_params = [0, 0, 0]
+    repeat = 3
+    for i in range(repeat):
+        params, thr = main()
+        total_thr += thr
+        total_params[:] = [x + y for x, y in zip(total_params, params)]
+        print params, thr
+    average_thr = total_thr/(repeat*1.0)
+    average_params = [round(x / (repeat*1.0)) for x in total_params]
+    average_params = map(int, average_params)
+    print ' '.join(str(x) for x in average_params), str(average_thr[0])
     #print("--- %s seconds ---" % (time.time() - start_time))

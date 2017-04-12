@@ -1175,8 +1175,9 @@ public class CooperativeModule {
             System.out.println("Channel " + cc.getId()+ " parallelism is being updated");
             cc = restartChannel(cc);
             if (cc == null) {
-              break;
+              return;
             }
+            System.out.println("Channel " + cc.getId()+ " parallelism is updated");
             cc.isConfigurationChanged = false;
           }
           /*
@@ -1192,10 +1193,15 @@ public class CooperativeModule {
         }
         // The transfer of the channel's assigned chunks is completed.
         // Check if other chunks have any outstanding files. If so, help!
+        /*
         if (cc.inTransitFiles.isEmpty()) {
           //LOG.info(cc.id + "--Chunk "+ cc.xferListIndex + "finished " +chunks.get(cc.xferListIndex).count());
           findChunkInNeed(cc);
         }
+        */
+      }
+      if (cc == null) {
+        System.out.println("Channel " + cc.getId() +  " is null");
       }
       cc.close();
     }
@@ -1206,8 +1212,10 @@ public class CooperativeModule {
           oldChannel.chunk.getTunableParameters().getParallelism());
       XferList fileList = oldChannel.newChunk.getRecords();
       Entry fileToStart = getNextFile(fileList);
-      if (fileToStart == null)
+      oldChannel.close();
+      if (fileToStart == null) {
         return null;
+      }
       boolean success = GridFTPTransfer.setupChannelConf(channel, oldChannel.getId(), oldChannel.newChunk, fileToStart);
       if (!success) {
         synchronized (fileList) {
@@ -1283,7 +1291,7 @@ public class CooperativeModule {
       updateOnAir(cc.chunk.getRecords(), +1);
       return true;
     }
-
+/*
     synchronized void findChunkInNeed(ChannelPair cc) throws Exception {
       double max = -1;
       boolean found = false;
@@ -1331,6 +1339,7 @@ public class CooperativeModule {
         }
       }
     }
+    */
   }
 
 
@@ -1497,11 +1506,10 @@ public class CooperativeModule {
       // Set full destination path of files
       client.chunks.add(chunk);
       XferList xl = chunk.getRecords();
-      int chunkId = chunk.getChunkNumber();
       TunableParameters tunableParameters = chunk.getTunableParameters();
-      System.out.println("Transferring chunk " + chunkId + " params:" + tunableParameters.toString() + " size:" + (xl.size() / (1024.0 * 1024))
+      System.out.println("Transferring chunk " + chunk.getDensity().name() + " params:" + tunableParameters.toString() + " size:" + (xl.size() / (1024.0 * 1024))
           + " files:" + xl.count());
-      LOG.info("Transferring chunk " + chunkId + " params:" + tunableParameters.toString() + " " + tunableParameters.getBufferSize() + " size:" + (xl.size() / (1024.0 * 1024))
+      LOG.info("Transferring chunk " + chunk.getDensity().name() + " params:" + tunableParameters.toString() + " " + tunableParameters.getBufferSize() + " size:" + (xl.size() / (1024.0 * 1024))
           + " files:" + xl.count());
       double fileSize = xl.size();
       xl.updateDestinationPaths();
@@ -1597,7 +1605,7 @@ public class CooperativeModule {
       int currentChannelId = 0;
       long start = System.currentTimeMillis();
       for (int i = 0; i < totalChunks; i++) {
-        LOG.info(channelAllocations[i] + " channels will bre create for chunk " + i);
+        LOG.info(channelAllocations[i] + " channels will be create for chunk " + i);
         for (int j = 0; j < channelAllocations[i]; j++) {
           Entry firstFile = synchronizedPop(firstFilesToSend.get(i));
           Runnable transferChannel = new TransferChannel(chunks.get(i), currentChannelId, firstFile);
@@ -1624,7 +1632,6 @@ public class CooperativeModule {
                                            int channelId,
                                            Partition chunk,
                                            Entry firstFileToTransfer) {
-      XferList fileList = chunk.getRecords();
       TunableParameters params = chunk.getTunableParameters();
       cc.chunk = chunk;
       try {
@@ -1717,34 +1724,6 @@ public class CooperativeModule {
             ModellingThread.jobQueue.add(new ModellingThread.ModellingJob(
                 chunk, chunk.getTunableParameters(), xl.instant_throughput));
           }
-          // Check for anomaly detection in throughput
-          /*
-          if (xl.statistics.getSize() >= xl.statistics.getLimit() && xl.count() > 3) {
-            double mean = xl.statistics.getMean();
-            double std = xl.statistics.getStdDev();
-            double upperLimit = mean + 2 * std;
-            double lowerLimit = mean - 2 * std;
-            if ((xl.instant_throughput > upperLimit) || (xl.instant_throughput < lowerLimit)) {
-              System.out.println("Out of order throughput value:" + Utils.printSize(throughputInMbps, false) +
-                  " mean:" + Utils.printSize(mean, true) + " std:" + Utils.printSize(std, true) +
-                  " borders:" + Utils.printSize(lowerLimit, true) + "*" + Utils.printSize(upperLimit, true));
-              xl.statistics.addOutOfOrderValue(throughputInMbps);
-              if (xl.statistics.getOutOfOrderSize() >= 5) {
-                System.out.println("Will take an action now....");
-
-                xl.statistics.makeOutOfOrderNewNormal();
-              }
-            } else {
-              System.out.println("In order throughput value:" + Utils.printSize(throughputInMbps, false) +
-                  " mean:" + Utils.printSize(mean, true) + " std:" + Utils.printSize(std, true) + " borders:" +
-                  Utils.printSize(lowerLimit, true) + "*" + Utils.printSize(upperLimit, true));
-              xl.statistics.addValue(throughputInMbps);
-              xl.statistics.clearOutOfOrderData();
-            }
-          } else if (timer > interval){ // Don't take first value as it may not be correct representative!
-            xl.statistics.addValue(throughputInMbps);
-          }
-          */
           estimatedCompletionTime = 8 * (xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput;
           xl.estimatedFinishTime = estimatedCompletionTime;
           System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() + "\t finished:"
@@ -1754,7 +1733,8 @@ public class CooperativeModule {
           xl.instantTransferredSize = xl.totalTransferredSize;
         }
         estimatedCompletionTimes[i] = estimatedCompletionTime;
-        writer.write(timer + " " + (throughputInMbps)/(1000*1000.0) + "\n");
+        writer.write(timer + "\t" + xl.channels.size() + "\t"  + chunk.getTunableParameters().getParallelism() +
+            "\t" + (throughputInMbps)/(1000*1000.0) + "\n");
         writer.flush();
       }
       System.out.println("*******************");
@@ -1880,7 +1860,7 @@ public class CooperativeModule {
       @Override
       public void run() {
         try {
-          writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("list-throughput.txt"), "utf-8"));
+          writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("inst-throughput.txt"), "utf-8"));
           initializeMonitoring();
           Thread.sleep(interval);
           while (!CooperativeChannels.isTransferCompleted) {
@@ -1897,7 +1877,7 @@ public class CooperativeModule {
 
     public static class ModellingThread implements Runnable {
       public static Queue<ModellingJob> jobQueue;
-      private final int pastLimit = 3;
+      private final int pastLimit = 4;
       public ModellingThread() {
         jobQueue = new ConcurrentLinkedQueue<>();
       }
@@ -1915,17 +1895,26 @@ public class CooperativeModule {
           }
           ModellingJob job = jobQueue.peek();
           Partition chunk = job.chunk;
+
+          // If chunk is almost finished, don't update parameters as no gain will be achieved
+          XferList xl = chunk.getRecords();
+          if(xl.totalTransferredSize >= 0.9 * xl.initialSize || xl.count() <= 2) {
+            return;
+          }
+
           TunableParameters tunableParametersUsed = job.tunableParameters;
           double sampleThroughput = job.sampleThroughput;
-          double[] params = Hysterisis.runModelling(chunk, tunableParametersUsed, sampleThroughput);
+          double[] params = Hysterisis.runModelling(chunk, tunableParametersUsed, sampleThroughput,
+              new double[]{CooperativeChannels.cc_rate, CooperativeChannels.p_rate, CooperativeChannels.ppq_rate});
           TunableParameters tunableParametersEstimated = new TunableParameters.Builder()
               .setConcurrency((int) params[0])
               .setParallelism((int) params[1])
               .setPipelining((int) params[2])
               .setBufferSize((int) CooperativeChannels.intendedTransfer.getBufferSize())
               .build();
-          chunk.addToTimeSeries(tunableParametersEstimated, params[pastLimit]);
-          System.out.println("New round of " + " estimated params: " + tunableParametersEstimated.toString());
+
+          chunk.addToTimeSeries(tunableParametersEstimated, params[params.length-1]);
+          System.out.println("New round of " + " estimated params: " + tunableParametersEstimated.toString() + " count:" + chunk.getCountOfSeries());
           jobQueue.remove();
           checkForParameterUpdate(chunk, tunableParametersUsed);
         }
@@ -1934,26 +1923,26 @@ public class CooperativeModule {
 
       void checkForParameterUpdate(Partition chunk, TunableParameters currentTunableParameters) {
         // See if previous changes has applied yet
-        if (chunk.getCountOfSeries() > 1) {
-          if (chunk.getRecords().channels == null ||
-              chunk.getRecords().channels.size() != chunk.getTunableParameters().getConcurrency()) {
+        //if (chunk.getRecords().channels.size() != chunk.getTunableParameters().getConcurrency()) {
+        //  return;
+        //}
+        /*
+        for (ChannelPair channel : chunk.getRecords().channels) {
+          if (channel.parallelism != chunk.getTunableParameters().getParallelism()) {
+            chunk.popFromSeries(); // Dont insert latest probing as it was collected during transition phase
+            System.out.println("Channel " + channel.getId() + " P:" + channel.parallelism + " chunkP:" + chunk.getTunableParameters().getParallelism());
             return;
           }
-          for (ChannelPair channel : chunk.getRecords().channels) {
-            if (channel.parallelism != chunk.getTunableParameters().getParallelism()) {
-              chunk.popFromSeries(); // Dont insert latest probing as it was collected during transition phase
-              System.out.println("Channel " + channel.getId() + " P:" + channel.parallelism + " chunkP:" + chunk.getTunableParameters().getParallelism());
-              return;
-            }
-          }
         }
+        */
 
         List<TunableParameters> lastNEstimations = chunk.getLastNFromSeries(pastLimit);
         // If this is first estimation, use it only; otherwise make sure to have pastLimit items
-        if (chunk.getCountOfSeries() > 1 && lastNEstimations.size() < pastLimit) {
+        if (lastNEstimations.size() != 3 && lastNEstimations.size() < pastLimit) {
           return;
         }
 
+        int pastLimit = lastNEstimations.size();
         int ccs[] =  new int[pastLimit];
         int ps[] =  new int[pastLimit];
         int ppqs[] =  new int[pastLimit];
@@ -1968,7 +1957,7 @@ public class CooperativeModule {
         int newConcurrency = getUpdatedParameterValue(ccs, currentTunableParameters.getConcurrency());
         int newParallelism = getUpdatedParameterValue(ps, currentTunableParameters.getParallelism());
         int newPipelining = getUpdatedParameterValue(ppqs, currentTunableParameters.getPipelining());
-        System.out.println("New parameters estimated\t" + newConcurrency + "-" + newParallelism + "-" + newPipelining );
+        System.out.println("New parameters estimated:\t" + newConcurrency + "-" + newParallelism + "-" + newPipelining );
 
         if (newPipelining != currentPipelining) {
           System.out.println("New pipelining " + newPipelining );
@@ -1976,31 +1965,42 @@ public class CooperativeModule {
           chunk.getTunableParameters().setPipelining(newPipelining);
         }
 
-        if (Math.abs(newParallelism - currentParallelism) >= currentParallelism * 0.4 &&
-            Math.abs(newParallelism - currentParallelism) >= 3)  {
+        if (Math.abs(newParallelism - currentParallelism) >= 2 ||
+            Math.max(newParallelism, currentParallelism) >= 2 * Math.min(newParallelism, currentParallelism))  {
           System.out.println("New parallelism " + newParallelism );
           for (ChannelPair channel : chunk.getRecords().channels) {
             channel.isConfigurationChanged = true;
             channel.newChunk = chunk;
           }
           chunk.getTunableParameters().setParallelism(newParallelism);
+          chunk.clearTimeSeries();
         }
-        if (Math.abs(newConcurrency - currentConcurrency) > 1) {
+        if (Math.abs(newConcurrency - currentConcurrency) >= 2) {
           System.out.println("New concurrency " + newConcurrency);
           if (newConcurrency > currentConcurrency) {
-            int addedChannels = 0;
-            for (int i = 0; i < newConcurrency - currentConcurrency; i++) {
+            int channelCountToAdd = newConcurrency - currentConcurrency;
+            for (int i = 0; i < chunk.getRecords().channels.size(); i++) {
+              if (chunk.getRecords().channels.get(i).isConfigurationChanged &&
+                  chunk.getRecords().channels.get(i).newChunk == null) {
+                chunk.getRecords().channels.get(i).isConfigurationChanged = false;
+                System.out.println("Cancelled closing of channel " + i);
+                channelCountToAdd--;
+              }
+            }
+            while (channelCountToAdd > 0) {
               Entry firstFile;
               synchronized (chunk.getRecords()) {
                 firstFile = chunk.getRecords().pop();
               }
               if (firstFile != null) {
-                TransferChannel transferChannel = new TransferChannel(chunk, currentConcurrency + i, firstFile);
+                TransferChannel transferChannel = new TransferChannel(chunk,
+                    chunk.getRecords().channels.size() + channelCountToAdd, firstFile);
                 futures.add(executor.submit(transferChannel));
-                addedChannels++;
+                channelCountToAdd--;
               }
             }
-            chunk.getTunableParameters().setConcurrency(currentConcurrency +  addedChannels);
+            System.out.println("New concurrency level became " + (newConcurrency - channelCountToAdd));
+            chunk.getTunableParameters().setConcurrency(newConcurrency - channelCountToAdd);
           }
           else {
             int randMax = chunk.getRecords().channels.size();
@@ -2008,9 +2008,11 @@ public class CooperativeModule {
               int random = ThreadLocalRandom.current().nextInt(0, randMax--);
               chunk.getRecords().channels.get(random).isConfigurationChanged = true;
               chunk.getRecords().channels.get(random).newChunk = null; // New chunk null means closing channel;
+              System.out.println("Will close of channel " + random);
             }
             chunk.getTunableParameters().setConcurrency(newConcurrency);
           }
+          chunk.clearTimeSeries();
         }
       }
 
@@ -2019,7 +2021,7 @@ public class CooperativeModule {
 
         boolean isLarger = pastValues[0] > currentValue ? true : false;
         boolean isAllLargeOrSmall = true;
-        for (int i = 0; i < pastLimit; i++) {
+        for (int i = 0; i < pastValues.length; i++) {
           if ((isLarger && pastValues[i] <= currentValue) ||
               (!isLarger && pastValues[i] >= currentValue)) {
             isAllLargeOrSmall = false;
@@ -2029,10 +2031,11 @@ public class CooperativeModule {
 
         if (isAllLargeOrSmall) {
           int sum = 0;
-          for (int i = 0; i< pastLimit; i++) {
+          for (int i = 0; i< pastValues.length; i++) {
             sum += pastValues[i];
           }
-          return (int)Math.round(sum/(1.0*pastValues.length));
+          System.out.println("Sum: " + sum + " length " + pastValues.length);
+          return (int)Math.round(sum/(1.0 * pastValues.length));
         }
         return currentValue;
       }

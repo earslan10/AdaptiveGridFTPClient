@@ -4,10 +4,12 @@
 package didclab.cse.buffalo.hysterisis;
 
 import didclab.cse.buffalo.ConfigurationParams;
+import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.CooperativeChannels.Density;
 import didclab.cse.buffalo.log.LogManager;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Vector;
 
 /**
@@ -49,6 +51,24 @@ public class Entry {
 
   public static Density findDensityOfList(double averageFileSize, double bandwidth) {
     double bandwidthInMB = bandwidth / 8.0;
+    if (averageFileSize < bandwidthInMB / 20) {
+      return Density.SMALL;
+    } else if (averageFileSize < bandwidthInMB / 5) {
+      return Density.MIDDLE;
+    } else if (averageFileSize < bandwidthInMB * 2) {
+      return Density.LARGE;
+    }
+    return Density.HUGE;
+  }
+
+
+  public static Density findDensityOfList(List<Entry> list) {
+    long totalSize = 0;
+    for (Entry e : list) {
+      totalSize += e.fileSize;
+    }
+    long averageFileSize = totalSize/list.size();
+    double bandwidthInMB = CooperativeChannels.intendedTransfer.bandwidth / 8.0;
     if (averageFileSize < bandwidthInMB / 20) {
       return Density.SMALL;
     } else if (averageFileSize < bandwidthInMB / 5) {

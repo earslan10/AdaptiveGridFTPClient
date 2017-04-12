@@ -1,5 +1,6 @@
 package didclab.cse.buffalo.hysterisis;
 
+import didclab.cse.buffalo.CooperativeChannels;
 import didclab.cse.buffalo.Partition;
 import didclab.cse.buffalo.utils.csv.CSVReader;
 import org.apache.commons.logging.Log;
@@ -275,7 +276,7 @@ public class Similarity {
     List<Entry> mostSimilarEntries = new LinkedList<Entry>();
 
     int counter = 0;
-    while (counter < 10000) {
+    while (counter < 6000) {
       counter = 0;
       mostSimilarEntries.clear();
       for (List<Entry> entryList : entries) {
@@ -293,55 +294,42 @@ public class Similarity {
   }
 
   //sort entries based on date of the transfer
-  public static void categorizeEntries(int chunkNumber, List<List<Entry>> trials,
-                                       List<Entry> similarEntries) {
+  public static void categorizeEntries(List<Entry> similarEntries, String chunkDensity) {
     //trials = new LinkedList<Map<String,Similarity.Entry>>();
+    Map<List<Entry>, Double> historicalDataSamples = new HashMap<>();
     Set<String> set = new HashSet<String>();
     LinkedList<Entry> list = new LinkedList<Entry>();
 
     //Collections.sort(similarEntries, new DateComparator());
     Entry prev = similarEntries.get(0);
+    double totalSimilarity = 0;
     for (Entry e : similarEntries) {
-      //if(e.getFast() == false)	// IGNORE FAST DISABLED OPTIONS
-      //	continue;
       /* Partition entries in two conditions:
 			 * 1. Entry's network or data set characteristics is seen for the first time
 			 * 2. Already seen entry type's repeating parameter values
 			 */
       if (e.getIdentity().compareTo(prev.getIdentity()) != 0 || e.getGroupNumber() != prev.getGroupNumber() ||
-              (set.contains(e.getParameters()) && e.getParameters().compareTo(prev.getParameters()) != 0 && list.size() >= 6 * 6 * 6 - 1)) {
-        //Entry s = set.get(e.getIdentity());
-        //LogManager.writeToLog("New entry "+e.getSimilarityValue()+" "+e.printSpecVector()+" "+e.getIdentity()+" "
-        //		+e.getThroughput()+" "+e.getParameters(), ConfigurationParams.STDOUT_ID);
-        //Map<String,Similarity.Entry> copied = new HashMap<String,Similarity.Entry>(set);
-        //trials.add((LinkedList)list.clone());
-
+          (set.contains(e.getParameters()) && e.getParameters().compareTo(prev.getParameters()) != 0 && list.size() >= 6 * 6 * 6 - 1)) {
 
         if (list.size() >= 6 * 6 * 2) {
-          trials.add(list);
-          //LogManager.writeToLog("Adding "+list.size(), ConfigurationParams.STDOUT_ID);
+          historicalDataSamples.put(list, totalSimilarity/list.size());
+          System.out.println("Adding " + list.get(0).getNote()+ +list.size() + " " + (totalSimilarity/list.size()) + " " + Entry.findDensityOfList(list));
 
         }
-        list = new LinkedList<Entry>();
+        list = new LinkedList<>();
         set.clear();
-
+        totalSimilarity = 0;
       }
-      //if(e.getDensity() == Density.LARGE)
-      //	LogManager.writeToLog("Added:"+e.getIdentity()+" "+e.getThroughput()+" "+e.getDate().toString(), ConfigurationParams.STDOUT_ID);
       list.add(e);
       set.add(e.getParameters());
+      totalSimilarity += e.getSimilarityValue();
       prev = e;
     }
     // add the final list
     if (list.size() >= 6 * 6 * 2) {
-      trials.add(list);
+      historicalDataSamples.put(list, totalSimilarity/list.size());
     }
-    Collections.shuffle(trials);
-    //int trainingCount = Math.round(trials.size() * 0.8f);
-    //List<List<Entry>> training_trials = trials.subList(0, trainingCount);
-    //List<List<Entry>> testing_trials = trials.subList(trainingCount, trials.size());
-    //writeToFile("outputs/chunk_" + chunkNumber + "_training.txt", training_trials);
-    //writeToFile("outputs/chunk_" + chunkNumber + "_testing.txt", testing_trials);
+
     File theDir = new File("out");
 
     // if the directory does not exist, create it
@@ -353,29 +341,26 @@ public class Similarity {
         //handle it
       }
     }
-    writeToFile(theDir.getPath() + "/chunk_" + chunkNumber + ".txt", trials);
+    writeToFile(theDir.getPath() + "/chunk_" + chunkDensity + ".txt", historicalDataSamples);
+    //System.exit(-1);
   }
 
-  private static void writeToFile(String fileName, List<List<Entry>> trials) {
+  private static void writeToFile(String fileName, Map<List<Entry>, Double> historicalDataSamples) {
     try {
       FileWriter writer = new FileWriter(fileName);
 
-      //writer.write(trials.size() + "\n");
-      // Write metadata of each trial first.
-      //for (List<Entry> subset : trials)
-      //  writer.write(subset.get(0).getNote() + " " + subset.size() + "\n");
-      // Write entries of each trial
-      for (int i = 0; i < trials.size(); i++) {
-        List<Entry> subset = trials.get(i);
+      Iterator it = historicalDataSamples.entrySet().iterator();
+      while (it.hasNext()) {
+        Map.Entry pair = (Map.Entry)it.next();
+        List<Entry> subset = (List<Entry>) pair.getKey();
+        double avgSimilarity = (double) pair.getValue();
         // Write metadata first
-        writer.write(subset.get(0).getNote() + " " + subset.size() + "\n");
+        writer.write(subset.get(0).getNote() + " " + subset.size() + " " + avgSimilarity + "\n");
         for (Entry entry : subset) {
 					/* Max parameters observed in the logs */
-          int pipelining = entry.getPipelining() == -1 ? 0 : entry.getPipelining();
           int parallelism = entry.getParallellism() == -1 ? 1 : entry.getParallellism();
-          int concurrency = entry.getConcurrency() == -1 ? 1 : entry.getConcurrency();
-          concurrency = (int) (Math.min(entry.getConcurrency(), entry.getFileCount()));
-          pipelining = (int) Math.min(entry.getPipelining(), (Math.max(entry.getFileCount() - entry.getConcurrency(), 0)));
+          int concurrency = (int) (Math.min(entry.getConcurrency(), entry.getFileCount()));
+          int pipelining = (int) Math.min(entry.getPipelining(), (Math.max(entry.getFileCount() - entry.getConcurrency(), 0)));
           int fast = entry.getFast() == true ? 1 : 0;
           writer.write(concurrency + " " + parallelism + " " + pipelining + " " + fast + " " + entry.getThroughput() + "\n");
         }
