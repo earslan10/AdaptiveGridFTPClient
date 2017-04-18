@@ -146,7 +146,8 @@ public class AdaptiveGridFTPClient {
         break;
     }
     timeSpent += ((System.currentTimeMillis() - start) / 1000.0);
-    LogManager.writeToLog("Final throughput:" + (datasetSize * 8.0) / (timeSpent * (1000.0 * 1000)), ConfigurationParams.INFO_LOG_ID);
+    LogManager.writeToLog("Chunks: " + maximumChunks + " Throughput:" +
+        (datasetSize * 8.0) / (timeSpent * (1000.0 * 1000)), ConfigurationParams.INFO_LOG_ID);
     isTransferCompleted = true;
     GridFTPTransfer.executor.shutdown();
     while (!GridFTPTransfer.executor.isTerminated()) {
