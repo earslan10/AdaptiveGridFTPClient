@@ -1,26 +1,26 @@
 package stork.util;
 
-import didclab.cse.buffalo.ConfigurationParams;
-import didclab.cse.buffalo.CooperativeChannels.Density;
-import didclab.cse.buffalo.utils.Statistics;
+import client.ConfigurationParams;
+import client.utils.Statistics;
+import client.utils.Utils;
+import org.apache.commons.math3.ml.clustering.Clusterable;
 import stork.module.CooperativeModule;
 
 import java.util.*;
 
-public class XferList implements Iterable<XferList.Entry> {
-  private final Entry root;
+public class XferList implements Iterable<XferList.MlsxEntry> {
+  private final MlsxEntry root;
   public String sp, dp;
   public double totalTransferredSize = 0, instantTransferredSize = 0;
   public double estimatedFinishTime = 0;
   public double instant_throughput = 0, weighted_throughput = 0;
-  public Statistics statistics = new Statistics(10);
   public long initialSize = 0;
   public List<CooperativeModule.ChannelPair> channels;
   public int interval = 0;
   public int onAir = 0;
-  public Density density;
+  public Utils.Density density;
   public int parallelism = -1, pipelining = -1, concurrency = -1, bufferSize = -1;
-  private LinkedList<Entry> list = new LinkedList<Entry>();
+  private LinkedList<MlsxEntry> list = new LinkedList<>();
   private long size = 0;
   private int count = 0;  // Number of files (not dirs)
 
@@ -34,14 +34,14 @@ public class XferList implements Iterable<XferList.Entry> {
     }
     sp = src;
     dp = dest;
-    root = new Entry("");
+    root = new MlsxEntry("");
   }
 
   // Create an XferList for a file.
   public XferList(String src, String dest, long size) {
     sp = src;
     dp = dest;
-    root = new Entry("", size);
+    root = new MlsxEntry(src, size);
     list.add(root);
     this.size += size;
     count ++;
@@ -55,18 +55,18 @@ public class XferList implements Iterable<XferList.Entry> {
   }
 
   // Add a directory to the list.
-  public void add(String path) {
-    list.add(new Entry(path));
+  public void add(String fileName) {
+    list.add(new MlsxEntry(fileName));
   }
 
   // Add a file to the list.
   public void add(String path, long size) {
-    list.add(new Entry(path, size));
+    list.add(new MlsxEntry(path, size));
     this.size += size;
     this.count++;
   }
 
-  public void addEntry(Entry e) {
+  public void addEntry(MlsxEntry e) {
     list.add(e);
     if (e.len == -1) {
       size += e.remaining();
@@ -80,7 +80,7 @@ public class XferList implements Iterable<XferList.Entry> {
   public void addAll(XferList ol) {
     size += ol.size;
     count += ol.count;
-    for (Entry e : ol)
+    for (MlsxEntry e : ol)
       list.add(e);
     //list.addAll(ol.list);
   }
@@ -98,9 +98,9 @@ public class XferList implements Iterable<XferList.Entry> {
   }
 
   // Remove and return the topmost entry.
-  public Entry pop() {
+  public MlsxEntry pop() {
     try {
-      Entry e = list.pop();
+      MlsxEntry e = list.pop();
       size -= e.size;
       count--;
       return e;
@@ -109,18 +109,22 @@ public class XferList implements Iterable<XferList.Entry> {
     }
   }
 
-  public Entry getItem(int index) {
+  public MlsxEntry getItem(int index) {
     try {
-      Entry e = list.get(index);
+      MlsxEntry e = list.get(index);
       return e;
     } catch (Exception e) {
       return null;
     }
   }
 
+  public LinkedList<MlsxEntry> getFileList() {
+    return list;
+  }
+
   public void removeItem(int index) {
     try {
-      Entry e = list.get(index);
+      MlsxEntry e = list.get(index);
       size -= e.size;
       list.remove(index);
     } catch (Exception e) {
@@ -149,7 +153,7 @@ public class XferList implements Iterable<XferList.Entry> {
   public Progress byteProgress() {
     Progress p = new Progress();
 
-    for (Entry e : list)
+    for (MlsxEntry e : list)
       p.add(e.remaining(), e.size);
     return p;
   }
@@ -158,7 +162,7 @@ public class XferList implements Iterable<XferList.Entry> {
   public Progress fileProgress() {
     Progress p = new Progress();
 
-    for (Entry e : list)
+    for (MlsxEntry e : list)
       p.add(e.done ? 1 : 0, 1);
     return p;
   }
@@ -167,29 +171,29 @@ public class XferList implements Iterable<XferList.Entry> {
   // of a certain byte length.
   public XferList split(long len) {
     XferList nl = new XferList(sp, dp);
-    Iterator<Entry> iter = iterator();
+    Iterator<MlsxEntry> iter = iterator();
 
     if (len == -1 || size <= len) {
       // If the request is bigger than the list, empty into new list.
       nl.list = list;
       nl.size = size;
-      list = new LinkedList<Entry>();
+      list = new LinkedList<MlsxEntry>();
       size = 0;
     } else {
       while (len > 0 && iter.hasNext()) {
-        Entry e2, e = iter.next();
+        MlsxEntry e2, e = iter.next();
 
         if (e.done) {
           iter.remove();
         } else if (e.dir || e.size() <= len || e.size() - len < (ConfigurationParams.MAXIMUM_SINGLE_FILE_SIZE / 5)) {
-          nl.addEntry(new Entry(e.path, e));
+          nl.addEntry(new MlsxEntry(e.spath, e));
           len -= e.size();
           iter.remove();
           count--;
           size -= e.size();
           e.done = true;
         } else {  // Need to split file...
-          e2 = new Entry(e.path, e);
+          e2 = new MlsxEntry(e.spath, e);
           e2.len = len;
           nl.addEntry(e2);
           size -= e2.len;
@@ -206,29 +210,29 @@ public class XferList implements Iterable<XferList.Entry> {
   }
 
   public XferList sliceLargeFiles(long sliceSize) {
-    Iterator<Entry> iter = iterator();
+    Iterator<MlsxEntry> iter = iterator();
     XferList nl = new XferList(sp, dp);
     while (iter.hasNext()) {
-      Entry e2, e = iter.next();
+      MlsxEntry e2, e = iter.next();
       if (e.size() > sliceSize) {
         int pieceCount = (int) Math.ceil(1.0 * e.size / sliceSize);
         long pieceSize = (int) (e.size / pieceCount);
         long offset = 0;
-        //System.out.println("Removing "+ e.path() + " " + e.off + " size:"+ e.remaining() + " " + e.len + " to insert "+ pieceCount + "pieces" + " each" + pieceSize);
+        //System.out.println("Removing "+ e.spath() + " " + e.off + " size:"+ e.remaining() + " " + e.len + " to insert "+ pieceCount + "pieces" + " each" + pieceSize);
         for (int i = 1; i < pieceCount; i++) {
-          e2 = new Entry(e.path, e);
+          e2 = new MlsxEntry(e.spath, e);
           e2.len = pieceSize;
           e2.off = offset;
           offset += pieceSize + 1;
           nl.addEntry(e2);
         }
-        e2 = new Entry(e.path, e);
+        e2 = new MlsxEntry(e.spath, e);
         e2.len = -1;
         e2.off = offset;
         nl.addEntry(e2);
         //iter.remove();
       } else {
-        e2 = new Entry(e.path, e);
+        e2 = new MlsxEntry(e.spath, e);
         nl.addEntry(e2);
       }
     }
@@ -239,52 +243,56 @@ public class XferList implements Iterable<XferList.Entry> {
     return count == 0 ? 0 : size / count;
   }
 
-  public Iterator<Entry> iterator() {
+  public Iterator<MlsxEntry> iterator() {
     return list.iterator();
   }
 
   public void updateDestinationPaths() {
-    for (Entry e : list) {
+    for (MlsxEntry e : list) {
       if (dp.compareTo("/dev/null") == 0) {
         e.setdpath(dp);
+      } else if (dp.endsWith("/")){
+        e.setdpath(dp + e.fileName);
       } else {
-        e.setdpath(dp + e.path);
+        e.setdpath(dp);
       }
     }
   }
 
   // An entry (file or directory) in the list.
-  public class Entry {
+  public class MlsxEntry implements Clusterable {
     public final boolean dir;
     public final long size;
-    public String path, dpath;
+    public String fileName, spath, dpath;
     public boolean done = false;
     public long off = 0, len = -1;  // Start/stop offsets.
 
     // Create a directory entry.
-    Entry(String path) {
-      if (path == null) {
-        path = "";
-      } else if (!path.endsWith("/")) {
-        path += "/";
+    MlsxEntry(String spath) {
+      if (spath == null) {
+        spath = "";
+      } else if (!spath.endsWith("/")) {
+        spath += "/";
       }
-      path = path.replaceFirst("^/+", "");
-      this.path = path;
+      spath = spath.replaceFirst("^/+", "");
+      this.spath = spath;
       size = off = 0;
       dir = true;
     }
 
     // Create a file entry.
-    public Entry(String path, long size) {
-      this.path = path;
+    public MlsxEntry(String spath, long size) {
+      String fileName = spath.substring(spath.lastIndexOf('/') + 1);
+      this.spath = spath;
+      this.fileName = fileName;
       this.size = (size < 0) ? 0 : size;
       off = 0;
       dir = false;
     }
 
-    // Create an entry based off another entry with a new path.
-    Entry(String path, Entry e) {
-      this.path = path;
+    // Create an entry based off another entry with a new spath.
+    MlsxEntry(String spath, MlsxEntry e) {
+      this.spath = spath;
       dir = e.dir;
       done = e.done;
       size = e.size;
@@ -318,7 +326,7 @@ public class XferList implements Iterable<XferList.Entry> {
     }
 
     public String path() {
-      return XferList.this.sp + path;
+      return XferList.this.sp + spath;
     }
 
     public void setdpath(String dp) {
@@ -326,12 +334,17 @@ public class XferList implements Iterable<XferList.Entry> {
     }
 
     public String dpath() {
-      //return XferList.this.dp + path;
+      //return XferList.this.dp + spath;
       return dpath;
     }
 
     public String toString() {
       return (dir ? "Directory: " : "File: ") + path() + " -> " + dpath();
+    }
+
+    @Override
+    public double[] getPoint() {
+      return new double[] {size};
     }
   }
 }
