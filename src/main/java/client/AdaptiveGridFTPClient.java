@@ -12,10 +12,7 @@ import org.apache.commons.logging.LogFactory;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -33,6 +30,7 @@ public class AdaptiveGridFTPClient {
   int maximumChunks = 4;
   private String proxyFile;
   private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
+  private boolean anonymousTransfer = false;
   private Hysterisis hysterisis;
   private GridFTPTransfer gridFTPClient;
   private boolean useHysterisis = false;
@@ -102,7 +100,7 @@ public class AdaptiveGridFTPClient {
 
     //Get metadata information of dataset
     XferList dataset = gridFTPClient.getListofFiles(su.getPath(), du.getPath());
-    LOG.info("mlsr completed at:" + ((System.currentTimeMillis() - startTime) / 1000.0) + "set size:" + dataset.size() );
+    LOG.info("mlsr completed at:" + ((System.currentTimeMillis() - startTime) / 1000.0) + "set size:" + dataset.size());
 
 
     long datasetSize = dataset.size();
@@ -110,7 +108,7 @@ public class AdaptiveGridFTPClient {
 
     int[][] estimatedParamsForChunks = new int[chunks.size()][4];
     long timeSpent = 0;
-    long start  = System.currentTimeMillis();
+    long start = System.currentTimeMillis();
     if (useHysterisis) {
       hysterisis.findOptimalParameters(chunks, transferTask);
     }
@@ -242,7 +240,7 @@ public class AdaptiveGridFTPClient {
           count++;
         }
         if (index < totalChunks - index - 1 && count < channelCount
-                && concurrencyLevels[totalChunks - index - 1] < fileCount[totalChunks - index - 1]) {
+            && concurrencyLevels[totalChunks - index - 1] < fileCount[totalChunks - index - 1]) {
           concurrencyLevels[totalChunks - index - 1]++;
           count++;
         }
@@ -342,155 +340,172 @@ public class AdaptiveGridFTPClient {
   private void parseArguments(String[] arguments, AdaptiveGridFTPClient multiChunk) {
     ClassLoader classloader = Thread.currentThread().getContextClassLoader();
     String configFile = "config.cfg";
-    if (arguments.length > 0) {
-      configFile = arguments[0];
-    }
-    InputStream is = classloader.getResourceAsStream(configFile);
-    boolean noProxy = false;
-    try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+    InputStream is;
+    try {
+      if (arguments.length > 0) {
+        is = new FileInputStream(arguments[0]);
+      } else {
+        is = classloader.getResourceAsStream(configFile);
+      }
+
+      BufferedReader br = new BufferedReader(new InputStreamReader(is));
       String line;
       while ((line = br.readLine()) != null) {
-        String[] args = line.split("\\s+");
-        String config = args[0];
-        if (config.startsWith("#")) {
-          continue;
-        }
-        switch (config) {
-          case "-s":
-          case "-source":
-            if (args.length > 1) {
-              transferTask.setSource(args[1]);
-            } else {
-              LOG.fatal("-source requires source address");
-            }
-            LOG.info("source  = " + transferTask.getSource());
-            break;
-          case "-d":
-          case "-destination":
-            if (args.length > 1) {
-              transferTask.setDestination(args[1]);
-            } else {
-              LOG.fatal("-destination requires a destination address");
-            }
-            LOG.info("destination = " + transferTask.getDestination());
-            break;
-          case "-proxy":
-            if (args.length > 1) {
-              proxyFile = args[1];
-            } else {
-              LOG.fatal("-spath requires spath of file/directory to be transferred");
-            }
-            LOG.info("proxyFile = " + proxyFile);
-            break;
-          case "-no-proxy":
-            noProxy = true;
-            break;
-          case "-bw":
-          case "-bandwidth":
-            if (args.length > 1 || Double.parseDouble(args[1]) > 100) {
-              transferTask.setBandwidth(Math.pow(10, 9) * Double.parseDouble(args[1]));
-            } else {
-              LOG.fatal("-bw requires bandwidth in GB");
-            }
-            LOG.info("bandwidth = " + transferTask.getBandwidth() + " GB");
-            break;
-          case "-rtt":
-            if (args.length > 1) {
-              transferTask.setRtt(Double.parseDouble(args[1]));
-            } else {
-              LOG.fatal("-rtt requires round trip time in millisecond");
-            }
-            LOG.info("rtt = " + transferTask.getRtt() + " ms");
-            break;
-          case "-maxcc":
-          case "-max-concurrency":
-            if (args.length > 1) {
-              transferTask.setMaxConcurrency(Integer.parseInt(args[1]));
-            } else {
-              LOG.fatal("-cc needs integer");
-            }
-            LOG.info("cc = " + transferTask.getMaxConcurrency());
-            break;
-          case "-bs":
-          case "-buffer-size":
-            if (args.length > 1) {
-              transferTask.setBufferSize(Integer.parseInt(args[1]) * 1024 * 1024); //in MB
-            } else {
-              LOG.fatal("-bs needs integer");
-            }
-            LOG.info("bs = " + transferTask.getBufferSize());
-            break;
-          case "-testbed":
-            if (args.length > 1) {
-              transferTask.setTestbed(args[1]);
-            } else {
-              LOG.fatal("-testbed needs testbed name");
-            }
-            LOG.info("Testbed name is = " + transferTask.getTestbed());
-            break;
-          case "-input":
-            if (args.length > 1) {
-              ConfigurationParams.INPUT_DIR = args[1];
-            } else {
-              LOG.fatal("-historical data input file spath has to be passed");
-            }
-            LOG.info("Historical data spath = " + ConfigurationParams.INPUT_DIR);
-            break;
-          case "-maximumChunks":
-            if (args.length > 1) {
-              maximumChunks = Integer.parseInt(args[1]);
-            } else {
-              LOG.fatal("-maximumChunks requires an integer value");
-            }
-            LOG.info("Number of chunks = " + maximumChunks);
-            break;
-          case "-use-hysterisis":
-            useHysterisis = true;
-            LOG.info("Use hysterisis based approach");
-            break;
-          case "-single-chunk":
-            algorithm = TransferAlgorithm.SINGLECHUNK;
-            LOG.info("Use single chunk transfer approach");
-            break;
-          case "-channel-distribution-policy":
-            if (args.length > 1) {
-              if (args[1].compareTo("roundrobin") == 0) {
-                channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
-              } else if (args[1].compareTo("weighted") == 0) {
-                channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
-              } else {
-                LOG.fatal("-channel-distribution-policy can be either \"roundrobin\" or \"weighted\"");
-              }
-            } else {
-              LOG.fatal("-channel-distribution-policy has to be specified as \"roundrobin\" or \"weighted\"");
-            }
-            break;
-          case "-use-dynamic-scheduling":
-            useDynamicScheduling = true;
-            LOG.info("Dynamic scheduling enabled.");
-            break;
-          case "-use-online-tuning":
-            useOnlineTuning = true;
-            LOG.info("Online modelling/tuning enabled.");
-            break;
-          case "-use-checksum":
-            runChecksumControl = true;
-            LOG.info("Dynamic scheduling enabled.");
-            break;
-          default:
-            System.err.println("Unrecognized input parameter " + config);
-            System.exit(-1);
-        }
+        processParameter(line.split("\\s+"));
       }
     } catch (IOException e) {
       e.printStackTrace();
     }
+    for (int i = 1; i < arguments.length; i++) {
+      String argument = arguments[i];
+      if (i + 1 < arguments.length) {
+        String value = arguments[i + 1];
+        if (processParameter(argument, value))
+          i++;
+      } else
+        processParameter(argument);
+    }
 
-    if (null == proxyFile && !noProxy) {
+    if (null == proxyFile && !anonymousTransfer) {
       int uid = findUserId();
       proxyFile = "/tmp/x509up_u" + uid;
     }
     ConfigurationParams.init();
+  }
+
+  private boolean processParameter(String... args) {
+    String config = args[0];
+    boolean usedSecondArgument = true;
+    if (config.startsWith("#")) {
+      return !usedSecondArgument;
+    }
+    switch (config) {
+      case "-s":
+      case "-source":
+        if (args.length > 1) {
+          transferTask.setSource(args[1]);
+        } else {
+          LOG.fatal("-source requires source address");
+        }
+        LOG.info("source  = " + transferTask.getSource());
+        break;
+      case "-d":
+      case "-destination":
+        if (args.length > 1) {
+          transferTask.setDestination(args[1]);
+        } else {
+          LOG.fatal("-destination requires a destination address");
+        }
+        LOG.info("destination = " + transferTask.getDestination());
+        break;
+      case "-proxy":
+        if (args.length > 1) {
+          proxyFile = args[1];
+        } else {
+          LOG.fatal("-spath requires spath of file/directory to be transferred");
+        }
+        LOG.info("proxyFile = " + proxyFile);
+        break;
+      case "-no-proxy":
+        anonymousTransfer = true;
+        break;
+      case "-bw":
+      case "-bandwidth":
+        if (args.length > 1 || Double.parseDouble(args[1]) > 100) {
+          transferTask.setBandwidth(Math.pow(10, 9) * Double.parseDouble(args[1]));
+        } else {
+          LOG.fatal("-bw requires bandwidth in GB");
+        }
+        LOG.info("bandwidth = " + transferTask.getBandwidth() + " GB");
+        break;
+      case "-rtt":
+        if (args.length > 1) {
+          transferTask.setRtt(Double.parseDouble(args[1]));
+        } else {
+          LOG.fatal("-rtt requires round trip time in millisecond");
+        }
+        LOG.info("rtt = " + transferTask.getRtt() + " ms");
+        break;
+      case "-maxcc":
+      case "-max-concurrency":
+        if (args.length > 1) {
+          transferTask.setMaxConcurrency(Integer.parseInt(args[1]));
+        } else {
+          LOG.fatal("-cc needs integer");
+        }
+        LOG.info("cc = " + transferTask.getMaxConcurrency());
+        break;
+      case "-bs":
+      case "-buffer-size":
+        if (args.length > 1) {
+          transferTask.setBufferSize(Integer.parseInt(args[1]) * 1024 * 1024); //in MB
+        } else {
+          LOG.fatal("-bs needs integer");
+        }
+        LOG.info("bs = " + transferTask.getBufferSize());
+        break;
+      case "-testbed":
+        if (args.length > 1) {
+          transferTask.setTestbed(args[1]);
+        } else {
+          LOG.fatal("-testbed needs testbed name");
+        }
+        LOG.info("Testbed name is = " + transferTask.getTestbed());
+        break;
+      case "-input":
+        if (args.length > 1) {
+          ConfigurationParams.INPUT_DIR = args[1];
+        } else {
+          LOG.fatal("-historical data input file spath has to be passed");
+        }
+        LOG.info("Historical data spath = " + ConfigurationParams.INPUT_DIR);
+        break;
+      case "-maximumChunks":
+        if (args.length > 1) {
+          maximumChunks = Integer.parseInt(args[1]);
+        } else {
+          LOG.fatal("-maximumChunks requires an integer value");
+        }
+        LOG.info("Number of chunks = " + maximumChunks);
+        break;
+      case "-use-hysterisis":
+        useHysterisis = true;
+        LOG.info("Use hysterisis based approach");
+        break;
+      case "-single-chunk":
+        algorithm = TransferAlgorithm.SINGLECHUNK;
+        LOG.info("Use single chunk transfer approach");
+        break;
+      case "-channel-distribution-policy":
+        if (args.length > 1) {
+          if (args[1].compareTo("roundrobin") == 0) {
+            channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
+          } else if (args[1].compareTo("weighted") == 0) {
+            channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
+          } else {
+            LOG.fatal("-channel-distribution-policy can be either \"roundrobin\" or \"weighted\"");
+          }
+        } else {
+          LOG.fatal("-channel-distribution-policy has to be specified as \"roundrobin\" or \"weighted\"");
+        }
+        break;
+      case "-use-dynamic-scheduling":
+        useDynamicScheduling = true;
+        LOG.info("Dynamic scheduling enabled.");
+        break;
+      case "-use-online-tuning":
+        useOnlineTuning = true;
+        LOG.info("Online modelling/tuning enabled.");
+        break;
+      case "-use-checksum":
+        runChecksumControl = true;
+        LOG.info("Dynamic scheduling enabled.");
+        break;
+      default:
+        System.err.println("Unrecognized input parameter " + config);
+        System.exit(-1);
+    }
+    return usedSecondArgument;
   }
 
   private int findUserId() {
