@@ -123,10 +123,149 @@
     <pathelement location="/Users/earslan/Library/Application Support/IdeaIC2016.3/python/helpers/python-skeletons"/>
     <pathelement location="/Users/earslan/Library/Caches/IdeaIC2016.2/python_stubs/348993582"/>
   </path>
+  <!-- Register Custom Compiler Taskdefs -->
+  <property name="javac2.home" value="${idea.home}/lib"/>
+  <path id="javac2.classpath">
+    <pathelement location="${javac2.home}/javac2.jar"/>
+    <pathelement location="${javac2.home}/jdom.jar"/>
+    <pathelement location="${javac2.home}/asm-all.jar"/>
+    <pathelement location="${javac2.home}/jgoodies-forms.jar"/>
+  </path>
+  <target name="register.custom.compilers">
+    <taskdef name="javac2" classname="com.intellij.ant.Javac2" classpathref="javac2.classpath"/>
+    <taskdef name="instrumentIdeaExtensions" classname="com.intellij.ant.InstrumentIdeaExtensions" classpathref="javac2.classpath"/>
+  </target>
   
   <!-- Modules -->
   
-  <import file="${basedir}/src/main/module_adaptivegridftpclient.xml"/>
+  
+  <!-- Module AdaptiveGridFTPClient -->
+  
+  <dirname property="module.adaptivegridftpclient.basedir" file="${ant.file}"/>
+  
+  
+  <property name="module.jdk.home.adaptivegridftpclient" value="${project.jdk.home}"/>
+  <property name="module.jdk.bin.adaptivegridftpclient" value="${project.jdk.bin}"/>
+  <property name="module.jdk.classpath.adaptivegridftpclient" value="${project.jdk.classpath}"/>
+  
+  <property name="compiler.args.adaptivegridftpclient" value="-encoding UTF-8 -source 8 -target 8 ${compiler.args}"/>
+  
+  <property name="adaptivegridftpclient.output.dir" value="${module.adaptivegridftpclient.basedir}/out/production/main"/>
+  <property name="adaptivegridftpclient.testoutput.dir" value="${module.adaptivegridftpclient.basedir}/out/test/main"/>
+  
+  <path id="adaptivegridftpclient.module.bootclasspath">
+    <!-- Paths to be included in compilation bootclasspath -->
+  </path>
+  
+  <path id="adaptivegridftpclient.module.production.classpath">
+    <path refid="${module.jdk.classpath.adaptivegridftpclient}"/>
+    <path refid="library.python_2.7.10_(/usr/bin/python)_interpreter_library.classpath"/>
+    <path refid="library.junit-4.12.classpath"/>
+    <path refid="library.lib.classpath"/>
+  </path>
+  
+  <path id="adaptivegridftpclient.runtime.production.module.classpath">
+    <pathelement location="${adaptivegridftpclient.output.dir}"/>
+    <path refid="library.python_2.7.10_(/usr/bin/python)_interpreter_library.classpath"/>
+    <path refid="library.junit-4.12.classpath"/>
+    <path refid="library.lib.classpath"/>
+  </path>
+  
+  <path id="adaptivegridftpclient.module.classpath">
+    <path refid="${module.jdk.classpath.adaptivegridftpclient}"/>
+    <pathelement location="${adaptivegridftpclient.output.dir}"/>
+    <path refid="library.python_2.7.10_(/usr/bin/python)_interpreter_library.classpath"/>
+    <path refid="library.junit-4.12.classpath"/>
+    <path refid="library.lib.classpath"/>
+  </path>
+  
+  <path id="adaptivegridftpclient.runtime.module.classpath">
+    <pathelement location="${adaptivegridftpclient.testoutput.dir}"/>
+    <pathelement location="${adaptivegridftpclient.output.dir}"/>
+    <path refid="library.python_2.7.10_(/usr/bin/python)_interpreter_library.classpath"/>
+    <path refid="library.junit-4.12.classpath"/>
+    <path refid="library.lib.classpath"/>
+  </path>
+  
+  
+  <patternset id="excluded.from.module.adaptivegridftpclient">
+    <patternset refid="ignored.files"/>
+  </patternset>
+  
+  <patternset id="excluded.from.compilation.adaptivegridftpclient">
+    <patternset refid="excluded.from.module.adaptivegridftpclient"/>
+  </patternset>
+  
+  <path id="adaptivegridftpclient.module.sourcepath">
+    <dirset dir="${module.adaptivegridftpclient.basedir}">
+      <include name="src/main/java"/>
+      <include name="src/main/python"/>
+      <include name="src/main/resources"/>
+      <include name="src/test/resources"/>
+    </dirset>
+  </path>
+  
+  <path id="adaptivegridftpclient.module.test.sourcepath">
+    <dirset dir="${module.adaptivegridftpclient.basedir}">
+      <include name="src/test/java"/>
+    </dirset>
+  </path>
+  
+  
+  <target name="compile.module.adaptivegridftpclient" depends="compile.module.adaptivegridftpclient.production,compile.module.adaptivegridftpclient.tests" description="Compile module AdaptiveGridFTPClient"/>
+  
+  <target name="compile.module.adaptivegridftpclient.production" depends="register.custom.compilers" description="Compile module AdaptiveGridFTPClient; production classes">
+    <mkdir dir="${adaptivegridftpclient.output.dir}"/>
+    <javac2 destdir="${adaptivegridftpclient.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.adaptivegridftpclient}/javac">
+      <compilerarg line="${compiler.args.adaptivegridftpclient}"/>
+      <bootclasspath refid="adaptivegridftpclient.module.bootclasspath"/>
+      <classpath refid="adaptivegridftpclient.module.production.classpath"/>
+      <src refid="adaptivegridftpclient.module.sourcepath"/>
+      <patternset refid="excluded.from.compilation.adaptivegridftpclient"/>
+    </javac2>
+    
+    <copy todir="${adaptivegridftpclient.output.dir}">
+      <fileset dir="${module.adaptivegridftpclient.basedir}/src/main/java">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+      <fileset dir="${module.adaptivegridftpclient.basedir}/src/main/python">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+      <fileset dir="${module.adaptivegridftpclient.basedir}/src/main/resources">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+      <fileset dir="${module.adaptivegridftpclient.basedir}/src/test/resources">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="compile.module.adaptivegridftpclient.tests" depends="register.custom.compilers,compile.module.adaptivegridftpclient.production" description="compile module AdaptiveGridFTPClient; test classes" unless="skip.tests">
+    <mkdir dir="${adaptivegridftpclient.testoutput.dir}"/>
+    <javac2 destdir="${adaptivegridftpclient.testoutput.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.adaptivegridftpclient}/javac">
+      <compilerarg line="${compiler.args.adaptivegridftpclient}"/>
+      <bootclasspath refid="adaptivegridftpclient.module.bootclasspath"/>
+      <classpath refid="adaptivegridftpclient.module.classpath"/>
+      <src refid="adaptivegridftpclient.module.test.sourcepath"/>
+      <patternset refid="excluded.from.compilation.adaptivegridftpclient"/>
+    </javac2>
+    
+    <copy todir="${adaptivegridftpclient.testoutput.dir}">
+      <fileset dir="${module.adaptivegridftpclient.basedir}/src/test/java">
+        <patternset refid="compiler.resources"/>
+        <type type="file"/>
+      </fileset>
+    </copy>
+  </target>
+  
+  <target name="clean.module.adaptivegridftpclient" description="cleanup module">
+    <delete dir="${adaptivegridftpclient.output.dir}"/>
+    <delete dir="${adaptivegridftpclient.testoutput.dir}"/>
+  </target>
   
   <target name="init" description="Build initialization">
     <!-- Perform any build initialization in this target -->
