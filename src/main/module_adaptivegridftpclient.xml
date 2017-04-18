@@ -72,15 +72,15 @@
   
   <target name="compile.module.adaptivegridftpclient" depends="compile.module.adaptivegridftpclient.production,compile.module.adaptivegridftpclient.tests" description="Compile module AdaptiveGridFTPClient"/>
   
-  <target name="compile.module.adaptivegridftpclient.production" depends="register.custom.compilers" description="Compile module AdaptiveGridFTPClient; production classes">
+  <target name="compile.module.adaptivegridftpclient.production" description="Compile module AdaptiveGridFTPClient; production classes">
     <mkdir dir="${adaptivegridftpclient.output.dir}"/>
-    <javac2 destdir="${adaptivegridftpclient.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.adaptivegridftpclient}/javac">
+    <javac destdir="${adaptivegridftpclient.output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.adaptivegridftpclient}/javac">
       <compilerarg line="${compiler.args.adaptivegridftpclient}"/>
       <bootclasspath refid="adaptivegridftpclient.module.bootclasspath"/>
       <classpath refid="adaptivegridftpclient.module.production.classpath"/>
       <src refid="adaptivegridftpclient.module.sourcepath"/>
       <patternset refid="excluded.from.compilation.adaptivegridftpclient"/>
-    </javac2>
+    </javac>
     
     <copy todir="${adaptivegridftpclient.output.dir}">
       <fileset dir="${module.adaptivegridftpclient.basedir}/java">
@@ -102,15 +102,15 @@
     </copy>
   </target>
   
-  <target name="compile.module.adaptivegridftpclient.tests" depends="register.custom.compilers,compile.module.adaptivegridftpclient.production" description="compile module AdaptiveGridFTPClient; test classes" unless="skip.tests">
+  <target name="compile.module.adaptivegridftpclient.tests" depends="compile.module.adaptivegridftpclient.production" description="compile module AdaptiveGridFTPClient; test classes" unless="skip.tests">
     <mkdir dir="${adaptivegridftpclient.testoutput.dir}"/>
-    <javac2 destdir="${adaptivegridftpclient.testoutput.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.adaptivegridftpclient}/javac">
+    <javac destdir="${adaptivegridftpclient.testoutput.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" executable="${module.jdk.bin.adaptivegridftpclient}/javac">
       <compilerarg line="${compiler.args.adaptivegridftpclient}"/>
       <bootclasspath refid="adaptivegridftpclient.module.bootclasspath"/>
       <classpath refid="adaptivegridftpclient.module.classpath"/>
       <src refid="adaptivegridftpclient.module.test.sourcepath"/>
       <patternset refid="excluded.from.compilation.adaptivegridftpclient"/>
-    </javac2>
+    </javac>
     
     <copy todir="${adaptivegridftpclient.testoutput.dir}">
       <fileset dir="${module.adaptivegridftpclient.basedir}/../test/java">
