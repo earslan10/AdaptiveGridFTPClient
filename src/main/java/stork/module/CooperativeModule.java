@@ -26,6 +26,7 @@ import stork.util.XferList;
 import stork.util.XferList.MlsxEntry;
 
 import java.io.*;
+import java.net.InetAddress;
 import java.net.URI;
 import java.text.DecimalFormat;
 import java.util.*;
@@ -655,6 +656,7 @@ public class CooperativeModule {
           if (enableCheckSum) {
             checksum = pipeGetCheckSum(e.path());
           }
+          //System.out.println("Piping " + e.path() + " to " + e.dpath());
           pipeRetr(e.path(), e.off, e.len);
           if (enableCheckSum && checksum != null)
             pipeStorCheckSum(checksum);
@@ -876,7 +878,7 @@ public class CooperativeModule {
           long cur_bytes = pm.getStripeBytesTransferred();
           long diff = cur_bytes - last_bytes;
           //System.out.println("Progress update :" + mlsxEntry.spath + "\t"  +Utils.printSize(diff, true) + "/" +
-          //    Utils.printSize(mlsxEntry.size, true) + " at:" + startTime/1000.0 + " by:" + host);
+          //    Utils.printSize(mlsxEntry.size, true));
           last_bytes = cur_bytes;
           if (prog != null) {
             prog.done(diff);
@@ -1344,7 +1346,11 @@ public class CooperativeModule {
   public static class GridFTPTransfer implements StorkTransfer {
     public static StorkFTPClient client;
     public static ExecutorService executor;
+    public static Queue<InetAddress> sourceIpList = new LinkedBlockingQueue<>();
+    public static Queue<InetAddress> destinationIpList = new LinkedBlockingQueue<>();
     public static Collection<Future<?>> futures = new LinkedList<>();
+
+
     static int fastChunkId = -1, slowChunkId = -1, period = 0;
     static FTPURI su = null, du = null;
     public boolean useDynamicScheduling = false;
@@ -1830,7 +1836,18 @@ public class CooperativeModule {
         try {
           // Channel zero is main channel and already created
           ChannelPair channel;
-          channel = new ChannelPair(su, du);
+          InetAddress srcIp = sourceIpList.poll();
+          sourceIpList.add(srcIp);
+          InetAddress dstIp = destinationIpList.poll();
+          destinationIpList.add(dstIp);
+          long start = System.currentTimeMillis();
+          //System.out.println("Creating new channel between " + su.proto + "://" + srcIp.getCanonicalHostName());
+          FTPURI srcUri = new FTPURI(new URI(su.proto + "://" + srcIp.getCanonicalHostName()).normalize(), su.cred);
+          FTPURI dstUri = new FTPURI(new URI(du.proto + "://" + dstIp.getCanonicalHostName()).normalize(), du.cred);
+          System.out.println("Took " + (System.currentTimeMillis() - start)/1000.0 + " seconds to get cannocical name");
+          System.out.println("Creating new channel between " + srcUri.host + " and " + dstUri.host +"using " +srcIp + "-" +dstIp );
+          channel = new ChannelPair(srcUri, dstUri);
+          System.out.println("Created a channel between " + channel.rc.fc.getHost() + " and " + channel.sc.fc.getHost());
           synchronized (client.ccs) {
             client.ccs.add(channel);
           }
