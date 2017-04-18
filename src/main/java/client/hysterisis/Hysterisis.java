@@ -1,9 +1,9 @@
-package didclab.cse.buffalo.hysterisis;
+package client.hysterisis;
 
-import didclab.cse.buffalo.ConfigurationParams;
-import didclab.cse.buffalo.CooperativeChannels;
-import didclab.cse.buffalo.Partition;
-import didclab.cse.buffalo.utils.TunableParameters;
+import client.AdaptiveGridFTPClient;
+import client.ConfigurationParams;
+import client.Partition;
+import client.utils.TunableParameters;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -21,53 +21,6 @@ public class Hysterisis {
   private double[] estimatedThroughputs;
   private int[][] estimatedParamsForChunks;
 
-  private void parseInputFiles() {
-    File folder = new File(ConfigurationParams.INPUT_DIR);
-    if (!folder.exists()) {
-      LOG.error("Cannot access to " + folder.getAbsoluteFile());
-      System.exit(-1);
-    }
-    File[] listOfFiles = folder.listFiles();
-    if (listOfFiles.length == 0) {
-      LOG.error("No historical data found at " + folder.getAbsoluteFile());
-      System.exit(-1);
-    }
-    List<String> historicalDataset = new ArrayList<>(listOfFiles.length);
-    entries = new ArrayList<>();
-    for (File listOfFile : listOfFiles) {
-      if (listOfFile.isFile()) {
-        historicalDataset.add(ConfigurationParams.INPUT_DIR + listOfFile.getName());
-      }
-    }
-    for (String fileName : historicalDataset) {
-      List<Entry> fileEntries = Similarity.readFile(fileName);
-      if (!fileEntries.isEmpty()) {
-        entries.add(fileEntries);
-      }
-    }
-    //System.out.println("Skipped Entry count =" + Similarity.skippedEntryCount);
-  }
-
-  public void findOptimalParameters(List<Partition> chunks, Entry intendedTransfer) throws Exception {
-    parseInputFiles();
-    if (entries.isEmpty()) {  // Make sure there are log files to run hysterisis
-      LOG.fatal("No input entries found to run hysterisis analysis. Exiting...");
-    }
-
-    // Find out similar entries
-    int[] setCounts = new int[chunks.size()];
-    Similarity.normalizeDataset3(entries, chunks);
-    //LOG.info("Entries are normalized at "+ ManagementFactory.getRuntimeMXBean().getUptime());
-    for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
-      List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
-      //Categorize selected entries based on log date
-      List<List<Entry>> trials = new LinkedList<>();
-      Similarity.categorizeEntries(similarEntries, chunks.get(chunkNumber).getDensity().name());
-      setCounts[chunkNumber] = trials.size();
-      //LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
-    }
-  }
-
   public static double[] runModelling(Partition chunk, TunableParameters tunableParameters, double sampleThroughput,
                                       double[] relaxation_rates) {
     double []resultValues = new double[4];
@@ -82,7 +35,7 @@ public class Hysterisis {
           "--cc-rate" , ""+ relaxation_rates[0],
           "--p-rate" , ""+ relaxation_rates[1],
           "--ppq-rate" , ""+ relaxation_rates[2],
-          "--maxcc", "" + CooperativeChannels.intendedTransfer.getMaxConcurrency());
+          "--maxcc", "" + AdaptiveGridFTPClient.transferTask.getMaxConcurrency());
       String formatedString = pb.command().toString()
           .replace(",", "")  //remove the commas
           .replace("[", "")  //remove the right bracket
@@ -110,6 +63,53 @@ public class Hysterisis {
       System.out.println(e);
     }
     return resultValues;
+  }
+
+  private void parseInputFiles() {
+    File folder = new File(ConfigurationParams.INPUT_DIR);
+    if (!folder.exists()) {
+      LOG.error("Cannot access to " + folder.getAbsoluteFile());
+      System.exit(-1);
+    }
+    File[] listOfFiles = folder.listFiles();
+    if (listOfFiles.length == 0) {
+      LOG.error("No historical data found at " + folder.getAbsoluteFile());
+      System.exit(-1);
+    }
+    List<String> historicalDataset = new ArrayList<>(listOfFiles.length);
+    entries = new ArrayList<>();
+    for (File listOfFile : listOfFiles) {
+      if (listOfFile.isFile()) {
+        historicalDataset.add(ConfigurationParams.INPUT_DIR + listOfFile.getName());
+      }
+    }
+    for (String fileName : historicalDataset) {
+      List<Entry> fileEntries = Similarity.readFile(fileName);
+      if (!fileEntries.isEmpty()) {
+        entries.add(fileEntries);
+      }
+    }
+    //System.out.println("Skipped MlsxEntry count =" + Similarity.skippedEntryCount);
+  }
+
+  public void findOptimalParameters(List<Partition> chunks, Entry intendedTransfer) throws Exception {
+    parseInputFiles();
+    if (entries.isEmpty()) {  // Make sure there are log files to run hysterisis
+      LOG.fatal("No input entries found to run hysterisis analysis. Exiting...");
+    }
+
+    // Find out similar entries
+    int[] setCounts = new int[chunks.size()];
+    Similarity.normalizeDataset3(entries, chunks);
+    //LOG.info("Entries are normalized at "+ ManagementFactory.getRuntimeMXBean().getUptime());
+    for (int chunkNumber = 0; chunkNumber < chunks.size(); chunkNumber++) {
+      List<Entry> similarEntries = Similarity.findSimilarEntries(entries, chunks.get(chunkNumber).entry);
+      //Categorize selected entries based on log date
+      List<List<Entry>> trials = new LinkedList<>();
+      Similarity.categorizeEntries(similarEntries, chunks.get(chunkNumber).getDensity().name());
+      setCounts[chunkNumber] = trials.size();
+      //LOG.info("Chunk "+chunkNumber + " entries are categorized and written to disk at "+ jvmUpTime);
+    }
   }
 
   public double[] getEstimatedThroughputs() {

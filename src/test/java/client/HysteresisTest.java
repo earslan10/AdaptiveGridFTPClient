@@ -1,4 +1,4 @@
-package didclab.cse.buffalo;
+package client;
 
 import org.junit.Test;
 

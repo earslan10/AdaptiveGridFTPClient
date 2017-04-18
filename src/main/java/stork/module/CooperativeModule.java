@@ -1,12 +1,12 @@
 package stork.module;
 
+import client.AdaptiveGridFTPClient;
+import client.ConfigurationParams;
+import client.Partition;
+import client.hysterisis.Hysterisis;
+import client.utils.TunableParameters;
+import client.utils.Utils;
 import com.google.common.collect.Lists;
-import didclab.cse.buffalo.CooperativeChannels;
-import didclab.cse.buffalo.Partition;
-import didclab.cse.buffalo.hysterisis.Hysterisis;
-import didclab.cse.buffalo.utils.TunableParameters;
-import didclab.cse.buffalo.utils.Utils;
-import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.globus.ftp.*;
@@ -23,7 +23,7 @@ import stork.util.AdSink;
 import stork.util.StorkUtil;
 import stork.util.TransferProgress;
 import stork.util.XferList;
-import stork.util.XferList.Entry;
+import stork.util.XferList.MlsxEntry;
 
 import java.io.*;
 import java.net.URI;
@@ -31,7 +31,7 @@ import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static didclab.cse.buffalo.utils.Utils.getListOfChannelsOfAChunk;
+import static client.utils.Utils.getListOfChannelsOfAChunk;
 
 public class CooperativeModule {
 
@@ -183,18 +183,19 @@ public class CooperativeModule {
       String line;
 
       // Read lines from the buffer list.
+      System.out.println("Files under " + path);
       while ((line = readLine()) != null) {
         try {
-          MlsxEntry m = new MlsxEntry(line);
+          org.globus.ftp.MlsxEntry m = new org.globus.ftp.MlsxEntry(line);
 
-          String name = m.getFileName();
+          String fileName = m.getFileName();
           String type = m.get("type");
           String size = m.get("size");
 
-          if (type.equals(MlsxEntry.TYPE_FILE)) {
-            xl.add(path + name, Long.parseLong(size));
-          } else if (!name.equals(".") && !name.equals("..")) {
-            xl.add(name);
+          if (type.equals(org.globus.ftp.MlsxEntry.TYPE_FILE)) {
+            xl.add(path + fileName, Long.parseLong(size));
+          } else if (!fileName.equals(".") && !fileName.equals("..")) {
+            xl.add(fileName);
           }
         } catch (Exception e) {
           e.printStackTrace();
@@ -413,12 +414,18 @@ public class CooperativeModule {
   public static class ChannelPair {
     //public final FTPURI su, du;
     public final boolean gridftp;
-    Queue<Entry> inTransitFiles = new LinkedList<>();
+    // File list this channel is transferring
+    public Partition chunk, newChunk;
+    public boolean isConfigurationChanged = false;
+    public boolean isChunkChanged = false;
+    public int newxferListIndex = -1;
+    public boolean enableCheckSum = false;
+    Queue<XferList.MlsxEntry> inTransitFiles = new LinkedList<>();
     private int parallelism = 1, pipelining = 0, trev = 5;
     private char mode = 'S', type = 'A';
     private boolean dc_ready = false;
     private int id;
-    //private XferList.Entry first;
+    //private XferList.MlsxEntry first;
     //private double bytesTransferred = 0;
     //private long timer;
     //private int updateXferListIndex= 0;
@@ -426,19 +433,9 @@ public class CooperativeModule {
     // Remote/other view of control channels.
     // rc is always remote, oc can be either remote or local.
     private ControlChannel rc, oc;
-
     // Source/dest view of control channels.
     // Either one of these may be local (but not both).
     private ControlChannel sc, dc;
-
-    // File list this channel is transferring
-    public Partition chunk, newChunk;
-
-    public boolean isConfigurationChanged = false;
-
-    public boolean isChunkChanged = false;
-    public int newxferListIndex = -1;
-    public boolean enableCheckSum = false;
 
     // Create a control channel pair. TODO: Check if they can talk.
     public ChannelPair(FTPURI su, FTPURI du) {
@@ -649,7 +646,7 @@ public class CooperativeModule {
     }
 
     // Prepare the channels to transfer an XferEntry.
-    void pipeTransfer(XferList.Entry e) {
+    void pipeTransfer(XferList.MlsxEntry e) {
       try {
         if (e.dir) {
           pipeMkdir(e.dpath());
@@ -658,6 +655,7 @@ public class CooperativeModule {
           if (enableCheckSum) {
             checksum = pipeGetCheckSum(e.path());
           }
+          System.out.println("Piping " + e.path() + " to " + e.dpath());
           pipeRetr(e.path(), e.off, e.len);
           if (enableCheckSum && checksum != null)
             pipeStorCheckSum(checksum);
@@ -721,7 +719,7 @@ public class CooperativeModule {
     // Watch a transfer as it takes place, intercepting status messages
     // and reporting any errors. Use this for pipelined transfers.
     // TODO: I'm sure this can be done better...
-    void watchTransfer(ProgressListener p, Entry e) throws Exception {
+    void watchTransfer(ProgressListener p, XferList.MlsxEntry e) throws Exception {
       MonitorThread rmt, omt;
 
       rmt = new MonitorThread(rc, e);
@@ -772,11 +770,11 @@ public class CooperativeModule {
     public Exception error = null;
     ProgressListener pl = null;
     XferList fileList;
+    XferList.MlsxEntry e;
     private ControlChannel cc;
     private MonitorThread other = this;
-    Entry e;
 
-    public MonitorThread(ControlChannel cc, Entry e) {
+    public MonitorThread(ControlChannel cc, MlsxEntry e) {
       this.cc = cc;
       this.e  = e;
     }
@@ -872,14 +870,14 @@ public class CooperativeModule {
       }
     }
 
-    public long _markerArrived(Marker m, Entry entry) {
+    public long _markerArrived(Marker m, XferList.MlsxEntry mlsxEntry) {
       if (m instanceof PerfMarker) {
         try {
           PerfMarker pm = (PerfMarker) m;
           long cur_bytes = pm.getStripeBytesTransferred();
           long diff = cur_bytes - last_bytes;
-          //System.out.println("Progress update :" + entry.path + "\t"  +Utils.printSize(diff, true) + "/" +
-          //    Utils.printSize(entry.size, true) + " at:" + startTime/1000.0 + " by:" + host);
+          //System.out.println("Progress update :" + mlsxEntry.spath + "\t"  +Utils.printSize(diff, true) + "/" +
+          //    Utils.printSize(mlsxEntry.size, true) + " at:" + startTime/1000.0 + " by:" + host);
           last_bytes = cur_bytes;
           if (prog != null) {
             prog.done(diff);
@@ -966,15 +964,14 @@ public class CooperativeModule {
     //private FTPServerFacade local;
     private ChannelPair cc;  // Main control channels.
     private boolean checksumEnabled = false;
+    private List<ChannelPair> ccs;
+
+
     public StorkFTPClient(FTPURI su, FTPURI du) throws Exception {
       this.su = su;
       this.du = du;
       cc = new ChannelPair(su, du);
     }
-
-
-    private List<ChannelPair> ccs;
-
 
     // Set the progress listener for this client's transfers.
     public void setAdSink(AdSink sink) {
@@ -1057,11 +1054,11 @@ public class CooperativeModule {
             return xl;
           }
           // Otherwise, add subdirs and repeat.
-          for (XferList.Entry e : xl) {
+          for (XferList.MlsxEntry e : xl) {
             if (e.dir) {
-              subdirs.add(e.path);
+              subdirs.add(e.spath);
             }
-            //if (e.dir) System.out.println("Directory:"+e.path()+" "+e.dpath()+" "+path);
+            //if (e.dir) System.out.println("Directory:"+e.spath()+" "+e.dpath()+" "+spath);
 
           }
           list.addAll(xl);
@@ -1115,10 +1112,10 @@ public class CooperativeModule {
       XferList xl;
       // Some quick sanity checking.
       if (sp == null || sp.isEmpty()) {
-        throw new Exception("src path is empty");
+        throw new Exception("src spath is empty");
       }
       if (dp == null || dp.isEmpty()) {
-        throw new Exception("dest path is empty");
+        throw new Exception("dest spath is empty");
       }
       // See if we're doing a directory transfer and need to build
       // a directory list.
@@ -1146,7 +1143,7 @@ public class CooperativeModule {
       }
       while (!cc.inTransitFiles.isEmpty()) {
         // Read responses to piped commands.
-        Entry e = cc.inTransitFiles.poll();
+        XferList.MlsxEntry e = cc.inTransitFiles.poll();
         if (e.dir) {
           try {
             if (!cc.dc.local) {
@@ -1211,7 +1208,7 @@ public class CooperativeModule {
       System.out.println("Updating channel " + oldChannel.getId()+ " parallelism to " +
           oldChannel.chunk.getTunableParameters().getParallelism());
       XferList fileList = oldChannel.newChunk.getRecords();
-      Entry fileToStart = getNextFile(fileList);
+      XferList.MlsxEntry fileToStart = getNextFile(fileList);
       oldChannel.close();
       if (fileToStart == null) {
         return null;
@@ -1235,7 +1232,7 @@ public class CooperativeModule {
           System.out.println("channel " + channel.id + " finished its job in Chunk " + channel.xferListIndex + "*" +
               getListOfChannelsOfAChunk(chunks.get(channel.xferListIndex).getRecords()) + " moving to Chunk " +
               channel.newxferListIndex + "*" + getListOfChannelsOfAChunk(chunks.get(channel.newxferListIndex).getRecords()));
-          Entry fileToStart = getNextFile(channel.xferListIndex);
+          MlsxEntry fileToStart = getNextFile(channel.xferListIndex);
           if (fileToStart == null) {
             return;
           }
@@ -1260,7 +1257,7 @@ public class CooperativeModule {
 
         }
     */
-    Entry getNextFile(XferList fileList) {
+    XferList.MlsxEntry getNextFile(XferList fileList) {
       synchronized (fileList) {
         if (fileList.count() > 0) {
           return fileList.pop();
@@ -1282,7 +1279,7 @@ public class CooperativeModule {
     }
 
     private final boolean pullAndSendAFile(ChannelPair cc) {
-      Entry e;
+      XferList.MlsxEntry e;
       if ((e = getNextFile(cc.chunk.getRecords())) == null) {
         return false;
       }
@@ -1346,20 +1343,20 @@ public class CooperativeModule {
   // Transfer class
   // --------------
   public static class GridFTPTransfer implements StorkTransfer {
-    static int fastChunkId = -1, slowChunkId = -1, period = 0;
     public static StorkFTPClient client;
-    public boolean useDynamicScheduling = false;
     public static ExecutorService executor;
     public static Collection<Future<?>> futures = new LinkedList<>();
+    static int fastChunkId = -1, slowChunkId = -1, period = 0;
+    static FTPURI su = null, du = null;
+    public boolean useDynamicScheduling = false;
     Thread thread = null;
     GSSCredential cred = null;
-    static FTPURI su = null, du = null;
     URI usu = null, udu = null;
     String proxyFile = null;
     volatile int rv = -1;
     Thread transferMonitorThread;
 
-    //List<Entry> firstFilesToSend;
+    //List<MlsxEntry> firstFilesToSend;
     public GridFTPTransfer(String proxy, URI source, URI dest) {
       proxyFile = proxy;
       usu = source;
@@ -1380,6 +1377,43 @@ public class CooperativeModule {
       } else {
         return df.format(random / (1024 * 1024 * 1024.0 * 1024)) + "TB";
       }
+    }
+
+    public static boolean setupChannelConf(ChannelPair cc,
+                                           int channelId,
+                                           Partition chunk,
+                                           XferList.MlsxEntry firstFileToTransfer) {
+      TunableParameters params = chunk.getTunableParameters();
+      cc.chunk = chunk;
+      try {
+        cc.id = channelId;
+        if (params.getParallelism() > 1)
+          cc.setParallelism(params.getParallelism());
+        cc.pipelining = params.getPipelining();
+        cc.setBufferSize(params.getBufferSize());
+        cc.setPerfFreq(3);
+        if (!cc.dc_ready) {
+          if (cc.dc.local || !cc.gridftp) {
+            cc.setTypeAndMode('I', 'S');
+          } else {
+            cc.setTypeAndMode('I', 'E');
+          }
+          if (cc.doStriping == 1) {
+            HostPortList hpl = cc.setStripedPassive();
+            cc.setStripedActive(hpl);
+          } else {
+            HostPort hp = cc.setPassive();
+            cc.setActive(hp);
+          }
+        }
+        cc.pipeTransfer(firstFileToTransfer);
+        cc.inTransitFiles.add(firstFileToTransfer);
+      } catch (Exception ex) {
+        System.out.println("Failed to setup channel");
+        ex.printStackTrace();
+        return false;
+      }
+      return true;
     }
 
     public void process() throws Exception {
@@ -1503,7 +1537,7 @@ public class CooperativeModule {
 
     public double runTransfer(final Partition chunk) {
 
-      // Set full destination path of files
+      // Set full destination spath of files
       client.chunks.add(chunk);
       XferList xl = chunk.getRecords();
       TunableParameters tunableParameters = chunk.getTunableParameters();
@@ -1520,7 +1554,7 @@ public class CooperativeModule {
       // Reserve one file for each channel, otherwise pipelining
       // may lead to assigning all files to one channel
       int concurrency = tunableParameters.getConcurrency();
-      List<Entry> firstFilesToSend = Lists.newArrayListWithCapacity(concurrency);
+      List<XferList.MlsxEntry> firstFilesToSend = Lists.newArrayListWithCapacity(concurrency);
       for (int i = 0; i < concurrency; i++) {
         firstFilesToSend.add(xl.pop());
       }
@@ -1530,7 +1564,7 @@ public class CooperativeModule {
 
 
       for (int i = 0; i < concurrency; i++) {
-        Entry firstFile = synchronizedPop(firstFilesToSend);
+        XferList.MlsxEntry firstFile = synchronizedPop(firstFilesToSend);
         Runnable transferChannel = new TransferChannel(chunk, i, firstFile);
         futures.add(executor.submit(transferChannel));
       }
@@ -1540,7 +1574,7 @@ public class CooperativeModule {
       if (!firstFilesToSend.isEmpty()) {
         LOG.info("firstFilesToSend list has still " + firstFilesToSend.size() + "files!");
         synchronized (this) {
-          for (Entry e : firstFilesToSend)
+          for (XferList.MlsxEntry e : firstFilesToSend)
             xl.addEntry(e);
         }
       }
@@ -1566,7 +1600,7 @@ public class CooperativeModule {
       return throughput;
     }
 
-    public Entry synchronizedPop(List<Entry> fileList) {
+    public XferList.MlsxEntry synchronizedPop(List<XferList.MlsxEntry> fileList) {
       synchronized (fileList) {
         return fileList.remove(0);
       }
@@ -1591,9 +1625,9 @@ public class CooperativeModule {
 
       // Reserve one file for each chunk before initiating channels otherwise
       // pipelining may cause assigning all chunks to one channel.
-      List<List<Entry>> firstFilesToSend = new ArrayList<List<Entry>>();
+      List<List<XferList.MlsxEntry>> firstFilesToSend = new ArrayList<List<XferList.MlsxEntry>>();
       for (int i = 0; i < totalChunks; i++) {
-        List<Entry> files = Lists.newArrayListWithCapacity(channelAllocations[i]);
+        List<XferList.MlsxEntry> files = Lists.newArrayListWithCapacity(channelAllocations[i]);
         //setup channels for each chunk
         XferList xl = chunks.get(i).getRecords();
         for (int j = 0; j < channelAllocations[i]; j++) {
@@ -1607,7 +1641,7 @@ public class CooperativeModule {
       for (int i = 0; i < totalChunks; i++) {
         LOG.info(channelAllocations[i] + " channels will be create for chunk " + i);
         for (int j = 0; j < channelAllocations[i]; j++) {
-          Entry firstFile = synchronizedPop(firstFilesToSend.get(i));
+          MlsxEntry firstFile = synchronizedPop(firstFilesToSend.get(i));
           Runnable transferChannel = new TransferChannel(chunks.get(i), currentChannelId, firstFile);
           currentChannelId++;
           futures.add(executor.submit(transferChannel));
@@ -1626,43 +1660,6 @@ public class CooperativeModule {
       // Close channels
       client.ccs.forEach(cp -> cp.close());
       client.ccs.clear();
-    }
-
-    public static boolean setupChannelConf(ChannelPair cc,
-                                           int channelId,
-                                           Partition chunk,
-                                           Entry firstFileToTransfer) {
-      TunableParameters params = chunk.getTunableParameters();
-      cc.chunk = chunk;
-      try {
-        cc.id = channelId;
-        if (params.getParallelism() > 1)
-          cc.setParallelism(params.getParallelism());
-        cc.pipelining = params.getPipelining();
-        cc.setBufferSize(params.getBufferSize());
-        cc.setPerfFreq(3);
-        if (!cc.dc_ready) {
-          if (cc.dc.local || !cc.gridftp) {
-            cc.setTypeAndMode('I', 'S');
-          } else {
-            cc.setTypeAndMode('I', 'E');
-          }
-          if (cc.doStriping == 1) {
-            HostPortList hpl = cc.setStripedPassive();
-            cc.setStripedActive(hpl);
-          } else {
-            HostPort hp = cc.setPassive();
-            cc.setActive(hp);
-          }
-        }
-        cc.pipeTransfer(firstFileToTransfer);
-        cc.inTransitFiles.add(firstFileToTransfer);
-      } catch (Exception ex) {
-        System.out.println("Failed to setup channel");
-        ex.printStackTrace();
-        return false;
-      }
-      return true;
     }
 
     private void initializeMonitoring() {
@@ -1720,7 +1717,7 @@ public class CooperativeModule {
             xl.weighted_throughput = xl.weighted_throughput * 0.6 + xl.instant_throughput * 0.4;
           }
 
-          if (CooperativeChannels.useOnlineTuning) {
+          if (AdaptiveGridFTPClient.useOnlineTuning) {
             ModellingThread.jobQueue.add(new ModellingThread.ModellingJob(
                 chunk, chunk.getTunableParameters(), xl.instant_throughput));
           }
@@ -1819,10 +1816,10 @@ public class CooperativeModule {
     public static class TransferChannel implements Runnable {
       final int doStriping;
       int channelId;
-      Entry firstFileToTransfer;
+      XferList.MlsxEntry firstFileToTransfer;
       Partition chunk;
 
-      public TransferChannel(Partition chunk, int channelId, Entry file) {
+      public TransferChannel(Partition chunk, int channelId, XferList.MlsxEntry file) {
         this.channelId = channelId;
         this.doStriping = 0;
         this.chunk = chunk;
@@ -1852,29 +1849,6 @@ public class CooperativeModule {
 
     }
 
-    public class TransferMonitor implements Runnable {
-      final int interval = 5000;
-      int timer = 0;
-      Writer writer;
-
-      @Override
-      public void run() {
-        try {
-          writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("inst-throughput.txt"), "utf-8"));
-          initializeMonitoring();
-          Thread.sleep(interval);
-          while (!CooperativeChannels.isTransferCompleted) {
-            timer += interval / 1000;
-            monitorChannels(interval / 1000, writer, timer);
-            Thread.sleep(interval);
-          }
-          System.out.println("Leaving monitoring...");
-        } catch (Exception e) {
-          e.printStackTrace();
-        }
-      }
-    }
-
     public static class ModellingThread implements Runnable {
       public static Queue<ModellingJob> jobQueue;
       private final int pastLimit = 4;
@@ -1884,7 +1858,7 @@ public class CooperativeModule {
 
       @Override
       public void run() {
-        while (!CooperativeChannels.isTransferCompleted){
+        while (!AdaptiveGridFTPClient.isTransferCompleted) {
           if (jobQueue.isEmpty()) {
             try {
               Thread.sleep(1000);
@@ -1905,12 +1879,12 @@ public class CooperativeModule {
           TunableParameters tunableParametersUsed = job.tunableParameters;
           double sampleThroughput = job.sampleThroughput;
           double[] params = Hysterisis.runModelling(chunk, tunableParametersUsed, sampleThroughput,
-              new double[]{CooperativeChannels.cc_rate, CooperativeChannels.p_rate, CooperativeChannels.ppq_rate});
+              new double[]{ConfigurationParams.cc_rate, ConfigurationParams.p_rate, ConfigurationParams.ppq_rate});
           TunableParameters tunableParametersEstimated = new TunableParameters.Builder()
               .setConcurrency((int) params[0])
               .setParallelism((int) params[1])
               .setPipelining((int) params[2])
-              .setBufferSize((int) CooperativeChannels.intendedTransfer.getBufferSize())
+              .setBufferSize((int) AdaptiveGridFTPClient.transferTask.getBufferSize())
               .build();
 
           chunk.addToTimeSeries(tunableParametersEstimated, params[params.length-1]);
@@ -1988,7 +1962,7 @@ public class CooperativeModule {
               }
             }
             while (channelCountToAdd > 0) {
-              Entry firstFile;
+              XferList.MlsxEntry firstFile;
               synchronized (chunk.getRecords()) {
                 firstFile = chunk.getRecords().pop();
               }
@@ -2019,7 +1993,7 @@ public class CooperativeModule {
       int getUpdatedParameterValue (int []pastValues, int currentValue) {
         System.out.println("Past values " + currentValue + ", "+ Arrays.toString(pastValues));
 
-        boolean isLarger = pastValues[0] > currentValue ? true : false;
+        boolean isLarger = pastValues[0] > currentValue;
         boolean isAllLargeOrSmall = true;
         for (int i = 0; i < pastValues.length; i++) {
           if ((isLarger && pastValues[i] <= currentValue) ||
@@ -2049,6 +2023,29 @@ public class CooperativeModule {
           this.chunk = chunk;
           this.tunableParameters = tunableParameters;
           this.sampleThroughput = sampleThroughput;
+        }
+      }
+    }
+
+    public class TransferMonitor implements Runnable {
+      final int interval = 5000;
+      int timer = 0;
+      Writer writer;
+
+      @Override
+      public void run() {
+        try {
+          writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("inst-throughput.txt"), "utf-8"));
+          initializeMonitoring();
+          Thread.sleep(interval);
+          while (!AdaptiveGridFTPClient.isTransferCompleted) {
+            timer += interval / 1000;
+            monitorChannels(interval / 1000, writer, timer);
+            Thread.sleep(interval);
+          }
+          System.out.println("Leaving monitoring...");
+        } catch (Exception e) {
+          e.printStackTrace();
         }
       }
     }

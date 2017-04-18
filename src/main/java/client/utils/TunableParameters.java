@@ -1,4 +1,4 @@
-package didclab.cse.buffalo.utils;
+package client.utils;
 
 /**
  * Created by earslan on 12/6/16.
@@ -23,36 +23,6 @@ public class TunableParameters {
     this.bufferSize = builder.bufferSize;
   }
 
-  public static class Builder {
-    int concurrency;
-    int parallelism;
-    int pipelining;
-    int bufferSize;
-
-    public Builder setConcurrency (int concurrency) {
-      this.concurrency = concurrency;
-      return this;
-    }
-
-    public Builder setParallelism (int parallelism) {
-      this.parallelism = parallelism;
-      return this;
-    }
-
-    public Builder setPipelining (int pipelining) {
-      this.pipelining = pipelining;
-      return this;
-    }
-
-    public Builder setBufferSize (int bufferSize) {
-      this.bufferSize = bufferSize;
-      return this;
-    }
-
-    public TunableParameters build () {
-      return new TunableParameters(this);
-    }
-  }
   public int getConcurrency () {
     return concurrency;
   }
@@ -92,5 +62,36 @@ public class TunableParameters {
     sb.append("Paralellism:" + parallelism + "\t");
     sb.append("Pipelining:" + pipelining);
     return sb.toString();
+  }
+
+  public static class Builder {
+    int concurrency;
+    int parallelism;
+    int pipelining;
+    int bufferSize;
+
+    public Builder setConcurrency(int concurrency) {
+      this.concurrency = concurrency;
+      return this;
+    }
+
+    public Builder setParallelism(int parallelism) {
+      this.parallelism = parallelism;
+      return this;
+    }
+
+    public Builder setPipelining(int pipelining) {
+      this.pipelining = pipelining;
+      return this;
+    }
+
+    public Builder setBufferSize(int bufferSize) {
+      this.bufferSize = bufferSize;
+      return this;
+    }
+
+    public TunableParameters build() {
+      return new TunableParameters(this);
+    }
   }
 }

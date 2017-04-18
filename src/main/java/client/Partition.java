@@ -1,17 +1,20 @@
-package didclab.cse.buffalo;
+package client;
 
-import didclab.cse.buffalo.hysterisis.Entry;
-import didclab.cse.buffalo.utils.TunableParameters;
+import client.hysterisis.Entry;
+import client.utils.TunableParameters;
+import client.utils.Utils;
 import stork.util.XferList;
 
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Represents a calculated partition. A partition contains the centroid and
  * the data points.
  */
-public class Partition {
+public class Partition implements Comparable {
   public Entry entry;
+  public boolean isReadyToTransfer = false;
   /*variables for log based approach*/
   //Observed max values for each parameters in the log files
   int maxCC = Integer.MIN_VALUE, maxP = Integer.MIN_VALUE, maxPPQ = Integer.MIN_VALUE;
@@ -19,8 +22,7 @@ public class Partition {
   private double centroid;
   private double samplingTime;
   /* records belonging to this partition */
-  private CooperativeChannels.Density density;
-  public boolean isReadyToTransfer = false;
+  private Utils.Density density;
   private XferList fileList = new XferList("", "");
   private TunableParameters tunableParameters;
   private List<TunableParameters> calculatedParametersSeries;
@@ -89,7 +91,7 @@ public class Partition {
     entry.setDedicated(e.isDedicated());
   }
 
-  public double getCentroid() {
+  public long getCentroid() {
     if (fileList.count() == 0) {
       return 0;
     }
@@ -104,7 +106,7 @@ public class Partition {
     this.fileList = fileList;
   }
 
-  public void addRecord(XferList.Entry e) {
+  public void addRecord(XferList.MlsxEntry e) {
     fileList.addEntry(e);
   }
 
@@ -136,20 +138,20 @@ public class Partition {
     this.samplingTime = samplingTime;
   }
 
-  public CooperativeChannels.Density getDensity() {
+  public Utils.Density getDensity() {
     return density;
   }
 
-  public void setDensity(CooperativeChannels.Density density) {
+  public void setDensity(Utils.Density density) {
     this.density = density;
-  }
-
-  public void setTunableParameters (TunableParameters tunableParameters) {
-    this.tunableParameters = tunableParameters;
   }
 
   public TunableParameters getTunableParameters() {
     return tunableParameters;
+  }
+
+  public void setTunableParameters(TunableParameters tunableParameters) {
+    this.tunableParameters = tunableParameters;
   }
 
   public void addToTimeSeries(TunableParameters tunableParameters, double throughput) {
@@ -195,5 +197,15 @@ public class Partition {
 
   public int getCountOfSeries() {
     return calculatedParametersSeries.size();
+  }
+
+  @Override
+  public int compareTo(Object o) {
+    long centroid = ((Partition) o).getCentroid();
+    if (getCentroid() > centroid)
+      return 1;
+    if (centroid == getCentroid())
+      return 0;
+    return -1;
   }
 }

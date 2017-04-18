@@ -1,58 +1,62 @@
-package didclab.cse.buffalo;
+package client;
 
 
+import client.hysterisis.Entry;
+import client.hysterisis.Hysterisis;
+import client.log.LogManager;
+import client.utils.Utils;
+import client.utils.Utils.Density;
 import com.google.common.annotations.VisibleForTesting;
-import didclab.cse.buffalo.hysterisis.Entry;
-import didclab.cse.buffalo.hysterisis.Hysterisis;
-import didclab.cse.buffalo.log.LogManager;
-import didclab.cse.buffalo.utils.Utils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import stork.module.CooperativeModule.GridFTPTransfer;
 import stork.util.XferList;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 
-public class CooperativeChannels {
+public class AdaptiveGridFTPClient {
 
-  private static final Log LOG = LogFactory.getLog(CooperativeChannels.class);
-  public static Entry intendedTransfer;
+  private static final Log LOG = LogFactory.getLog(AdaptiveGridFTPClient.class);
+  public static Entry transferTask;
+  public static boolean useOnlineTuning = false;
+  public static boolean isTransferCompleted = false;
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
+  int maximumChunks = 4;
   private String proxyFile;
   private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
   private Hysterisis hysterisis;
   private GridFTPTransfer gridFTPClient;
   private boolean useHysterisis = false;
   private boolean useDynamicScheduling = false;
-  public static boolean useOnlineTuning = false;
   private boolean runChecksumControl = false;
-  public static boolean isTransferCompleted = false;
-  public static double cc_rate = 0.7;
-  public static double p_rate = 0.6;
-  public static double ppq_rate = 0.99;
 
-  public CooperativeChannels() {
+
+  public AdaptiveGridFTPClient() {
     // TODO Auto-generated constructor stub
     //initialize output streams for message logging
     LogManager.createLogFile(ConfigurationParams.STDOUT_ID);
     LogManager.createLogFile(ConfigurationParams.INFO_LOG_ID);
-    intendedTransfer = new Entry();
+    transferTask = new Entry();
   }
 
   @VisibleForTesting
-  public CooperativeChannels(GridFTPTransfer gridFTPClient) {
+  public AdaptiveGridFTPClient(GridFTPTransfer gridFTPClient) {
     this.gridFTPClient = gridFTPClient;
     LogManager.createLogFile(ConfigurationParams.STDOUT_ID);
     //LogManager.createLogFile(ConfigurationParams.INFO_LOG_ID);
   }
 
   public static void main(String[] args) throws Exception {
-    CooperativeChannels multiChunk = new CooperativeChannels();
+    AdaptiveGridFTPClient multiChunk = new AdaptiveGridFTPClient();
     multiChunk.parseArguments(args, multiChunk);
     multiChunk.transfer();
   }
@@ -64,16 +68,16 @@ public class CooperativeChannels {
 
   @VisibleForTesting
   void transfer() throws Exception {
-    intendedTransfer.setBDP((intendedTransfer.getBandwidth() * intendedTransfer.getRtt()) / 8); // In MB
+    transferTask.setBDP((transferTask.getBandwidth() * transferTask.getRtt()) / 8); // In MB
     String mHysterisis = useHysterisis ? "Hysterisis" : "";
     String mDynamic = useDynamicScheduling ? "Dynamic" : "";
     LOG.info("*************" + algorithm.name() + "************");
-    LogManager.writeToLog("*************" + algorithm.name() + "-" + mHysterisis + "-" + mDynamic + "************" + intendedTransfer.getMaxConcurrency(), ConfigurationParams.INFO_LOG_ID);
+    LogManager.writeToLog("*************" + algorithm.name() + "-" + mHysterisis + "-" + mDynamic + "************" + transferTask.getMaxConcurrency(), ConfigurationParams.INFO_LOG_ID);
 
     URI su = null, du = null;
     try {
-      su = new URI(intendedTransfer.getSource()).normalize();
-      du = new URI(intendedTransfer.getDestination()).normalize();
+      su = new URI(transferTask.getSource()).normalize();
+      du = new URI(transferTask.getDestination()).normalize();
     } catch (URISyntaxException e) {
       e.printStackTrace();
       System.exit(-1);
@@ -85,12 +89,12 @@ public class CooperativeChannels {
       gridFTPClient.start();
       gridFTPClient.waitFor();
     }
-    if (gridFTPClient == null || gridFTPClient.client == null) {
+    if (gridFTPClient == null || GridFTPTransfer.client == null) {
       LOG.info("Could not establish GridFTP connection. Exiting...");
       System.exit(-1);
     }
     gridFTPClient.useDynamicScheduling = useDynamicScheduling;
-    gridFTPClient.client.setChecksumEnabled(runChecksumControl);
+    GridFTPTransfer.client.setChecksumEnabled(runChecksumControl);
     if (useHysterisis) {
       // this will initialize matlab connection while running hysterisis analysis
       hysterisis = new Hysterisis();
@@ -102,25 +106,25 @@ public class CooperativeChannels {
 
 
     long datasetSize = dataset.size();
-    ArrayList<Partition> chunks = partitionByFileSize(dataset);
+    ArrayList<Partition> chunks = partitionByFileSize(dataset, maximumChunks);
 
     int[][] estimatedParamsForChunks = new int[chunks.size()][4];
     long timeSpent = 0;
     long start  = System.currentTimeMillis();
     if (useHysterisis) {
-      hysterisis.findOptimalParameters(chunks, intendedTransfer);
+      hysterisis.findOptimalParameters(chunks, transferTask);
     }
     gridFTPClient.startTransferMonitor();
     switch (algorithm) {
       case SINGLECHUNK:
-        chunks.forEach(chunk -> chunk.setTunableParameters(Utils.getBestParams(chunk.getRecords())));
-        gridFTPClient.executor.submit(new GridFTPTransfer.ModellingThread());
+        chunks.forEach(chunk -> chunk.setTunableParameters(Utils.getBestParams(chunk.getRecords(), maximumChunks)));
+        GridFTPTransfer.executor.submit(new GridFTPTransfer.ModellingThread());
         chunks.forEach(chunk -> gridFTPClient.runTransfer(chunk));
 
         break;
       default:
         // Make sure total channels count does not exceed total file count
-        int totalChannelCount = Math.min(intendedTransfer.getMaxConcurrency(), dataset.count());
+        int totalChannelCount = Math.min(transferTask.getMaxConcurrency(), dataset.count());
         if (useHysterisis) {
           int maxConcurrency = 0;
           for (int i = 0; i < estimatedParamsForChunks.length; i++) {
@@ -133,7 +137,7 @@ public class CooperativeChannels {
           totalChannelCount = maxConcurrency;
         } else {
           for (int i = 0; i < estimatedParamsForChunks.length; i++) {
-            chunks.get(i).setTunableParameters(Utils.getBestParams(chunks.get(i).getRecords()));
+            chunks.get(i).setTunableParameters(Utils.getBestParams(chunks.get(i).getRecords(), maximumChunks));
           }
         }
         LOG.info(" Running MC with :" + totalChannelCount + " channels.");
@@ -146,18 +150,57 @@ public class CooperativeChannels {
     timeSpent += ((System.currentTimeMillis() - start) / 1000.0);
     LogManager.writeToLog("Final throughput:" + (datasetSize * 8.0) / (timeSpent * (1000.0 * 1000)), ConfigurationParams.INFO_LOG_ID);
     isTransferCompleted = true;
-    gridFTPClient.executor.shutdown();
-    while (!gridFTPClient.executor.isTerminated()) {
+    GridFTPTransfer.executor.shutdown();
+    while (!GridFTPTransfer.executor.isTerminated()) {
     }
     LogManager.close();
     gridFTPClient.stop();
   }
 
+  @VisibleForTesting
+  ArrayList<Partition> partitionByFileSize(XferList list, int maximumChunks) {
+    Entry transferTask = getTransferTask();
+    list.shuffle();
+
+    ArrayList<Partition> partitions = new ArrayList<>();
+    for (int i = 0; i < maximumChunks; i++) {
+      Partition p = new Partition();
+      partitions.add(p);
+    }
+    for (XferList.MlsxEntry e : list) {
+      if (e.dir) {
+        continue;
+      }
+      Density density = Utils.findDensityOfFile(e.size(), transferTask.getBandwidth(), maximumChunks);
+      partitions.get(density.ordinal()).addRecord(e);
+    }
+    Collections.sort(partitions);
+    mergePartitions(partitions);
+
+    for (int i = 0; i < partitions.size(); i++) {
+      Partition chunk = partitions.get(i);
+      chunk.getRecords().sp = list.sp;
+      chunk.getRecords().dp = list.dp;
+      double avgFileSize = chunk.getRecords().size() / (chunk.getRecords().count() * 1.0);
+      chunk.setEntry(transferTask);
+      chunk.entry.setFileSize(avgFileSize);
+      chunk.entry.setFileCount(chunk.getRecords().count());
+      chunk.entry.setDensity(Entry.findDensityOfList(avgFileSize, transferTask.getBandwidth()));
+      chunk.entry.calculateSpecVector();
+      chunk.setDensity(Entry.findDensityOfList(avgFileSize, transferTask.getBandwidth()));
+      LOG.info("Chunk " + i + ":\tfiles:" + partitions.get(i).getRecords().count() + "\t avg:" +
+          Utils.printSize(partitions.get(i).getCentroid(), true)
+          + "\t" + Utils.printSize(partitions.get(i).getRecords().size(), true) + " Density:" +
+          chunk.getDensity());
+    }
+    return partitions;
+  }
 
   private ArrayList<Partition> mergePartitions(ArrayList<Partition> partitions) {
     for (int i = 0; i < partitions.size(); i++) {
       Partition p = partitions.get(i);
-      if (p.getRecords().count() <= 2 || p.getRecords().size() < 5 * intendedTransfer.getBDP()) {  //merge small chunk with the the chunk with closest centroid
+      //merge small chunk with the the chunk with closest centroid
+      if ((p.getRecords().count() <= 2 || p.getRecords().size() < 5 * transferTask.getBDP()) && partitions.size() > 1) {
         int index = -1;
         double diff = Double.POSITIVE_INFINITY;
         for (int j = 0; j < partitions.size(); j++) {
@@ -171,80 +214,13 @@ public class CooperativeChannels {
           System.exit(-1);
         }
         partitions.get(index).getRecords().addAll(p.getRecords());
-        LOG.info("Partition " + i + " " + p.getRecords().count() + " files " + Utils.printSize(p.getRecords().size(), true));
+        LOG.info("Partition " + i + " " + p.getRecords().count() + " files " +
+            Utils.printSize(p.getRecords().size(), true));
         LOG.info("Merging partition " + i + " to partition " + index);
         partitions.remove(i);
         i--;
       }
     }
-    return partitions;
-  }
-
-  private ArrayList<Partition> partitionByFileSize(XferList list) {
-
-    //remove folders from the list and send mkdir command to destination
-    for (int i = 0; i < list.count(); i++) {
-      if (list.getItem(i).dir) {
-        list.removeItem(i);
-      }
-    }
-
-    list.shuffle();
-
-    ArrayList<Partition> partitions = new ArrayList<>();
-    for (int i = 0; i < 4; i++) {
-      Partition p = new Partition();
-      partitions.add(p);
-    }
-
-    double bandwidthInMB = intendedTransfer.getBandwidth() / 8.0;
-    System.out.println("THRES" + (bandwidthInMB * 2));
-    for (XferList.Entry e : list) {
-      if (e.size <= bandwidthInMB / 20) {
-        partitions.get(0).addRecord(e);
-      } else if (e.size <= bandwidthInMB / 5) {
-        partitions.get(1).addRecord(e);
-      } else if (e.size <= bandwidthInMB * 2) {
-        partitions.get(2).addRecord(e);
-      } else {
-        partitions.get(3).addRecord(e);
-      }
-    }
-
-    mergePartitions(partitions);
-
-    for (int i = 0; i < partitions.size(); i++) {
-      Partition chunk = partitions.get(i);
-      chunk.getRecords().sp = list.sp;
-      chunk.getRecords().dp = list.dp;
-      double avgFileSize = chunk.getRecords().size() / (chunk.getRecords().count() * 1.0);
-      chunk.setEntry(intendedTransfer);
-      chunk.entry.setFileSize(avgFileSize);
-      chunk.entry.setFileCount(chunk.getRecords().count());
-      chunk.entry.setDensity(Entry.findDensityOfList(avgFileSize, intendedTransfer.getBandwidth()));
-      chunk.entry.calculateSpecVector();
-      chunk.setDensity(Entry.findDensityOfList(avgFileSize, intendedTransfer.getBandwidth()));
-      LOG.info("Chunk " + i + ":\tfiles:" + partitions.get(i).getRecords().count() + "\t avg:" +
-              Utils.printSize(partitions.get(i).getCentroid(), true)
-              + "\t" + Utils.printSize(partitions.get(i).getRecords().size(), true) + " Density:" +
-              chunk.getDensity());
-    }
-    /*
-    for (int i = 0; i < partitions.size(); i++) {
-			XferList newList = partitions.get(i).getRecords().sliceLargeFiles(ConfigurationParams.MAXIMUM_SINGLE_FILE_SIZE);
-			 partitions.get(i).setXferList(newList);
-		}
-
-		for (int i = 0; i < partitions.size(); i++) {
-			Partition chunk = partitions.get(i);
-			LOG.info("Chunk "+i+":\tfiles:"+partitions.get(i).getRecords().count()+"\t avg:"+
-					Utils.printSize(partitions.get(i).getCentroid(), true)
-					+"\t"+Utils.printSize(partitions.get(i).getRecords().size(), true)+" Density:" +
-					chunk.entry.getDensity());
-		}
-		*/
-
-    //System.exit(-1);
     return partitions;
   }
 
@@ -300,12 +276,12 @@ public class CooperativeChannels {
         double[] chunkSize = new double[chunks.size()];
         for (int i = 0; i < chunks.size(); i++) {
           chunkSize[i] = chunks.get(i).getTotalSize();
-          Density densityOfChunk = Entry.findDensityOfList(chunks.get(i).getCentroid(), intendedTransfer.getBandwidth());
+          Utils.Density densityOfChunk = chunks.get(i).getDensity();
           switch (densityOfChunk) {
             case SMALL:
               chunkWeights[i] = 6 * chunkSize[i];
               break;
-            case MIDDLE:
+            case MEDIUM:
               chunkWeights[i] = 3 * chunkSize[i];
               break;
             case LARGE:
@@ -353,16 +329,17 @@ public class CooperativeChannels {
       }
       for (int i = 0; i < totalChunks; i++) {
         Partition chunk = chunks.get(i);
-        double avgFileSize = chunk.getRecords().size() / (chunk.getRecords().count() * 1.0);
-        Density density = didclab.cse.buffalo.hysterisis.Entry.findDensityOfList(avgFileSize,
-                CooperativeChannels.intendedTransfer.getBDP());
-        LOG.info("Chunk " + density + " weight " + chunkWeights[i] + " cc: " + concurrencyLevels[i]);
+        LOG.info("Chunk " + chunk.getDensity() + " weight " + chunkWeights[i] + " cc: " + concurrencyLevels[i]);
       }
     }
     return concurrencyLevels;
   }
 
-  private void parseArguments(String[] arguments, CooperativeChannels multiChunk) {
+  public Entry getTransferTask() {
+    return transferTask;
+  }
+
+  private void parseArguments(String[] arguments, AdaptiveGridFTPClient multiChunk) {
     ClassLoader classloader = Thread.currentThread().getContextClassLoader();
     String configFile = "config.cfg";
     if (arguments.length > 0) {
@@ -382,26 +359,26 @@ public class CooperativeChannels {
           case "-s":
           case "-source":
             if (args.length > 1) {
-              intendedTransfer.setSource(args[1]);
+              transferTask.setSource(args[1]);
             } else {
               LOG.fatal("-source requires source address");
             }
-            LOG.info("source  = " + intendedTransfer.getSource());
+            LOG.info("source  = " + transferTask.getSource());
             break;
           case "-d":
           case "-destination":
             if (args.length > 1) {
-              intendedTransfer.setDestination(args[1]);
+              transferTask.setDestination(args[1]);
             } else {
               LOG.fatal("-destination requires a destination address");
             }
-            LOG.info("destination = " + intendedTransfer.getDestination());
+            LOG.info("destination = " + transferTask.getDestination());
             break;
           case "-proxy":
             if (args.length > 1) {
               proxyFile = args[1];
             } else {
-              LOG.fatal("-path requires path of file/directory to be transferred");
+              LOG.fatal("-spath requires spath of file/directory to be transferred");
             }
             LOG.info("proxyFile = " + proxyFile);
             break;
@@ -411,53 +388,61 @@ public class CooperativeChannels {
           case "-bw":
           case "-bandwidth":
             if (args.length > 1 || Double.parseDouble(args[1]) > 100) {
-              intendedTransfer.setBandwidth(Math.pow(10, 9) * Double.parseDouble(args[1]));
+              transferTask.setBandwidth(Math.pow(10, 9) * Double.parseDouble(args[1]));
             } else {
               LOG.fatal("-bw requires bandwidth in GB");
             }
-            LOG.info("bandwidth = " + intendedTransfer.getBandwidth() + " GB");
+            LOG.info("bandwidth = " + transferTask.getBandwidth() + " GB");
             break;
           case "-rtt":
             if (args.length > 1) {
-              intendedTransfer.setRtt(Double.parseDouble(args[1]));
+              transferTask.setRtt(Double.parseDouble(args[1]));
             } else {
               LOG.fatal("-rtt requires round trip time in millisecond");
             }
-            LOG.info("rtt = " + intendedTransfer.getRtt() + " ms");
+            LOG.info("rtt = " + transferTask.getRtt() + " ms");
             break;
           case "-maxcc":
           case "-max-concurrency":
             if (args.length > 1) {
-              intendedTransfer.setMaxConcurrency(Integer.parseInt(args[1]));
+              transferTask.setMaxConcurrency(Integer.parseInt(args[1]));
             } else {
               LOG.fatal("-cc needs integer");
             }
-            LOG.info("cc = " + intendedTransfer.getMaxConcurrency());
+            LOG.info("cc = " + transferTask.getMaxConcurrency());
             break;
           case "-bs":
           case "-buffer-size":
             if (args.length > 1) {
-              intendedTransfer.setBufferSize(Integer.parseInt(args[1]) * 1024 * 1024); //in MB
+              transferTask.setBufferSize(Integer.parseInt(args[1]) * 1024 * 1024); //in MB
             } else {
               LOG.fatal("-bs needs integer");
             }
-            LOG.info("bs = " + intendedTransfer.getBufferSize());
+            LOG.info("bs = " + transferTask.getBufferSize());
             break;
           case "-testbed":
             if (args.length > 1) {
-              intendedTransfer.setTestbed(args[1]);
+              transferTask.setTestbed(args[1]);
             } else {
               LOG.fatal("-testbed needs testbed name");
             }
-            LOG.info("Testbed name is = " + intendedTransfer.getTestbed());
+            LOG.info("Testbed name is = " + transferTask.getTestbed());
             break;
           case "-input":
             if (args.length > 1) {
               ConfigurationParams.INPUT_DIR = args[1];
             } else {
-              LOG.fatal("-historical data input file path has to be passed");
+              LOG.fatal("-historical data input file spath has to be passed");
             }
-            LOG.info("Historical data path = " + ConfigurationParams.INPUT_DIR);
+            LOG.info("Historical data spath = " + ConfigurationParams.INPUT_DIR);
+            break;
+          case "-maximumChunks":
+            if (args.length > 1) {
+              maximumChunks = Integer.parseInt(args[1]);
+            } else {
+              LOG.fatal("-maximumChunks requires an integer value");
+            }
+            LOG.info("Number of chunks = " + maximumChunks);
             break;
           case "-use-hysterisis":
             useHysterisis = true;
@@ -529,8 +514,6 @@ public class CooperativeChannels {
   }
 
   enum TransferAlgorithm {SINGLECHUNK, MULTICHUNK}
-
-  public enum Density {SMALL, MIDDLE, LARGE, HUGE}
 
   private enum ChannelDistributionPolicy {ROUND_ROBIN, WEIGHTED}
 

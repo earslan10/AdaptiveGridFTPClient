@@ -1,8 +1,6 @@
-package didclab.cse.buffalo.utils;
+package client.utils;
 
-import didclab.cse.buffalo.CooperativeChannels;
-import didclab.cse.buffalo.CooperativeChannels.Density;
-import didclab.cse.buffalo.hysterisis.Entry;
+import client.AdaptiveGridFTPClient;
 import stork.module.CooperativeModule;
 import stork.util.XferList;
 
@@ -34,22 +32,23 @@ public class Utils {
     }
   }
 
-  public static TunableParameters getBestParams(XferList xl) {
-    Density density = Entry.findDensityOfList(xl.avgFileSize(), CooperativeChannels.intendedTransfer.getBandwidth());
+  public static TunableParameters getBestParams(XferList xl, int maximumChunks) {
+    Density density = findDensityOfFile((long) xl.avgFileSize(), AdaptiveGridFTPClient.transferTask.getBandwidth(),
+        maximumChunks);
     xl.density = density;
     double avgFileSize = xl.avgFileSize();
-    int fileCountToFillThePipe = (int) Math.round(CooperativeChannels.intendedTransfer.getBDP() / avgFileSize);
-    int pLevelToFillPipe = (int) Math.ceil(CooperativeChannels.intendedTransfer.getBDP() / CooperativeChannels.intendedTransfer.getBufferSize());
-    int pLevelToFillBuffer = (int) Math.ceil(avgFileSize / CooperativeChannels.intendedTransfer.getBufferSize());
-    int cc = Math.min(Math.min(Math.max(fileCountToFillThePipe, 3), xl.count()), CooperativeChannels.intendedTransfer.getMaxConcurrency());
+    int fileCountToFillThePipe = (int) Math.round(AdaptiveGridFTPClient.transferTask.getBDP() / avgFileSize);
+    int pLevelToFillPipe = (int) Math.ceil(AdaptiveGridFTPClient.transferTask.getBDP() / AdaptiveGridFTPClient.transferTask.getBufferSize());
+    int pLevelToFillBuffer = (int) Math.ceil(avgFileSize / AdaptiveGridFTPClient.transferTask.getBufferSize());
+    int cc = Math.min(Math.min(Math.max(fileCountToFillThePipe, 3), xl.count()), AdaptiveGridFTPClient.transferTask.getMaxConcurrency());
     int ppq = fileCountToFillThePipe;
     int p = Math.max(Math.min(pLevelToFillPipe, pLevelToFillBuffer), 1);
-    p = avgFileSize > CooperativeChannels.intendedTransfer.getBDP() ? p : p;
+    p = avgFileSize > AdaptiveGridFTPClient.transferTask.getBDP() ? p : p;
     return new TunableParameters.Builder()
         .setConcurrency(cc)
         .setParallelism(p)
         .setPipelining(ppq)
-        .setBufferSize((int) CooperativeChannels.intendedTransfer.getBufferSize())
+        .setBufferSize((int) AdaptiveGridFTPClient.transferTask.getBufferSize())
         .build();
   }
 
@@ -63,9 +62,9 @@ public class Utils {
     while ((strLine = br.readLine()) != null) {
       // Print the content on the console
       String[] fileEntry = strLine.split(" ");
-      String name = fileEntry[0];
+      String path = fileEntry[0];
       long size = Long.parseLong(fileEntry[1]);
-      fileEntries.add(name, size);
+      fileEntries.add(path, size);
     }
     br.close();
     return fileEntries;
@@ -77,5 +76,24 @@ public class Utils {
       list.add(channel.getId());
     }
     return list;
+  }
+
+  public static Density findDensityOfFile(long fileSize, double bandwidth, int maximumChunks) {
+    double bandwidthInMB = bandwidth / 8.0;
+    if (fileSize <= bandwidthInMB / 20) {
+      return Density.SMALL;
+    } else if (maximumChunks > 3 && fileSize > bandwidthInMB * 2) {
+      return Density.HUGE;
+    } else if (maximumChunks > 2 && fileSize <= bandwidthInMB / 5) {
+      return Density.MEDIUM;
+    } else {
+      return Density.LARGE;
+    }
+  }
+
+
+  // Ordering in this enum is important and has to stay as this for Utils.findDensityOfFile to perform as expected
+  public enum Density {
+    SMALL, LARGE, MEDIUM, HUGE
   }
 }

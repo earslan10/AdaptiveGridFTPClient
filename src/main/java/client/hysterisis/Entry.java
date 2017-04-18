@@ -1,12 +1,12 @@
 /**
  *
  */
-package didclab.cse.buffalo.hysterisis;
+package client.hysterisis;
 
-import didclab.cse.buffalo.ConfigurationParams;
-import didclab.cse.buffalo.CooperativeChannels;
-import didclab.cse.buffalo.CooperativeChannels.Density;
-import didclab.cse.buffalo.log.LogManager;
+import client.AdaptiveGridFTPClient;
+import client.ConfigurationParams;
+import client.log.LogManager;
+import client.utils.Utils;
 
 import java.util.Date;
 import java.util.List;
@@ -16,7 +16,7 @@ import java.util.Vector;
  * @author earslan
  */
 public class Entry {
-  //public static enum Density{SMALL, MIDDLE, LARGE, HUGE} ;
+  //public static enum Density{SMALL, MEDIUM, LARGE, HUGE} ;
 
   double similarityValue;
   Vector<Double> specVector;
@@ -29,7 +29,7 @@ public class Entry {
   private double bufferSize;
   private double fileSize;
   private double fileCount;
-  private Density density;
+  private Utils.Density density;
   private double totalDatasetSize;
   private Date date;
   private double throughput, duration;
@@ -49,35 +49,36 @@ public class Entry {
     fast = false;
   }
 
-  public static Density findDensityOfList(double averageFileSize, double bandwidth) {
+  public static Utils.Density findDensityOfList(double averageFileSize, double bandwidth) {
     double bandwidthInMB = bandwidth / 8.0;
     if (averageFileSize < bandwidthInMB / 20) {
-      return Density.SMALL;
+      return Utils.Density.SMALL;
     } else if (averageFileSize < bandwidthInMB / 5) {
-      return Density.MIDDLE;
+      return Utils.Density.MEDIUM;
     } else if (averageFileSize < bandwidthInMB * 2) {
-      return Density.LARGE;
+      return Utils.Density.LARGE;
     }
-    return Density.HUGE;
+    return Utils.Density.HUGE;
   }
 
 
-  public static Density findDensityOfList(List<Entry> list) {
+  public static Utils.Density findDensityOfList(List<Entry> list) {
     long totalSize = 0;
     for (Entry e : list) {
       totalSize += e.fileSize;
     }
     long averageFileSize = totalSize/list.size();
-    double bandwidthInMB = CooperativeChannels.intendedTransfer.bandwidth / 8.0;
+    double bandwidthInMB = AdaptiveGridFTPClient.transferTask.bandwidth / 8.0;
     if (averageFileSize < bandwidthInMB / 20) {
-      return Density.SMALL;
+      return Utils.Density.SMALL;
     } else if (averageFileSize < bandwidthInMB / 5) {
-      return Density.MIDDLE;
+      return Utils.Density.MEDIUM;
     } else if (averageFileSize < bandwidthInMB * 2) {
-      return Density.LARGE;
+      return Utils.Density.LARGE;
     }
-    return Density.HUGE;
+    return Utils.Density.HUGE;
   }
+
 
   /**
    * @return the id
@@ -171,7 +172,7 @@ public class Entry {
   }
 
   /**
-   * @param bDP the bDP to set
+   * @param BDP the bDP to set
    */
   public void setBDP(double BDP) {
     this.BDP = BDP;
@@ -222,14 +223,14 @@ public class Entry {
   /**
    * @return the density
    */
-  public Density getDensity() {
+  public Utils.Density getDensity() {
     return density;
   }
 
   /**
    * @param density the density to set
    */
-  public void setDensity(Density density) {
+  public void setDensity(Utils.Density density) {
     this.density = density;
   }
 
@@ -429,17 +430,17 @@ public class Entry {
     this.maxConcurrency = maxConcurrency;
   }
 
-  int DensityToValue(Density density) {
-    if (density == Density.SMALL) {
+  int DensityToValue(Utils.Density density) {
+    if (density == Utils.Density.SMALL) {
       return 1;
     }
-    if (density == Density.MIDDLE) {
+    if (density == Utils.Density.MEDIUM) {
       return 11;
     }
-    if (density == Density.LARGE) {
+    if (density == Utils.Density.LARGE) {
       return 21;
     }
-    if (density == Density.HUGE) {
+    if (density == Utils.Density.HUGE) {
       return 31;
     } else {
       return -1;

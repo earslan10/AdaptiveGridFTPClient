@@ -1,4 +1,4 @@
-package didclab.cse.buffalo.utils;
+package client.utils;
 
 import java.util.LinkedList;
 import java.util.List;

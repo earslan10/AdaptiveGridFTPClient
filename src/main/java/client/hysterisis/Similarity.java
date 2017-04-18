@@ -1,8 +1,7 @@
-package didclab.cse.buffalo.hysterisis;
+package client.hysterisis;
 
-import didclab.cse.buffalo.CooperativeChannels;
-import didclab.cse.buffalo.Partition;
-import didclab.cse.buffalo.utils.csv.CSVReader;
+import client.Partition;
+import client.utils.csv.CSVReader;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -295,7 +294,7 @@ public class Similarity {
 
   //sort entries based on date of the transfer
   public static void categorizeEntries(List<Entry> similarEntries, String chunkDensity) {
-    //trials = new LinkedList<Map<String,Similarity.Entry>>();
+    //trials = new LinkedList<Map<String,Similarity.MlsxEntry>>();
     Map<List<Entry>, Double> historicalDataSamples = new HashMap<>();
     Set<String> set = new HashSet<String>();
     LinkedList<Entry> list = new LinkedList<Entry>();
@@ -305,7 +304,7 @@ public class Similarity {
     double totalSimilarity = 0;
     for (Entry e : similarEntries) {
       /* Partition entries in two conditions:
-			 * 1. Entry's network or data set characteristics is seen for the first time
+       * 1. MlsxEntry's network or data set characteristics is seen for the first time
 			 * 2. Already seen entry type's repeating parameter values
 			 */
       if (e.getIdentity().compareTo(prev.getIdentity()) != 0 || e.getGroupNumber() != prev.getGroupNumber() ||
@@ -502,12 +501,12 @@ public class Similarity {
     }
     //System.exit(-1);
     //maxEntry.printEntry(Double.toString(maxSimilarity));
-    //LogManager.writeToLog("Max Entry:"+maxEntry.printEntry(Double.toString(maxSimilarity)), ConfigurationParams.STDOUT_ID);
+    //LogManager.writeToLog("Max MlsxEntry:"+maxEntry.printEntry(Double.toString(maxSimilarity)), ConfigurationParams.STDOUT_ID);
 
     Similarity.similarityThreshold = maxSimilarity;
     //System.out.println("similarity size:"+cosineSimilarity.size());
     //ValueComparator bvc =  new ValueComparator(cosineSimilarity);
-    //TreeMap<Entry,Double> sorted_map = new TreeMap<Entry,Double>(bvc);
+    //TreeMap<MlsxEntry,Double> sorted_map = new TreeMap<MlsxEntry,Double>(bvc);
     //sorted_map.putAll(cosineSimilarity);
     //System.out.println("sorted size:"+sorted_map.size());
     //		return sorted_map;

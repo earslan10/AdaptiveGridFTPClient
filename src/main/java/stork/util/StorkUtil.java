@@ -98,17 +98,17 @@ public class StorkUtil {
 
   // Path functions
   // --------------
-  // Functions that operate on path strings. Like string functions, should
+  // Functions that operate on spath strings. Like string functions, should
   // treat null inputs as an empty string.
 
-  // Split a path into its components. The first element will be a slash
-  // if it's an absolute path, and the last element will be an empty
-  // string if this path represents a directory.
+  // Split a spath into its components. The first element will be a slash
+  // if it's an absolute spath, and the last element will be an empty
+  // string if this spath represents a directory.
   public static String[] splitPath(String path) {
     return regex_path.split((path != null) ? path : "", -1);
   }
 
-  // Get the basename from a path string.
+  // Get the basename from a spath string.
   public static String basename(String path) {
     if (path == null) {
       return "";
@@ -119,7 +119,7 @@ public class StorkUtil {
     return (i == -1) ? path : path.substring(i + 1);
   }
 
-  // Get the dirname from a path string, including trailing /.
+  // Get the dirname from a spath string, including trailing /.
   public static String dirname(String path) {
     if (path == null) {
       return "";
@@ -134,7 +134,7 @@ public class StorkUtil {
   // ---------------------
   // Functions to get information about the local file system.
 
-  // Get an XferList a local path. If it's a directory, does a
+  // Get an XferList a local spath. If it's a directory, does a
   // recursive listing.
   public static XferList list(String path) throws Exception {
     File file = new File(path);
@@ -147,8 +147,8 @@ public class StorkUtil {
     LinkedList<String> wl = new LinkedList<String>();
     wl.add("");
 
-    // The working list will contain path names of directories relative
-    // to the root path passed to this function.
+    // The working list will contain spath names of directories relative
+    // to the root spath passed to this function.
     while (!wl.isEmpty()) {
       String s = wl.pop();
       for (File f : new File(path, s).listFiles()) {

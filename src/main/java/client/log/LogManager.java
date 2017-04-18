@@ -1,4 +1,4 @@
-package didclab.cse.buffalo.log;
+package client.log;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
