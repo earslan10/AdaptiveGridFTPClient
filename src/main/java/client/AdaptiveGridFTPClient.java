@@ -72,7 +72,7 @@ public class AdaptiveGridFTPClient {
     String mHysterisis = useHysterisis ? "Hysterisis" : "";
     String mDynamic = useDynamicScheduling ? "Dynamic" : "";
     LOG.info("*************" + algorithm.name() + "************");
-    LogManager.writeToLog("*************" + algorithm.name() + "-" + mHysterisis + "-" + mDynamic + "************" + transferTask.getMaxConcurrency(), ConfigurationParams.INFO_LOG_ID);
+    //LogManager.writeToLog("*************" + algorithm.name() + "-" + mHysterisis + "-" + mDynamic + "************" + transferTask.getMaxConcurrency(), ConfigurationParams.INFO_LOG_ID);
 
     URI su = null, du = null;
     try {

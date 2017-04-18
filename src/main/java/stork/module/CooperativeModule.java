@@ -655,7 +655,6 @@ public class CooperativeModule {
           if (enableCheckSum) {
             checksum = pipeGetCheckSum(e.path());
           }
-          System.out.println("Piping " + e.path() + " to " + e.dpath());
           pipeRetr(e.path(), e.off, e.len);
           if (enableCheckSum && checksum != null)
             pipeStorCheckSum(checksum);

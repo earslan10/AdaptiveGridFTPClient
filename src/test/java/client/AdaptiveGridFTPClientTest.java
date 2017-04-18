@@ -69,13 +69,6 @@ public class AdaptiveGridFTPClientTest {
   }
 
   @Test
-  public void testHysterisis() throws Exception {
-    multiChunk.setUseHysterisis(true);
-    multiChunk.algorithm = TransferAlgorithm.MULTICHUNK;
-    multiChunk.transfer();
-  }
-
-  @Test
   public void testPartitionByFileSize() throws Exception {
     multiChunk = new AdaptiveGridFTPClient(mockGridFTPClient);
     Entry mockTransferTask = mock(Entry.class);
@@ -85,9 +78,7 @@ public class AdaptiveGridFTPClientTest {
     xl.add("/dir1/dir2/fileA", 100);
     xl.add("/dir1/dir2/fileB", 200);
     xl.add("/dir1/dir2/fileC", 300);
-    System.out.println("Count  " + xl.count());
     List<Partition> chunks = multiChunk.partitionByFileSize(xl, 4);
-    System.out.println("Count  " + xl.count());
     assertEquals(chunks.size(), 1);
     assertEquals(chunks.get(0).getDensity(), Utils.Density.HUGE);
 

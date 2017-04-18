@@ -3,6 +3,7 @@ from optparse import OptionParser
 
 import itertools
 import numpy as np
+import pkg_resources
 from itertools import cycle
 from operator import add
 from scipy.optimize import minimize
@@ -10,7 +11,6 @@ from sklearn import linear_model
 from sklearn.cluster import DBSCAN
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.cluster import MeanShift, estimate_bandwidth
-from sklearn.neighbors.kde import KernelDensity
 
 from transfer_experiment import TransferExperiment
 
@@ -149,12 +149,18 @@ def main():
         global maxcc
         maxcc = options.maxcc
     
-    file_name = os.path.join(os.getcwd(), 'out', chunk_name)
+    file_name = os.path.join(os.getcwd(), '../../target', chunk_name)
+
+    resource_package = __name__  # Could be any module/package name
+    resource_path = '/' + chunk_name  # Do not use os.path.join(), see below
+    print resource_package, sys.path
+    fin = pkg_resources.resource_stream(resource_package, resource_path)
+
     #print file_name
     #sys.exit()
     discarded_data_counter = 0
     all_experiments = []
-    fin = open(file_name, 'r')
+    #fin = open(file_name, 'r')
     data, name, size, similarity = read_data_from_file(fin)
     while data is not None:
         data_copy = np.array(data)
@@ -218,43 +224,24 @@ def main():
         #print "cluster {0}: {1}".format(k, X[my_members, 0])
 
 
-    #sys.exit()
-
     my_members = labels == labels[-1]
     #similar_experiments = [experiment for experiment in all_experiments if experiment.closeness in  X[my_members]]
     #all_experiments = similar_experiments
 
     for experiment, label in zip(all_experiments, labels):
         rank = sorted_centers.index(cluster_centers[label])
-        #print "Traffic similar:", experiment.name, experiment.closeness, rank
+        # print "Traffic similar:", experiment.name, experiment.closeness, rank
         experiment.closeness_weight = 2 ** rank
-    #sys.exit()
 
-    ''''
-    #for attr in attrs:
-    #    print attr[0],",",
-    #import sys
-    #sys.exit()
-
-
-    print "eps max", maximums[-1]/60
-    db = DBSCAN(eps=maximums[-1]/60, min_samples=1).fit(attrs)
-    closeness_labels = db.labels_
-    print attrs, closeness_labels
-    for experiment, closeness_label in zip(all_experiments, closeness_labels):
-        print experiment.name, experiment.closeness, closeness_label
-        experiment.closeness_weight = 2 ** closeness_label
-    #all_experiments = similar_experiments
-    '''
 
     all_experiments.sort(key=lambda x: x.similarity)
     attrs = [experiment.similarity for experiment in all_experiments]
     db1 = DBSCAN(eps=2, min_samples=1).fit(attrs)
     similarity_labels = db1.labels_
-    #print attrs, similarity_labels
+    # print attrs, similarity_labels
     for experiment, similarity_label in zip(all_experiments, similarity_labels):
         experiment.similarity_weight = 2 ** similarity_label
-    #print attrs, similarity
+    # print attrs, similarity
 
 
     all_experiments.sort(key=lambda x: x.closeness)
@@ -268,7 +255,7 @@ def main():
 
     for experiment in all_experiments:
         if experiment.similarity_weight < 1:
-            #print "Alo", experiment.name, experiment.closeness, experiment.closeness_weight, experiment.similarity, experiment.similarity_weight
+            # print experiment.name, experiment.closeness, experiment.closeness_weight, experiment.similarity, experiment.similarity_weight
             continue
         weight = experiment.similarity_weight * experiment.closeness_weight
         total_weight += weight
@@ -277,12 +264,9 @@ def main():
         total_params = map(add, total_params, weighted_params)
         total_thr += weight * experiment.relaxed_throughput
 
-    #print total_params, total_weight
     final_params = [x / (total_weight*1.0) for x in total_params]
-    #final_params = np.round(total_params/(total_weight*1.0))
     final_throughput = total_thr/total_weight
     return final_params, final_throughput
-    #return (total_params/total_weight), (total_thr/total_weight)
 
 if __name__ == "__main__":
     start_time = time.time()
