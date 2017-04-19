@@ -121,7 +121,7 @@ public class AdaptiveGridFTPClient {
         gridFTPClient.sourceIpList.add(inetAddress);
     }
     for (InetAddress inetAddress : destinationHostResolution.allIPs) {
-      if (inetAddress != null)
+      if (inetAddress != null )
         gridFTPClient.destinationIpList.add(inetAddress);
     }
 

@@ -297,6 +297,7 @@ public class CooperativeModule {
       hasCred = rc.hasCred;
       if (gridftp) {
         facade = new GridFTPServerFacade((GridFTPControlChannel) rc.fc);
+
         if (!hasCred) {
           ((GridFTPServerFacade) facade).setDataChannelAuthentication(DataChannelAuthentication.NONE);
         }
@@ -501,6 +502,7 @@ public class CooperativeModule {
     // Put the other channel into active mode.
     void setActive(HostPort hp) throws Exception {
       if (oc.local) {
+        //oc.facade
         oc.facade.setActive(hp);
       } else if (oc.fc.isIPv6()) {
         oc.execute("EPRT", hp.toFtpCmdArgument());
@@ -809,6 +811,7 @@ public class CooperativeModule {
               break;   // Just ignore for now...
             case 112:  // Progress marker
               if (pl != null) {
+              //System.out.println("Progress Marker from " + cc.fc.getHost());
                 long diff = pl._markerArrived(new PerfMarker(r.getMessage()), e);
                 pl.client.updateChunk(fileList, diff);
               }
@@ -820,6 +823,7 @@ public class CooperativeModule {
             case 227:  // Entering passive mode
               return;
             default:
+              System.out.println("Error:" + cc.fc.getHost());
               throw new Exception("unexpected reply: " + r.getCode() + " " + r.getMessage());
           }   // We'd have returned otherwise...
         }
@@ -1346,8 +1350,8 @@ public class CooperativeModule {
   public static class GridFTPTransfer implements StorkTransfer {
     public static StorkFTPClient client;
     public static ExecutorService executor;
-    public static Queue<InetAddress> sourceIpList = new LinkedBlockingQueue<>();
-    public static Queue<InetAddress> destinationIpList = new LinkedBlockingQueue<>();
+    public static Queue<InetAddress> sourceIpList = new LinkedList<>();
+    public static Queue<InetAddress> destinationIpList = new LinkedList<>();
     public static Collection<Future<?>> futures = new LinkedList<>();
 
 
@@ -1836,10 +1840,15 @@ public class CooperativeModule {
         try {
           // Channel zero is main channel and already created
           ChannelPair channel;
-          InetAddress srcIp = sourceIpList.poll();
-          sourceIpList.add(srcIp);
-          InetAddress dstIp = destinationIpList.poll();
-          destinationIpList.add(dstIp);
+          InetAddress srcIp, dstIp;
+          synchronized (sourceIpList) {
+            srcIp = sourceIpList.poll();
+            sourceIpList.add(srcIp);
+          }
+          synchronized (destinationIpList) {
+            dstIp = destinationIpList.poll();
+            destinationIpList.add(dstIp);
+          }
           long start = System.currentTimeMillis();
           //System.out.println("Creating new channel between " + su.proto + "://" + srcIp.getCanonicalHostName());
           FTPURI srcUri = new FTPURI(new URI(su.proto + "://" + srcIp.getCanonicalHostName()).normalize(), su.cred);
