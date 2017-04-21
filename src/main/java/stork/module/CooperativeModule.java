@@ -184,7 +184,6 @@ public class CooperativeModule {
       String line;
 
       // Read lines from the buffer list.
-      System.out.println("Files under " + path);
       while ((line = readLine()) != null) {
         try {
           org.globus.ftp.MlsxEntry m = new org.globus.ftp.MlsxEntry(line);
@@ -1658,7 +1657,7 @@ public class CooperativeModule {
       }
       LOG.info("Created "  + client.ccs.size() + "channels");
       //this is monitoring thread which measures throughput of each chunk in every 3 seconds
-      executor.submit(new TransferMonitor());
+      //executor.submit(new TransferMonitor());
       for (Future<?> future : futures) {
         future.get();
       }
@@ -1677,7 +1676,7 @@ public class CooperativeModule {
           XferList xl = client.chunks.get(i).getRecords();
           LOG.info("Chunk " + i + ":\t" + xl.count() + " files\t" + printSize(xl.size()));
           System.out.println("Chunk " + i + ":\t" + xl.count() + " files\t" + printSize(xl.size())
-              + " cc:" + xl.concurrency + " p:" + xl.parallelism + " ppq:" + xl.pipelining);
+              + client.chunks.get(i).getTunableParameters());
           xl.instantTransferredSize = xl.totalTransferredSize;
         }
       }
@@ -1849,14 +1848,14 @@ public class CooperativeModule {
             dstIp = destinationIpList.poll();
             destinationIpList.add(dstIp);
           }
-          long start = System.currentTimeMillis();
+          //long start = System.currentTimeMillis();
           //System.out.println("Creating new channel between " + su.proto + "://" + srcIp.getCanonicalHostName());
           FTPURI srcUri = new FTPURI(new URI(su.proto + "://" + srcIp.getCanonicalHostName()).normalize(), su.cred);
           FTPURI dstUri = new FTPURI(new URI(du.proto + "://" + dstIp.getCanonicalHostName()).normalize(), du.cred);
-          System.out.println("Took " + (System.currentTimeMillis() - start)/1000.0 + " seconds to get cannocical name");
-          System.out.println("Creating new channel between " + srcUri.host + " and " + dstUri.host +"using " +srcIp + "-" +dstIp );
+          //System.out.println("Took " + (System.currentTimeMillis() - start)/1000.0 + " seconds to get cannocical name");
+          //System.out.println("Creating new channel between " + srcUri.host + " and " + dstUri.host +"using " +srcIp + "-" +dstIp );
           channel = new ChannelPair(srcUri, dstUri);
-          System.out.println("Created a channel between " + channel.rc.fc.getHost() + " and " + channel.sc.fc.getHost());
+          //System.out.println("Created a channel between " + channel.rc.fc.getHost() + " and " + channel.sc.fc.getHost());
           synchronized (client.ccs) {
             client.ccs.add(channel);
           }
