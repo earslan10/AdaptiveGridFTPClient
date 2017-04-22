@@ -430,6 +430,7 @@ public class AdaptiveGridFTPClient {
         break;
       case "-no-proxy":
         anonymousTransfer = true;
+        usedSecondArgument = false;
         break;
       case "-bw":
       case "-bandwidth":
@@ -496,6 +497,7 @@ public class AdaptiveGridFTPClient {
         break;
       case "-single-chunk":
         algorithm = TransferAlgorithm.SINGLECHUNK;
+        usedSecondArgument = false;
         LOG.info("Use single chunk transfer approach");
         break;
       case "-channel-distribution-policy":
@@ -514,14 +516,17 @@ public class AdaptiveGridFTPClient {
       case "-use-dynamic-scheduling":
         algorithm = TransferAlgorithm.PROACTIVEMULTICHUNK;
         useDynamicScheduling = true;
+        usedSecondArgument = false;
         LOG.info("Dynamic scheduling enabled.");
         break;
       case "-use-online-tuning":
         useOnlineTuning = true;
+        usedSecondArgument = false;
         LOG.info("Online modelling/tuning enabled.");
         break;
       case "-use-checksum":
         runChecksumControl = true;
+        usedSecondArgument = false;
         LOG.info("Dynamic scheduling enabled.");
         break;
       default:
