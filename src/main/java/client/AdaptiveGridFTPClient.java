@@ -161,12 +161,14 @@ public class AdaptiveGridFTPClient {
         int[] channelAllocation = allocateChannelsToChunks(chunks, totalChannelCount);
         start = System.currentTimeMillis();
         gridFTPClient.runMultiChunkTransfer(chunks, channelAllocation);
-        timeSpent += (System.currentTimeMillis() - start) / 1000.0;
         break;
     }
     timeSpent += ((System.currentTimeMillis() - start) / 1000.0);
     LogManager.writeToLog("Chunks: " + maximumChunks + " Throughput:" +
         (datasetSize * 8.0) / (timeSpent * (1000.0 * 1000)), ConfigurationParams.INFO_LOG_ID);
+    System.out.println("Chunks: " + maximumChunks + " Throughput:" + "size:" + Utils.printSize(datasetSize, true)
+        + " time:" + timeSpent + " thr: "+ (datasetSize * 8.0) / (timeSpent * (1000.0 * 1000)));
+
     isTransferCompleted = true;
     GridFTPTransfer.executor.shutdown();
     while (!GridFTPTransfer.executor.isTerminated()) {
