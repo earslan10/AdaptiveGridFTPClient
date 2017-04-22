@@ -418,8 +418,6 @@ public class CooperativeModule {
     // File list this channel is transferring
     public Partition chunk, newChunk;
     public boolean isConfigurationChanged = false;
-    public boolean isChunkChanged = false;
-    public int newxferListIndex = -1;
     public boolean enableCheckSum = false;
     Queue<XferList.MlsxEntry> inTransitFiles = new LinkedList<>();
     private int parallelism = 1, pipelining = 0, trev = 5;
@@ -1750,9 +1748,8 @@ public class CooperativeModule {
 
     public void checkIfChannelReallocationRequired(double[] estimatedCompletionTimes) {
 
-
       List<Integer> blacklist = Lists.newArrayListWithCapacity(client.chunks.size());
-      int curSlowChunkId = -1, curFastChunkId = -1;
+      int curSlowChunkId, curFastChunkId;
       while (true) {
         double maxDuration = Double.NEGATIVE_INFINITY;
         double minDuration = Double.POSITIVE_INFINITY;
@@ -1792,8 +1789,8 @@ public class CooperativeModule {
             //System.out.println("total chunks  " + client.ccs.size());
             synchronized (fastChunk) {
               ChannelPair tranferringChannel = fastChunk.channels.remove(fastChunk.channels.size() - 1);
-              tranferringChannel.newxferListIndex = curSlowChunkId;
-              tranferringChannel.isChunkChanged = true;
+              tranferringChannel.newChunk = client.chunks.get(curSlowChunkId);
+              tranferringChannel.isConfigurationChanged = true;
               System.out.println("Chunk " + curFastChunkId + "*" + getListOfChannelsOfAChunk(fastChunk) + " is giving channel " + tranferringChannel.id
                   + " to chunk " + curSlowChunkId + "*" + getListOfChannelsOfAChunk(slowChunk));
             }

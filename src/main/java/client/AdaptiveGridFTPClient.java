@@ -164,9 +164,9 @@ public class AdaptiveGridFTPClient {
         break;
     }
     timeSpent += ((System.currentTimeMillis() - start) / 1000.0);
-    LogManager.writeToLog("Chunks: " + maximumChunks + " Throughput:" +
+    LogManager.writeToLog(algorithm.name() + " chunks: " + maximumChunks + " Throughput:" +
         (datasetSize * 8.0) / (timeSpent * (1000.0 * 1000)), ConfigurationParams.INFO_LOG_ID);
-    System.out.println("Chunks: " + maximumChunks + " Throughput:" + "size:" + Utils.printSize(datasetSize, true)
+    System.out.println(algorithm.name() + " chunks: " + maximumChunks + " Throughput:" + "size:" + Utils.printSize(datasetSize, true)
         + " time:" + timeSpent + " thr: "+ (datasetSize * 8.0) / (timeSpent * (1000.0 * 1000)));
 
     isTransferCompleted = true;
@@ -512,6 +512,7 @@ public class AdaptiveGridFTPClient {
         }
         break;
       case "-use-dynamic-scheduling":
+        algorithm = TransferAlgorithm.PROACTIVEMULTICHUNK;
         useDynamicScheduling = true;
         LOG.info("Dynamic scheduling enabled.");
         break;
@@ -576,7 +577,7 @@ public class AdaptiveGridFTPClient {
 
   }
 
-  enum TransferAlgorithm {SINGLECHUNK, MULTICHUNK}
+  enum TransferAlgorithm {SINGLECHUNK, MULTICHUNK, PROACTIVEMULTICHUNK}
 
   private enum ChannelDistributionPolicy {ROUND_ROBIN, WEIGHTED}
 
