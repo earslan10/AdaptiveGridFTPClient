@@ -529,6 +529,10 @@ public class AdaptiveGridFTPClient {
         usedSecondArgument = false;
         LOG.info("Dynamic scheduling enabled.");
         break;
+      case "-throughput-log-file":
+        ConfigurationParams.INFO_LOG_ID = args[1];
+        LOG.info("Dynamic scheduling enabled.");
+        break;
       default:
         System.err.println("Unrecognized input parameter " + config);
         System.exit(-1);
