@@ -28,6 +28,7 @@ import stork.util.XferList.MlsxEntry;
 import java.io.*;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.*;
@@ -1846,12 +1847,20 @@ public class CooperativeModule {
             destinationIpList.add(dstIp);
           }
           //long start = System.currentTimeMillis();
-          //System.out.println("Creating new channel between " + su.proto + "://" + srcIp.getCanonicalHostName());
-          FTPURI srcUri = new FTPURI(new URI(su.proto + "://" + srcIp.getCanonicalHostName()).normalize(), su.cred);
-          FTPURI dstUri = new FTPURI(new URI(du.proto + "://" + dstIp.getCanonicalHostName()).normalize(), du.cred);
+          URI srcUri = null, dstUri =null;
+          try {
+            srcUri = new URI(su.uri.getScheme(), su.uri.getUserInfo(), srcIp.getCanonicalHostName(), su.uri.getPort(),
+                su.uri.getPath(), su.uri.getQuery(), su.uri.getFragment());
+            dstUri = new URI(du.uri.getScheme(), du.uri.getUserInfo(), dstIp.getCanonicalHostName(), du.uri.getPort(),
+                du.uri.getPath(), du.uri.getQuery(), du.uri.getFragment());
+          } catch (URISyntaxException e) {
+            LOG.error("Updating URI host failed:",e);
+            System.exit(-1);
+          }
+          FTPURI srcFTPUri = new FTPURI(srcUri, su.cred);
+          FTPURI dstFTPUri = new FTPURI(dstUri, du.cred);
           //System.out.println("Took " + (System.currentTimeMillis() - start)/1000.0 + " seconds to get cannocical name");
-          //System.out.println("Creating new channel between " + srcUri.host + " and " + dstUri.host +"using " +srcIp + "-" +dstIp );
-          channel = new ChannelPair(srcUri, dstUri);
+          channel = new ChannelPair(srcFTPUri, dstFTPUri);
           //System.out.println("Created a channel between " + channel.rc.fc.getHost() + " and " + channel.sc.fc.getHost());
           synchronized (client.ccs) {
             client.ccs.add(channel);
