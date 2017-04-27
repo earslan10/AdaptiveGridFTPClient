@@ -461,7 +461,7 @@ public class AdaptiveGridFTPClient {
       case "-bs":
       case "-buffer-size":
         if (args.length > 1) {
-          transferTask.setBufferSize(Integer.parseInt(args[1]) * 1024 * 1024); //in MB
+          transferTask.setBufferSize(Double.parseDouble(args[1]) * 1024 * 1024); //in MB
         } else {
           LOG.fatal("-bs needs integer");
         }
