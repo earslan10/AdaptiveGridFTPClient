@@ -12,7 +12,7 @@ public class XferList implements Iterable<XferList.MlsxEntry> {
   private final MlsxEntry root;
   public String sp, dp;
   public double totalTransferredSize = 0, instantTransferredSize = 0;
-  public double estimatedFinishTime = 0;
+  public double estimatedFinishTime = Integer.MAX_VALUE;
   public double instant_throughput = 0, weighted_throughput = 0;
   public long initialSize = 0;
   public List<CooperativeModule.ChannelPair> channels;

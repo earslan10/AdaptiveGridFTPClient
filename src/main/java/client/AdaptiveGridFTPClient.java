@@ -30,7 +30,7 @@ public class AdaptiveGridFTPClient {
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
   int maximumChunks = 4;
   private String proxyFile;
-  private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
+  private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
   private boolean anonymousTransfer = false;
   private Hysterisis hysterisis;
   private GridFTPTransfer gridFTPClient;
@@ -158,6 +158,10 @@ public class AdaptiveGridFTPClient {
           }
         }
         LOG.info(" Running MC with :" + totalChannelCount + " channels.");
+        for (Partition chunk : chunks) {
+          LOG.info("Chunk :" + chunk.getDensity().name() + " cc:" + chunk.getTunableParameters().getConcurrency() +
+          " p:" + chunk.getTunableParameters().getParallelism() + " ppq:" + chunk.getTunableParameters().getPipelining());
+        }
         int[] channelAllocation = allocateChannelsToChunks(chunks, totalChannelCount);
         start = System.currentTimeMillis();
         gridFTPClient.runMultiChunkTransfer(chunks, channelAllocation);
@@ -518,6 +522,7 @@ public class AdaptiveGridFTPClient {
       case "-use-dynamic-scheduling":
         algorithm = TransferAlgorithm.PROACTIVEMULTICHUNK;
         useDynamicScheduling = true;
+        channelDistPolicy = ChannelDistributionPolicy.WEIGHTED;
         usedSecondArgument = false;
         LOG.info("Dynamic scheduling enabled.");
         break;

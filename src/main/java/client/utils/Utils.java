@@ -38,9 +38,11 @@ public class Utils {
     xl.density = density;
     double avgFileSize = xl.avgFileSize();
     int fileCountToFillThePipe = (int) Math.round(AdaptiveGridFTPClient.transferTask.getBDP() / avgFileSize);
-    int pLevelToFillPipe = (int) Math.ceil(AdaptiveGridFTPClient.transferTask.getBDP() / AdaptiveGridFTPClient.transferTask.getBufferSize());
+    int pLevelToFillPipe = (int) Math.ceil(AdaptiveGridFTPClient.transferTask.getBDP() /
+        AdaptiveGridFTPClient.transferTask.getBufferSize());
     int pLevelToFillBuffer = (int) Math.ceil(avgFileSize / AdaptiveGridFTPClient.transferTask.getBufferSize());
-    int cc = Math.min(Math.min(Math.max(fileCountToFillThePipe, 3), xl.count()), AdaptiveGridFTPClient.transferTask.getMaxConcurrency());
+    int cc = Math.min(Math.min(Math.max(fileCountToFillThePipe, 2), xl.count()),
+        AdaptiveGridFTPClient.transferTask.getMaxConcurrency());
     int ppq = fileCountToFillThePipe;
     int p = Math.max(Math.min(pLevelToFillPipe, pLevelToFillBuffer), 1);
     p = avgFileSize > AdaptiveGridFTPClient.transferTask.getBDP() ? p : p;
@@ -70,7 +72,7 @@ public class Utils {
     return fileEntries;
   }
 
-  public static List<Integer> getListOfChannelsOfAChunk(XferList xl) {
+  public static List<Integer> getChannels(XferList xl) {
     List<Integer> list = new LinkedList<Integer>();
     for (CooperativeModule.ChannelPair channel : xl.channels) {
       list.add(channel.getId());
