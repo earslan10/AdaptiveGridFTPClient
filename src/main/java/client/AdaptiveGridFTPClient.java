@@ -145,7 +145,7 @@ public class AdaptiveGridFTPClient {
         if (useHysterisis) {
           int maxConcurrency = 0;
           for (int i = 0; i < estimatedParamsForChunks.length; i++) {
-            chunks.get(i).getRecords().setTransferParameters(estimatedParamsForChunks[i]);
+            //chunks.get(i).getRecords().setTransferParameters(estimatedParamsForChunks[i]);
             if (estimatedParamsForChunks[i][0] > maxConcurrency) {
               maxConcurrency = estimatedParamsForChunks[i][0];
             }

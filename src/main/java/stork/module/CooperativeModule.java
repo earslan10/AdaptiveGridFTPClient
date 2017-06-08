@@ -1144,7 +1144,7 @@ public class CooperativeModule {
         pullAndSendAFile(cc);
       }
       while (!cc.inTransitFiles.isEmpty()) {
-
+        fileList = cc.chunk.getRecords();
         // Read responses to piped commands.
         XferList.MlsxEntry e = cc.inTransitFiles.poll();
         if (e.dir) {
@@ -1179,7 +1179,7 @@ public class CooperativeModule {
             }
             System.out.println("Channel " + cc.getId()+ " parallelism is updated");
             cc.isConfigurationChanged = false;
-            fileList = cc.chunk.getRecords();
+
           }
           /*
           else if (cc.isChunkChanged && cc.inTransitFiles.isEmpty()) {
@@ -1208,31 +1208,45 @@ public class CooperativeModule {
     }
 
     ChannelPair restartChannel(ChannelPair oldChannel) {
-      ChannelPair channel = new ChannelPair(su, du);
       System.out.println("Updating channel " + oldChannel.getId()+ " parallelism to " +
           oldChannel.newChunk.getTunableParameters().getParallelism());
       XferList oldFileList = oldChannel.chunk.getRecords();
       XferList newFileList = oldChannel.newChunk.getRecords();
       XferList.MlsxEntry fileToStart = getNextFile(newFileList);
-      synchronized (oldFileList) {
-        oldFileList.channels.remove(oldChannel);
-      }
-      oldChannel.close();
       if (fileToStart == null) {
         return null;
       }
-      boolean success = GridFTPTransfer.setupChannelConf(channel, oldChannel.getId(), oldChannel.newChunk, fileToStart);
-      if (!success) {
-        synchronized (newFileList) {
-          newFileList.addEntry(fileToStart);
-          return null;
+
+      synchronized (oldFileList) {
+        oldFileList.channels.remove(oldChannel);
+      }
+
+      ChannelPair newChannel;
+      if (Math.abs(oldChannel.chunk.getTunableParameters().getParallelism() -
+          oldChannel.newChunk.getTunableParameters().getParallelism()) > 1) {
+        oldChannel.close();
+        newChannel = new ChannelPair(su, du);
+        boolean success = GridFTPTransfer.setupChannelConf(newChannel, oldChannel.getId(), oldChannel.newChunk, fileToStart);
+        if (!success) {
+          synchronized (newFileList) {
+            newFileList.addEntry(fileToStart);
+            return null;
+          }
         }
       }
+      else {
+        oldChannel.chunk = oldChannel.newChunk;
+        oldChannel.pipelining = oldChannel.newChunk.getTunableParameters().getPipelining();
+        oldChannel.pipeTransfer(fileToStart);
+        oldChannel.inTransitFiles.add(fileToStart);
+        newChannel = oldChannel;
+      }
+
       synchronized (newFileList.channels) {
-        newFileList.channels.add(channel);
+        newFileList.channels.add(newChannel);
       }
       updateOnAir(newFileList, +1);
-      return channel;
+      return newChannel;
     }
     /*
         void changeChunkOfChannel(ChannelPair channel, int chunkId) {
@@ -1318,9 +1332,10 @@ public class CooperativeModule {
         if (index == -1) {
           return;
         }
-        //System.out.println("selected chunk for  "+ index +" on air files:" +  chunks.get(index).count());
         if (chunks.get(index).getRecords().count() > 0) {
           cc.newChunk = chunks.get(index);
+          System.out.println("Channel  "+ cc.id +" is being transferred from " +  cc.chunk.getDensity().name() +
+              " to " + cc.newChunk.getDensity().name());
           restartChannel(cc);
           if (cc.inTransitFiles.size() > 0) {
             found = true;

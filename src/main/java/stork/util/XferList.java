@@ -19,7 +19,6 @@ public class XferList implements Iterable<XferList.MlsxEntry> {
   public int interval = 0;
   public int onAir = 0;
   public Utils.Density density;
-  public int parallelism = -1, pipelining = -1, concurrency = -1, bufferSize = -1;
   private LinkedList<MlsxEntry> list = new LinkedList<>();
   private long size = 0;
   private int count = 0;  // Number of files (not dirs)
@@ -45,13 +44,6 @@ public class XferList implements Iterable<XferList.MlsxEntry> {
     list.add(root);
     this.size += size;
     count ++;
-  }
-
-  public void setTransferParameters(int[] parameters) {
-    concurrency = parameters[0];
-    parallelism = parameters[1];
-    pipelining = parameters[2];
-    bufferSize = parameters[3];
   }
 
   // Add a directory to the list.
