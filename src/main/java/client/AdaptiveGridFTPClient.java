@@ -29,6 +29,7 @@ public class AdaptiveGridFTPClient {
   public static boolean isTransferCompleted = false;
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
   int maximumChunks = 4;
+  boolean useMaxCC = false;
   private String proxyFile;
   private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
   private boolean anonymousTransfer = false;
@@ -135,6 +136,9 @@ public class AdaptiveGridFTPClient {
     switch (algorithm) {
       case SINGLECHUNK:
         chunks.forEach(chunk -> chunk.setTunableParameters(Utils.getBestParams(chunk.getRecords(), maximumChunks)));
+        if (useMaxCC) {
+          chunks.forEach(chunk -> chunk.getTunableParameters().setConcurrency(transferTask.getMaxConcurrency()));
+        }
         GridFTPTransfer.executor.submit(new GridFTPTransfer.ModellingThread());
         chunks.forEach(chunk -> gridFTPClient.runTransfer(chunk));
 
@@ -534,7 +538,12 @@ public class AdaptiveGridFTPClient {
       case "-use-checksum":
         runChecksumControl = true;
         usedSecondArgument = false;
-        LOG.info("Dynamic scheduling enabled.");
+        LOG.info("Checksum enabled.");
+        break;
+      case "-use-max-cc":
+        useMaxCC = true;
+        usedSecondArgument = false;
+        LOG.info("Use of maximum concurrency enabled.");
         break;
       case "-throughput-log-file":
         ConfigurationParams.INFO_LOG_ID = args[1];
