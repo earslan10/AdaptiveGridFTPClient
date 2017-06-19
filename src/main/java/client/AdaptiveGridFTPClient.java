@@ -220,7 +220,7 @@ public class AdaptiveGridFTPClient {
       chunk.setDensity(Entry.findDensityOfList(avgFileSize, transferTask.getBandwidth()));
       LOG.info("Chunk " + i + ":\tfiles:" + partitions.get(i).getRecords().count() + "\t avg:" +
           Utils.printSize(partitions.get(i).getCentroid(), true)
-          + "\t" + Utils.printSize(partitions.get(i).getRecords().size(), true) + " Density:" +
+          + " \t total:" + Utils.printSize(partitions.get(i).getRecords().size(), true) + " Density:" +
           chunk.getDensity());
     }
     return partitions;
@@ -230,8 +230,9 @@ public class AdaptiveGridFTPClient {
     for (int i = 0; i < partitions.size(); i++) {
       Partition p = partitions.get(i);
       //merge small chunk with the the chunk with closest centroid
-      if ((p.getRecords().count() <= 2 || p.getRecords().size() < 5 * transferTask.getBDP()) && partitions.size() > 1) {
+      if ((p.getRecords().count() < 2 || p.getRecords().size() < 5 * transferTask.getBDP()) && partitions.size() > 1) {
         int index = -1;
+        LOG.info(i + " is too small " + p.getRecords().count() + " files total size:" + Utils.printSize( p.getRecords().size(), true));
         double diff = Double.POSITIVE_INFINITY;
         for (int j = 0; j < partitions.size(); j++) {
           if (j != i && Math.abs(p.getCentroid() - partitions.get(j).getCentroid()) < diff) {
