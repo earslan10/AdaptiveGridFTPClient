@@ -137,7 +137,8 @@ public class AdaptiveGridFTPClient {
       case SINGLECHUNK:
         chunks.forEach(chunk -> chunk.setTunableParameters(Utils.getBestParams(chunk.getRecords(), maximumChunks)));
         if (useMaxCC) {
-          chunks.forEach(chunk -> chunk.getTunableParameters().setConcurrency(transferTask.getMaxConcurrency()));
+          chunks.forEach(chunk -> chunk.getTunableParameters().setConcurrency(
+              Math.min(transferTask.getMaxConcurrency(), chunk.getRecords().count())));
         }
         GridFTPTransfer.executor.submit(new GridFTPTransfer.ModellingThread());
         chunks.forEach(chunk -> gridFTPClient.runTransfer(chunk));
