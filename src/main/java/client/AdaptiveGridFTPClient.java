@@ -311,13 +311,13 @@ public class AdaptiveGridFTPClient {
           Utils.Density densityOfChunk = chunks.get(i).getDensity();
           switch (densityOfChunk) {
             case SMALL:
-              chunkWeights[i] = 6 * chunkSize[i];
-              break;
-            case MEDIUM:
               chunkWeights[i] = 3 * chunkSize[i];
               break;
-            case LARGE:
+            case MEDIUM:
               chunkWeights[i] = 2 * chunkSize[i];
+              break;
+            case LARGE:
+              chunkWeights[i] = 1 * chunkSize[i];
               break;
             case HUGE:
               chunkWeights[i] = 1 * chunkSize[i];

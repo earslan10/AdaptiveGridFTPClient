@@ -82,11 +82,11 @@ public class Utils {
 
   public static Density findDensityOfFile(long fileSize, double bandwidth, int maximumChunks) {
     double bandwidthInMB = bandwidth / 8.0;
-    if (maximumChunks == 1 || fileSize <= bandwidthInMB / 20) {
+    if (maximumChunks == 1 || fileSize <= bandwidthInMB / 40) {
       return Density.SMALL;
-    } else if (maximumChunks > 3 && fileSize > bandwidthInMB * 2) {
+    } else if (maximumChunks > 3 && fileSize > bandwidthInMB * 1) {
       return Density.HUGE;
-    } else if (maximumChunks > 2 && fileSize <= bandwidthInMB / 5) {
+    } else if (maximumChunks > 2 && fileSize <= bandwidthInMB / 10) {
       return Density.MEDIUM;
     } else {
       return Density.LARGE;
