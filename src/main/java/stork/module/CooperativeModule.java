@@ -196,7 +196,7 @@ public class CooperativeModule {
           if (type.equals(org.globus.ftp.MlsxEntry.TYPE_FILE)) {
             xl.add(path + fileName, Long.parseLong(size));
           } else if (!fileName.equals(".") && !fileName.equals("..")) {
-            xl.add(fileName);
+            xl.add(path + fileName);
           }
         } catch (Exception e) {
           e.printStackTrace();
@@ -821,7 +821,7 @@ public class CooperativeModule {
             case 227:  // Entering passive mode
               return;
             default:
-              System.out.println("Error:" + cc.fc.getHost());
+              //System.out.println("Error:" + cc.fc.getHost());
               throw new Exception("unexpected reply: " + r.getCode() + " " + r.getMessage());
           }   // We'd have returned otherwise...
         }
@@ -995,6 +995,8 @@ public class CooperativeModule {
     // Recursively list directories.
     public XferList mlsr() throws Exception {
       final String MLSR = "MLSR", MLSD = "MLSD";
+      final int MAXIMUM_PIPELINING = 200;
+      int currentPipelining = 0;
       //String cmd = isFeatureSupported("MLSR") ? MLSR : MLSD;
       String cmd = MLSD;
       XferList list = new XferList(su.path, du.path);
@@ -1008,21 +1010,28 @@ public class CooperativeModule {
 
       LinkedList<String> dirs = new LinkedList<String>();
       dirs.add("");
-
+      System.out.println("Listing ");
       cc.rc.exchange("OPTS MLST type;size;");
       // Keep listing and building subdirectory lists.
+
       // TODO: Replace with pipelining structure.
-      while (!dirs.isEmpty()) {
+      LinkedList<String> waiting = new LinkedList<String>();
+      LinkedList<String> working = new LinkedList<String>();
+      while (!dirs.isEmpty() || !waiting.isEmpty()) {
         LinkedList<String> subdirs = new LinkedList<String>();
-        LinkedList<String> working = new LinkedList<String>();
 
         while (!dirs.isEmpty())
-          working.add(dirs.pop());
+          waiting.add(dirs.pop());
+        System.out.println("Waiting has " + waiting.size() + " items");
 
         // Pipeline commands like a champ.
-        for (String p : working) {
+        while  (currentPipelining < MAXIMUM_PIPELINING && !waiting.isEmpty()) {
+          String p = waiting.pop();
           cc.pipePassive();
+          System.out.println("Pipelining " + cmd + " " + path+p);
           cc.rc.write(cmd, path + p);
+          working.add(p);
+          currentPipelining++;
         }
 
         // Read the pipelined responses like a champ.
@@ -1065,7 +1074,10 @@ public class CooperativeModule {
 
           }
           list.addAll(xl);
+
         }
+        working.clear();
+        currentPipelining = 0;
 
         // Get ready to repeat with new subdirs.
         dirs.addAll(subdirs);
@@ -1436,7 +1448,7 @@ public class CooperativeModule {
           FileInputStream fis = new FileInputStream(cred_file);
           byte[] cred_bytes = new byte[(int) cred_file.length()];
           fis.read(cred_bytes);
-          //System.out.println("Setting parameters");
+          System.out.println("Setting parameters");
           //GSSManager manager = ExtendedGSSManager.getInstance();
           ExtendedGSSManager gm = (ExtendedGSSManager) ExtendedGSSManager.getInstance();
           cred = gm.createCredential(cred_bytes,
@@ -1474,6 +1486,7 @@ public class CooperativeModule {
       } else if (su.path.endsWith("/") && !du.path.endsWith("/")) {
         fatal("src is a directory, but dest is not");
       }
+      System.out.println("Done parameters");
       client.chunks = new LinkedList<>();
     }
 
@@ -1649,7 +1662,7 @@ public class CooperativeModule {
       int currentChannelId = 0;
       long start = System.currentTimeMillis();
       for (int i = 0; i < totalChunks; i++) {
-        LOG.info(channelAllocations[i] + " channels will be create for chunk " + i);
+        LOG.info(channelAllocations[i] + " channels will be created for chunk " + i);
         for (int j = 0; j < channelAllocations[i]; j++) {
           MlsxEntry firstFile = synchronizedPop(firstFilesToSend.get(i));
           Runnable transferChannel = new TransferChannel(chunks.get(i), currentChannelId, firstFile);
@@ -1663,11 +1676,12 @@ public class CooperativeModule {
       for (Future<?> future : futures) {
         future.get();
       }
-      futures.clear();
+
       long finish = System.currentTimeMillis();
       double thr = totalDataSize * 8 / ((finish - start) / 1000.0);
       LOG.info(" Time:" + ((finish - start) / 1000.0) + " sec Thr:" + (thr / (1000 * 1000)));
       // Close channels
+      futures.clear();
       client.ccs.forEach(cp -> cp.close());
       client.ccs.clear();
     }
@@ -1880,6 +1894,10 @@ public class CooperativeModule {
               chunk.getRecords().channels.add(channel);
             }
             client.transferList(channel);
+          } else {
+            synchronized (chunk.getRecords()) {
+              chunk.getRecords().addEntry(firstFileToTransfer);
+            }
           }
         } catch (Exception e) {
           e.printStackTrace();

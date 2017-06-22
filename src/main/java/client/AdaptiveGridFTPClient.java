@@ -28,7 +28,7 @@ public class AdaptiveGridFTPClient {
   public static boolean useOnlineTuning = false;
   public static boolean isTransferCompleted = false;
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
-  int maximumChunks = 4;
+  public static int maximumChunks = 4;
   boolean useMaxCC = false;
   private String proxyFile;
   private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
@@ -212,13 +212,13 @@ public class AdaptiveGridFTPClient {
       Partition chunk = partitions.get(i);
       chunk.getRecords().sp = list.sp;
       chunk.getRecords().dp = list.dp;
-      double avgFileSize = chunk.getRecords().size() / (chunk.getRecords().count() * 1.0);
+      long avgFileSize = chunk.getRecords().size() / chunk.getRecords().count();
       chunk.setEntry(transferTask);
       chunk.entry.setFileSize(avgFileSize);
       chunk.entry.setFileCount(chunk.getRecords().count());
-      chunk.entry.setDensity(Entry.findDensityOfList(avgFileSize, transferTask.getBandwidth()));
+      chunk.entry.setDensity(Entry.findDensityOfList(avgFileSize, transferTask.getBandwidth(), maximumChunks));
       chunk.entry.calculateSpecVector();
-      chunk.setDensity(Entry.findDensityOfList(avgFileSize, transferTask.getBandwidth()));
+      chunk.setDensity(Entry.findDensityOfList(avgFileSize, transferTask.getBandwidth(), maximumChunks));
       LOG.info("Chunk " + i + ":\tfiles:" + partitions.get(i).getRecords().count() + "\t avg:" +
           Utils.printSize(partitions.get(i).getCentroid(), true)
           + " \t total:" + Utils.printSize(partitions.get(i).getRecords().size(), true) + " Density:" +

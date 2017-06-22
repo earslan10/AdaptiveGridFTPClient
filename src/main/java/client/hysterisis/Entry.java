@@ -27,7 +27,7 @@ public class Entry {
   private double RTT;
   private double BDP;
   private double bufferSize;
-  private double fileSize;
+  private long fileSize;
   private double fileCount;
   private Utils.Density density;
   private double totalDatasetSize;
@@ -49,16 +49,8 @@ public class Entry {
     fast = false;
   }
 
-  public static Utils.Density findDensityOfList(double averageFileSize, double bandwidth) {
-    double bandwidthInMB = bandwidth / 8.0;
-    if (averageFileSize < bandwidthInMB / 20) {
-      return Utils.Density.SMALL;
-    } else if (averageFileSize < bandwidthInMB / 5) {
-      return Utils.Density.MEDIUM;
-    } else if (averageFileSize < bandwidthInMB * 2) {
-      return Utils.Density.LARGE;
-    }
-    return Utils.Density.HUGE;
+  public static Utils.Density findDensityOfList(long averageFileSize, double bandwidth, int maximumChunks) {
+    return Utils.findDensityOfFile(averageFileSize, bandwidth, maximumChunks);
   }
 
 
@@ -195,14 +187,14 @@ public class Entry {
   /**
    * @return the fileSize
    */
-  public double getFileSize() {
+  public long getFileSize() {
     return fileSize;
   }
 
   /**
    * @param fileSize the fileSize to set
    */
-  public void setFileSize(double fileSize) {
+  public void setFileSize(long fileSize) {
     this.fileSize = fileSize;
   }
 

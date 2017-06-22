@@ -1,5 +1,6 @@
 package client.hysterisis;
 
+import client.AdaptiveGridFTPClient;
 import client.Partition;
 import client.utils.csv.CSVReader;
 import org.apache.commons.logging.Log;
@@ -53,7 +54,7 @@ public class Similarity {
             continue;
           }
           entry.setId(id++);
-          entry.setFileSize(Double.parseDouble(record[attributeIndices.get("FileSize")]));
+          entry.setFileSize(Long.parseLong(record[attributeIndices.get("FileSize")]));
           entry.setFileCount(Integer.parseInt(record[attributeIndices.get("FileCount")]));
           entry.setSource(record[attributeIndices.get("Source")]);
           entry.setDestination(record[attributeIndices.get("Destination")]);
@@ -104,7 +105,8 @@ public class Similarity {
           if (entry.getBandwidth() < Math.pow(10, 6)) {
             entry.setBandwidth(entry.getBandwidth() * Math.pow(10, 6));
           }
-          entry.setDensity(Entry.findDensityOfList(entry.getFileSize(), entry.getBandwidth()));
+          entry.setDensity(Entry.findDensityOfList(entry.getFileSize(), entry.getBandwidth(),
+              AdaptiveGridFTPClient.maximumChunks));
           entry.setNote(fileName);
         } catch (Exception e) {
           for (String s : record)
