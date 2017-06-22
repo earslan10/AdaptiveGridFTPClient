@@ -1857,50 +1857,59 @@ public class CooperativeModule {
 
       @Override
       public void run() {
-        try {
-          // Channel zero is main channel and already created
-          ChannelPair channel;
-          InetAddress srcIp, dstIp;
-          synchronized (sourceIpList) {
-            srcIp = sourceIpList.poll();
-            sourceIpList.add(srcIp);
-          }
-          synchronized (destinationIpList) {
-            dstIp = destinationIpList.poll();
-            destinationIpList.add(dstIp);
-          }
-          //long start = System.currentTimeMillis();
-          URI srcUri = null, dstUri =null;
+        boolean success = false;
+        int trial = 0;
+        while (!success && trial < 3) {
           try {
-            srcUri = new URI(su.uri.getScheme(), su.uri.getUserInfo(), srcIp.getCanonicalHostName(), su.uri.getPort(),
-                su.uri.getPath(), su.uri.getQuery(), su.uri.getFragment());
-            dstUri = new URI(du.uri.getScheme(), du.uri.getUserInfo(), dstIp.getCanonicalHostName(), du.uri.getPort(),
-                du.uri.getPath(), du.uri.getQuery(), du.uri.getFragment());
-          } catch (URISyntaxException e) {
-            LOG.error("Updating URI host failed:",e);
-            System.exit(-1);
-          }
-          FTPURI srcFTPUri = new FTPURI(srcUri, su.cred);
-          FTPURI dstFTPUri = new FTPURI(dstUri, du.cred);
-          //System.out.println("Took " + (System.currentTimeMillis() - start)/1000.0 + " seconds to get cannocical name");
-          channel = new ChannelPair(srcFTPUri, dstFTPUri);
-          //System.out.println("Created a channel between " + channel.rc.fc.getHost() + " and " + channel.sc.fc.getHost());
-          synchronized (client.ccs) {
-            client.ccs.add(channel);
-          }
-          boolean success = setupChannelConf(channel, channelId, chunk, firstFileToTransfer);
-          if (success) {
-            synchronized (chunk.getRecords().channels) {
-              chunk.getRecords().channels.add(channel);
+            // Channel zero is main channel and already created
+            ChannelPair channel;
+            InetAddress srcIp, dstIp;
+            synchronized (sourceIpList) {
+              srcIp = sourceIpList.poll();
+              sourceIpList.add(srcIp);
             }
-            client.transferList(channel);
-          } else {
-            synchronized (chunk.getRecords()) {
-              chunk.getRecords().addEntry(firstFileToTransfer);
+            synchronized (destinationIpList) {
+              dstIp = destinationIpList.poll();
+              destinationIpList.add(dstIp);
             }
+            //long start = System.currentTimeMillis();
+            URI srcUri = null, dstUri = null;
+            try {
+              srcUri = new URI(su.uri.getScheme(), su.uri.getUserInfo(), srcIp.getCanonicalHostName(), su.uri.getPort(),
+                  su.uri.getPath(), su.uri.getQuery(), su.uri.getFragment());
+              dstUri = new URI(du.uri.getScheme(), du.uri.getUserInfo(), dstIp.getCanonicalHostName(), du.uri.getPort(),
+                  du.uri.getPath(), du.uri.getQuery(), du.uri.getFragment());
+            } catch (URISyntaxException e) {
+              LOG.error("Updating URI host failed:", e);
+              System.exit(-1);
+            }
+            FTPURI srcFTPUri = new FTPURI(srcUri, su.cred);
+            FTPURI dstFTPUri = new FTPURI(dstUri, du.cred);
+            //System.out.println("Took " + (System.currentTimeMillis() - start)/1000.0 + " seconds to get cannocical name");
+            channel = new ChannelPair(srcFTPUri, dstFTPUri);
+            //System.out.println("Created a channel between " + channel.rc.fc.getHost() + " and " + channel.sc.fc.getHost());
+            success = setupChannelConf(channel, channelId, chunk, firstFileToTransfer);
+            if (success) {
+              synchronized (chunk.getRecords().channels) {
+                chunk.getRecords().channels.add(channel);
+              }
+              synchronized (client.ccs) {
+                client.ccs.add(channel);
+              }
+              client.transferList(channel);
+            } else {
+              trial++;
+
+            }
+          } catch (Exception e) {
+            e.printStackTrace();
           }
-        } catch (Exception e) {
-          e.printStackTrace();
+        }
+        // if channel is not established, then put the file back into the list
+        if (!success) {
+          synchronized (chunk.getRecords()) {
+            chunk.getRecords().addEntry(firstFileToTransfer);
+          }
         }
       }
 
