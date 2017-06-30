@@ -1199,9 +1199,6 @@ public class CooperativeModule {
           }
           */
           else if (!cc.isConfigurationChanged){
-            if (cc.inTransitFiles.size() + 2 < cc.pipelining ) {
-              System.out.println("Channel " + cc.getId() + " in transit " + cc.inTransitFiles.size() + "ppq:" + cc.pipelining);
-            }
             for (int i = cc.inTransitFiles.size(); i < cc.pipelining + 1; i++) {
               pullAndSendAFile(cc);
             }
@@ -1212,14 +1209,16 @@ public class CooperativeModule {
 
         if (cc.inTransitFiles.isEmpty()) {
           //LOG.info(cc.id + "--Chunk "+ cc.xferListIndex + "finished " +chunks.get(cc.xferListIndex).count());
-          findChunkInNeed(cc);
+          cc = findChunkInNeed(cc);
         }
 
       }
       if (cc == null) {
         System.out.println("Channel " + cc.getId() +  " is null");
       }
-      cc.close();
+      else {
+        cc.close();
+      }
     }
 
     ChannelPair restartChannel(ChannelPair oldChannel) {
@@ -1252,7 +1251,6 @@ public class CooperativeModule {
       else {
         oldChannel.chunk = oldChannel.newChunk;
         oldChannel.pipelining = oldChannel.newChunk.getTunableParameters().getPipelining();
-        System.out.println("Updating channel pipelining to " +  oldChannel.pipelining);
         oldChannel.pipeTransfer(fileToStart);
         oldChannel.inTransitFiles.add(fileToStart);
         newChannel = oldChannel;
@@ -1325,7 +1323,7 @@ public class CooperativeModule {
       updateOnAir(cc.chunk.getRecords(), +1);
       return true;
     }
-    synchronized void findChunkInNeed(ChannelPair cc) throws Exception {
+    synchronized ChannelPair findChunkInNeed(ChannelPair cc) throws Exception {
       double max = -1;
       boolean found = false;
 
@@ -1346,18 +1344,20 @@ public class CooperativeModule {
         }
         // not found any chunk candidate, returns
         if (index == -1) {
-          return;
+          return null;
         }
         if (chunks.get(index).getRecords().count() > 0) {
           cc.newChunk = chunks.get(index);
-          System.out.println("Channel  "+ cc.id +" is being transferred from " +  cc.chunk.getDensity().name() +
-              " to " + cc.newChunk.getDensity().name());
+          System.out.println("Channel  " + cc.id + " is being transferred from " + cc.chunk.getDensity().name() +
+              " to " + cc.newChunk.getDensity().name() + "\t" + cc.newChunk.getTunableParameters().toString());
           cc = restartChannel(cc);
+          System.out.println("Channel  " + cc.id + " is transferred current:" + cc.inTransitFiles.size() + " ppq:" + cc.pipelining);
           if (cc.inTransitFiles.size() > 0) {
-            found = true;
+            return cc;
           }
         }
       }
+      return null;
     }
   }
 
@@ -1415,7 +1415,6 @@ public class CooperativeModule {
         cc.id = channelId;
         if (params.getParallelism() > 1)
           cc.setParallelism(params.getParallelism());
-        System.out.println("Setting channel pipelining to " + params.getPipelining());
         cc.pipelining = params.getPipelining();
         cc.setBufferSize(params.getBufferSize());
         cc.setPerfFreq(3);
