@@ -1199,6 +1199,7 @@ public class CooperativeModule {
           }
           */
           else if (!cc.isConfigurationChanged){
+            //System.out.println("Channel " + cc.getId() +  " in transit " + cc.inTransitFiles.size() + "ppq:" + cc.pipelining);
             for (int i = cc.inTransitFiles.size(); i < cc.pipelining + 1; i++) {
               pullAndSendAFile(cc);
             }
@@ -1249,7 +1250,7 @@ public class CooperativeModule {
       else {
         oldChannel.chunk = oldChannel.newChunk;
         oldChannel.pipelining = oldChannel.newChunk.getTunableParameters().getPipelining();
-        System.out.println("Setting channel pipelining to " +  oldChannel.pipelining);
+        System.out.println("Updating channel pipelining to " +  oldChannel.pipelining);
         oldChannel.pipeTransfer(fileToStart);
         oldChannel.inTransitFiles.add(fileToStart);
         newChannel = oldChannel;
@@ -1349,7 +1350,7 @@ public class CooperativeModule {
           cc.newChunk = chunks.get(index);
           System.out.println("Channel  "+ cc.id +" is being transferred from " +  cc.chunk.getDensity().name() +
               " to " + cc.newChunk.getDensity().name());
-          restartChannel(cc);
+          cc = restartChannel(cc);
           if (cc.inTransitFiles.size() > 0) {
             found = true;
           }
