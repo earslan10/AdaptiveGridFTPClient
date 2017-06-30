@@ -1249,6 +1249,7 @@ public class CooperativeModule {
       else {
         oldChannel.chunk = oldChannel.newChunk;
         oldChannel.pipelining = oldChannel.newChunk.getTunableParameters().getPipelining();
+        System.out.println("Setting channel pipelining to " +  oldChannel.pipelining);
         oldChannel.pipeTransfer(fileToStart);
         oldChannel.inTransitFiles.add(fileToStart);
         newChannel = oldChannel;
