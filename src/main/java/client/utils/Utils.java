@@ -43,7 +43,7 @@ public class Utils {
     int pLevelToFillBuffer = (int) Math.ceil(avgFileSize / AdaptiveGridFTPClient.transferTask.getBufferSize());
     int cc = Math.min(Math.min(Math.max(fileCountToFillThePipe, 2), xl.count()),
         AdaptiveGridFTPClient.transferTask.getMaxConcurrency());
-    int ppq = fileCountToFillThePipe;
+    int ppq = Math.min(fileCountToFillThePipe, 100);
     int p = Math.max(Math.min(pLevelToFillPipe, pLevelToFillBuffer), 1);
     p = avgFileSize > AdaptiveGridFTPClient.transferTask.getBDP() ? p : p;
     return new TunableParameters.Builder()
