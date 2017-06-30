@@ -1411,6 +1411,7 @@ public class CooperativeModule {
         cc.id = channelId;
         if (params.getParallelism() > 1)
           cc.setParallelism(params.getParallelism());
+        System.out.println("Setting channel pipelining to " + params.getPipelining());
         cc.pipelining = params.getPipelining();
         cc.setBufferSize(params.getBufferSize());
         cc.setPerfFreq(3);
