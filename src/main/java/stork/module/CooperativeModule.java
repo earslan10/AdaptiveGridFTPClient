@@ -1199,7 +1199,7 @@ public class CooperativeModule {
           }
           */
           else if (!cc.isConfigurationChanged){
-            //System.out.println("Channel " + cc.getId() +  " in transit " + cc.inTransitFiles.size() + "ppq:" + cc.pipelining);
+            System.out.println("Channel " + cc.getId() +  " in transit " + cc.inTransitFiles.size() + "ppq:" + cc.pipelining);
             for (int i = cc.inTransitFiles.size(); i < cc.pipelining + 1; i++) {
               pullAndSendAFile(cc);
             }
