@@ -1189,7 +1189,7 @@ public class CooperativeModule {
             if (cc == null) {
               return;
             }
-            System.out.println("Channel " + cc.getId()+ " parallelism is updated");
+            System.out.println("Channel " + cc.getId()+ " parallelism is updated pipelining:" + cc.pipelining);
             cc.isConfigurationChanged = false;
 
           }
