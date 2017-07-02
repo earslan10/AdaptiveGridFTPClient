@@ -1210,6 +1210,8 @@ public class CooperativeModule {
         if (cc.inTransitFiles.isEmpty()) {
           //LOG.info(cc.id + "--Chunk "+ cc.xferListIndex + "finished " +chunks.get(cc.xferListIndex).count());
           cc = findChunkInNeed(cc);
+          if (cc == null)
+            return;
         }
 
       }
