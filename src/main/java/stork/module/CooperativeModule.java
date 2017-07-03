@@ -229,6 +229,8 @@ public class CooperativeModule {
     public final FTPServerFacade facade;
     public final FTPControlChannel fc;
     public final BasicClientControlChannel cc;
+    public int channelID;
+    Writer instantThroughputWriter;
 
 
     public ControlChannel(FTPURI u) throws Exception {
@@ -284,7 +286,6 @@ public class CooperativeModule {
           throw new Exception("bad username");
         }
       }
-
     }
 
     // Make a local control channel connection to a remote control channel.
@@ -472,6 +473,11 @@ public class CooperativeModule {
       gridftp = cc.gridftp;
       rc = dc = cc;
       oc = sc = new ControlChannel(cc);
+    }
+
+    public void setID (int id) {
+      this.id = id;
+      sc.channelID = dc.channelID = rc.channelID = oc.channelID = id;
     }
 
     public void pipePassive() throws Exception {
@@ -811,6 +817,15 @@ public class CooperativeModule {
               if (pl != null) {
               //System.out.println("Progress Marker from " + cc.fc.getHost());
                 long diff = pl._markerArrived(new PerfMarker(r.getMessage()), e);
+                if (cc.instantThroughputWriter == null) {
+                  System.out.println("Initializing writer of channel " + cc.channelID + " on host"  + cc.fc.getHost());
+                  cc.instantThroughputWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(
+                      "Channel-"+cc.channelID + "-inst-thr.txt"), "utf-8"));
+                }
+                if (diff > 0) {
+                  cc.instantThroughputWriter.write(System.currentTimeMillis() / 1000 + "\t" + diff + "\n");
+                  cc.instantThroughputWriter.flush();
+                }
                 pl.client.updateChunk(fileList, diff);
               }
               break;
@@ -826,6 +841,8 @@ public class CooperativeModule {
           }   // We'd have returned otherwise...
         }
       }
+      if (cc.instantThroughputWriter != null)
+        cc.instantThroughputWriter.flush();
       throw other.error;
     }
 
@@ -1384,6 +1401,8 @@ public class CooperativeModule {
     volatile int rv = -1;
     Thread transferMonitorThread;
 
+    static int perfFreq = 3;
+
     //List<MlsxEntry> firstFilesToSend;
     public GridFTPTransfer(String proxy, URI source, URI dest) {
       proxyFile = proxy;
@@ -1392,19 +1411,8 @@ public class CooperativeModule {
       executor = Executors.newFixedThreadPool(30);
     }
 
-    public static String printSize(double random) {
-      DecimalFormat df = new DecimalFormat("###.##");
-      if (random < 1024.0) {
-        return df.format(random) + "B";
-      } else if (random < 1024.0 * 1024) {
-        return df.format(random / 1024.0) + "KB";
-      } else if (random < 1024.0 * 1024 * 1024) {
-        return df.format(random / (1024.0 * 1024)) + "MB";
-      } else if (random < (1024 * 1024 * 1024 * 1024.0)) {
-        return df.format(random / (1024 * 1024.0 * 1024)) + "GB";
-      } else {
-        return df.format(random / (1024 * 1024 * 1024.0 * 1024)) + "TB";
-      }
+    public void setPerfFreq (int perfFreq) {
+      this.perfFreq = perfFreq;
     }
 
     public static boolean setupChannelConf(ChannelPair cc,
@@ -1414,12 +1422,13 @@ public class CooperativeModule {
       TunableParameters params = chunk.getTunableParameters();
       cc.chunk = chunk;
       try {
-        cc.id = channelId;
+        cc.setID(channelId);
         if (params.getParallelism() > 1)
           cc.setParallelism(params.getParallelism());
         cc.pipelining = params.getPipelining();
         cc.setBufferSize(params.getBufferSize());
-        cc.setPerfFreq(3);
+        System.out.println("Performance perf req " + perfFreq);
+        cc.setPerfFreq(perfFreq);
         if (!cc.dc_ready) {
           if (cc.dc.local || !cc.gridftp) {
             cc.setTypeAndMode('I', 'S');
@@ -1696,8 +1705,8 @@ public class CooperativeModule {
       for (int i = 0; i < client.chunks.size(); i++) {
         if (client.chunks.get(i).isReadyToTransfer) {
           XferList xl = client.chunks.get(i).getRecords();
-          LOG.info("Chunk " + i + ":\t" + xl.count() + " files\t" + printSize(xl.size()));
-          System.out.println("Chunk " + i + ":\t" + xl.count() + " files\t" + printSize(xl.size())
+          LOG.info("Chunk " + i + ":\t" + xl.count() + " files\t" + Utils.printSize(xl.size(), true));
+          System.out.println("Chunk " + i + ":\t" + xl.count() + " files\t" + Utils.printSize(xl.size(), true)
               + client.chunks.get(i).getTunableParameters());
           xl.instantTransferredSize = xl.totalTransferredSize;
         }
@@ -1728,9 +1737,9 @@ public class CooperativeModule {
             estimatedCompletionTime = ((xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput) - xl.interval;
             xl.interval += interval;
             System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() +
-                "\t total:" + printSize(xl.size()) + "\t interval:" + xl.interval + "\t onAir:" + xl.onAir);
+                "\t total:" + Utils.printSize(xl.size(), true) + "\t interval:" + xl.interval + "\t onAir:" + xl.onAir);
           } else { // This chunk is active but has not transferred any data yet
-            System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() + "\t total:" + printSize(xl.size())
+            System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() + "\t total:" + Utils.printSize(xl.size(), true)
                 + "\t onAir:" + xl.onAir);
             if (xl.channels.size() == 0) {
               estimatedCompletionTime = Double.POSITIVE_INFINITY;
@@ -1754,9 +1763,10 @@ public class CooperativeModule {
           estimatedCompletionTime = 8 * (xl.initialSize - xl.totalTransferredSize) / xl.weighted_throughput;
           xl.estimatedFinishTime = estimatedCompletionTime;
           System.out.println("Chunk " + i + "\t threads:" + xl.channels.size() + "\t count:" + xl.count() + "\t finished:"
-              + printSize(xl.totalTransferredSize) + "/" + printSize(xl.initialSize) + "\t throughput:" +
-              Utils.printSize(xl.instant_throughput, false) + "/" + Utils.printSize(xl.weighted_throughput, true)
-              + "\testimated time:" + df.format(estimatedCompletionTime) + "\t onAir:" + xl.onAir);
+              + Utils.printSize(xl.totalTransferredSize, true) + "/" + Utils.printSize(xl.initialSize, true)
+              + "\t throughput:" +  Utils.printSize(xl.instant_throughput, false) + "/" +
+              Utils.printSize(xl.weighted_throughput, true) + "\testimated time:" +
+              df.format(estimatedCompletionTime) + "\t onAir:" + xl.onAir);
           xl.instantTransferredSize = xl.totalTransferredSize;
         }
         estimatedCompletionTimes[i] = estimatedCompletionTime;

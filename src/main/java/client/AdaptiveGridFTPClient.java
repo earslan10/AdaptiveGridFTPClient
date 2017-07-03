@@ -29,6 +29,7 @@ public class AdaptiveGridFTPClient {
   public static boolean isTransferCompleted = false;
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
   public static int maximumChunks = 4;
+  private int perfFreq = 3;
   boolean useMaxCC = false;
   private String proxyFile;
   private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
@@ -100,6 +101,7 @@ public class AdaptiveGridFTPClient {
       System.exit(-1);
     }
     gridFTPClient.useDynamicScheduling = useDynamicScheduling;
+    gridFTPClient.setPerfFreq(perfFreq);
     GridFTPTransfer.client.setChecksumEnabled(runChecksumControl);
     if (useHysterisis) {
       // this will initialize matlab connection while running hysterisis analysis
@@ -549,6 +551,10 @@ public class AdaptiveGridFTPClient {
         break;
       case "-throughput-log-file":
         ConfigurationParams.INFO_LOG_ID = args[1];
+        LOG.info("Dynamic scheduling enabled.");
+        break;
+      case "-perf-freq":
+        perfFreq = Integer.parseInt(args[1]);
         LOG.info("Dynamic scheduling enabled.");
         break;
       default:
