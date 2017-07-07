@@ -30,6 +30,7 @@ public class AdaptiveGridFTPClient {
   TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
   public static int maximumChunks = 4;
   private int perfFreq = 3;
+  public static boolean channelLevelDebug = false;
   boolean useMaxCC = false;
   private String proxyFile;
   private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
@@ -555,7 +556,10 @@ public class AdaptiveGridFTPClient {
         break;
       case "-perf-freq":
         perfFreq = Integer.parseInt(args[1]);
-        LOG.info("Dynamic scheduling enabled.");
+        break;
+      case "-enable-channel-debug":
+        channelLevelDebug = true;
+        usedSecondArgument = false;
         break;
       default:
         System.err.println("Unrecognized input parameter " + config);

@@ -817,14 +817,16 @@ public class CooperativeModule {
               if (pl != null) {
               //System.out.println("Progress Marker from " + cc.fc.getHost());
                 long diff = pl._markerArrived(new PerfMarker(r.getMessage()), e);
-                if (cc.instantThroughputWriter == null) {
-                  System.out.println("Initializing writer of channel " + cc.channelID + " on host"  + cc.fc.getHost());
-                  cc.instantThroughputWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(
-                      "Channel-"+cc.channelID + "-inst-thr.txt"), "utf-8"));
-                }
-                if (diff > 0) {
-                  cc.instantThroughputWriter.write(System.currentTimeMillis() / 1000 + "\t" + diff + "\n");
-                  cc.instantThroughputWriter.flush();
+                if (AdaptiveGridFTPClient.channelLevelDebug) {
+                  if (cc.instantThroughputWriter == null) {
+                    System.out.println("Initializing writer of channel " + cc.channelID + " on host" + cc.fc.getHost());
+                    cc.instantThroughputWriter = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(
+                        "Channel-" + cc.channelID + "-inst-thr.txt"), "utf-8"));
+                  }
+                  if (diff > 0) {
+                    cc.instantThroughputWriter.write(System.currentTimeMillis() / 1000 + "\t" + diff + "\n");
+                    cc.instantThroughputWriter.flush();
+                  }
                 }
                 pl.client.updateChunk(fileList, diff);
               }
@@ -1770,8 +1772,7 @@ public class CooperativeModule {
           xl.instantTransferredSize = xl.totalTransferredSize;
         }
         estimatedCompletionTimes[i] = estimatedCompletionTime;
-        writer.write(timer + "\t" + xl.channels.size() + "\t"  + chunk.getTunableParameters().getParallelism() +
-            "\t" + (throughputInMbps)/(1000*1000.0) + "\n");
+        writer.write(timer + "\t" + xl.channels.size() + "\t" + (throughputInMbps)/(1000*1000.0) + "\n");
         writer.flush();
       }
       System.out.println("*******************");
