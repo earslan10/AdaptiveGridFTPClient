@@ -249,6 +249,7 @@ public class CooperativeModule {
           try {
             gc.authenticate(u.cred);
           } catch (Exception e) {
+            System.out.println("Error in connecting host " + u.host);
             e.printStackTrace();
             System.exit(-1);
           }
@@ -459,7 +460,7 @@ public class CooperativeModule {
           oc = sc = new ControlChannel(su);
         }
       } catch (Exception e) {
-        System.out.println("Failed to create new channel");
+        System.out.println("Failed to create new channel on " + su.host + "-" + du.host);
         e.printStackTrace();
       }
     }
@@ -1864,6 +1865,7 @@ public class CooperativeModule {
       int channelId;
       XferList.MlsxEntry firstFileToTransfer;
       Partition chunk;
+      //List<String> blacklistedHosts
 
       public TransferChannel(Partition chunk, int channelId, XferList.MlsxEntry file) {
         this.channelId = channelId;
@@ -1883,10 +1885,16 @@ public class CooperativeModule {
             InetAddress srcIp, dstIp;
             synchronized (sourceIpList) {
               srcIp = sourceIpList.poll();
+              while(srcIp.getCanonicalHostName().contains("ie04")) {
+                srcIp = sourceIpList.poll();
+              }
               sourceIpList.add(srcIp);
             }
             synchronized (destinationIpList) {
               dstIp = destinationIpList.poll();
+              while(dstIp.getCanonicalHostName().contains("ie04")) {
+                dstIp = destinationIpList.poll();
+              }
               destinationIpList.add(dstIp);
             }
             //long start = System.currentTimeMillis();
