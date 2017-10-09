@@ -22,6 +22,7 @@ public class XferList implements Iterable<XferList.MlsxEntry> {
   private LinkedList<MlsxEntry> list = new LinkedList<>();
   private long size = 0;
   private int count = 0;  // Number of files (not dirs)
+  public Set<Integer> activeOSTs;
 
   // Create an XferList for a directory.
   public XferList(String src, String dest) {
@@ -119,6 +120,7 @@ public class XferList implements Iterable<XferList.MlsxEntry> {
       MlsxEntry e = list.get(index);
       size -= e.size;
       list.remove(index);
+      count--;
     } catch (Exception e) {
 
     }
@@ -258,6 +260,8 @@ public class XferList implements Iterable<XferList.MlsxEntry> {
     public String fileName, spath, dpath;
     public boolean done = false;
     public long off = 0, len = -1;  // Start/stop offsets.
+
+    public int sourceOSTId;
 
     // Create a directory entry.
     MlsxEntry(String spath) {

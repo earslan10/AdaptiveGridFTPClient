@@ -1195,6 +1195,7 @@ public class CooperativeModule {
             updateChunk(fileList, e.len - prog.last_bytes);
           }
           updateOnAir(fileList, -1);
+          fileList.activeOSTs.remove(e.sourceOSTId);
 
           if (cc.isConfigurationChanged && cc.inTransitFiles.isEmpty()) {
             if (cc.newChunk == null) {  // Closing this channel
@@ -1284,40 +1285,32 @@ public class CooperativeModule {
       updateOnAir(newFileList, +1);
       return newChannel;
     }
-    /*
-        void changeChunkOfChannel(ChannelPair channel, int chunkId) {
-          System.out.println("channel " + channel.id + " finished its job in Chunk " + channel.xferListIndex + "*" +
-              getChannels(chunks.get(channel.xferListIndex).getRecords()) + " moving to Chunk " +
-              channel.newxferListIndex + "*" + getChannels(chunks.get(channel.newxferListIndex).getRecords()));
-          MlsxEntry fileToStart = getNextFile(channel.xferListIndex);
-          if (fileToStart == null) {
-            return;
-          }
-          XferList newChunk = chunks.get(channel.newxferListIndex).getRecords();
-          int channelId = channel.id;
-          int newChunkId = channel.newxferListIndex;
-          long start = System.currentTimeMillis();
-          //cc.close();
-          channel = new ChannelPair(su, du);
-          channel.xferListIndex = newChunkId;
-          channel.parallelism = newChunk.parallelism;
-          channel.pipelining = newChunk.pipelining;
 
-          GridFTPTransfer.setupChannelConf(channel, newChunk.parallelism, newChunk.pipelining, newChunk.bufferSize, 0,
-              channelId, channel.xferListIndex, newChunk, fileToStart);
-          updateOnAir(channel.xferListIndex, +1);
-          System.out.println("channel " + channel.id + " joined to Chunk in " + (System.currentTimeMillis() - start) + " ms");
-          for (int i = 0; i < channel.pipelining; i++) {
-            pullAndSendAFile(channel);
-          }
-          channel.isChunkChanged = false;
-
-        }
-    */
     XferList.MlsxEntry getNextFile(XferList fileList) {
       synchronized (fileList) {
         if (fileList.count() > 0) {
-          return fileList.pop();
+          int index = 0;
+          XferList.MlsxEntry nextFile = null;
+          if(AdaptiveGridFTPClient.avoidOSTContention) {
+            while (index < fileList.count()) {
+              nextFile = fileList.getItem(index);
+              if (fileList.activeOSTs.contains(nextFile.sourceOSTId)) {
+                fileList.removeItem(index);
+                fileList.addEntry(nextFile);
+                System.out.println("Avoided transferring multiple files from OST " + nextFile.sourceOSTId + " file name:" + nextFile.fileName);
+                index++;
+              } else {
+                break;
+              }
+            }
+            index %= fileList.count();
+            nextFile = fileList.getItem(index);
+            fileList.removeItem(index);
+            fileList.activeOSTs.add(nextFile.sourceOSTId);
+            return nextFile;
+          } else {
+            return fileList.pop();
+          }
         }
       }
       return null;
@@ -1411,7 +1404,7 @@ public class CooperativeModule {
       proxyFile = proxy;
       usu = source;
       udu = dest;
-      executor = Executors.newFixedThreadPool(30);
+      executor = Executors.newFixedThreadPool(34);
     }
 
     public void setPerfFreq (int perfFreq) {
@@ -1430,7 +1423,7 @@ public class CooperativeModule {
           cc.setParallelism(params.getParallelism());
         cc.pipelining = params.getPipelining();
         cc.setBufferSize(params.getBufferSize());
-        System.out.println("Performance perf req " + perfFreq);
+        //System.out.println("Performance perf req " + perfFreq);
         cc.setPerfFreq(perfFreq);
         if (!cc.dc_ready) {
           if (cc.dc.local || !cc.gridftp) {
@@ -1597,7 +1590,7 @@ public class CooperativeModule {
       int concurrency = tunableParameters.getConcurrency();
       List<XferList.MlsxEntry> firstFilesToSend = Lists.newArrayListWithCapacity(concurrency);
       for (int i = 0; i < concurrency; i++) {
-        firstFilesToSend.add(xl.pop());
+        firstFilesToSend.add(client.getNextFile(xl));
       }
 
       client.ccs = new ArrayList<>(concurrency);
@@ -1769,7 +1762,7 @@ public class CooperativeModule {
               + Utils.printSize(xl.totalTransferredSize, true) + "/" + Utils.printSize(xl.initialSize, true)
               + "\t throughput:" +  Utils.printSize(xl.instant_throughput, false) + "/" +
               Utils.printSize(xl.weighted_throughput, true) + "\testimated time:" +
-              df.format(estimatedCompletionTime) + "\t onAir:" + xl.onAir);
+              df.format(estimatedCompletionTime) + "\t onAir:" + xl.onAir + " " + xl.activeOSTs.size() + " active OSTs " + Arrays.toString(xl.activeOSTs.toArray()));
           xl.instantTransferredSize = xl.totalTransferredSize;
         }
         estimatedCompletionTimes[i] = estimatedCompletionTime;
