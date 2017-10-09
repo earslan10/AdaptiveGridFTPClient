@@ -5,8 +5,10 @@ import client.utils.TunableParameters;
 import client.utils.Utils;
 import stork.util.XferList;
 
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Represents a calculated partition. A partition contains the centroid and
@@ -39,6 +41,7 @@ public class Partition implements Comparable {
   public Partition() {
     this.centroid = 0;
     entry = new Entry();
+    fileList.activeOSTs = new HashSet<Integer>();
   }
 
   /**

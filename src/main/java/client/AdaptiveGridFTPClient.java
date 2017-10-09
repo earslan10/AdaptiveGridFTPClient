@@ -16,22 +16,23 @@ import java.io.*;
 import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 
 public class AdaptiveGridFTPClient {
 
-  private static final Log LOG = LogFactory.getLog(AdaptiveGridFTPClient.class);
   public static Entry transferTask;
   public static boolean useOnlineTuning = false;
   public static boolean isTransferCompleted = false;
-  TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
   public static int maximumChunks = 4;
-  private int perfFreq = 3;
   public static boolean channelLevelDebug = false;
+  public static boolean avoidOSTContention = false;
+
   boolean useMaxCC = false;
+  TransferAlgorithm algorithm = TransferAlgorithm.MULTICHUNK;
+
+  private static final Log LOG = LogFactory.getLog(AdaptiveGridFTPClient.class);
+  private int perfFreq = 3;
   private String proxyFile;
   private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
   private boolean anonymousTransfer = false;
@@ -74,7 +75,6 @@ public class AdaptiveGridFTPClient {
     String mHysterisis = useHysterisis ? "Hysterisis" : "";
     String mDynamic = useDynamicScheduling ? "Dynamic" : "";
     LOG.info("*************" + algorithm.name() + "************");
-    //LogManager.writeToLog("*************" + algorithm.name() + "-" + mHysterisis + "-" + mDynamic + "************" + transferTask.getMaxConcurrency(), ConfigurationParams.INFO_LOG_ID);
 
     URI su = null, du = null;
     try {
@@ -193,6 +193,12 @@ public class AdaptiveGridFTPClient {
 
   @VisibleForTesting
   ArrayList<Partition> partitionByFileSize(XferList list, int maximumChunks) {
+    Map lustreObjectMap = null;
+    if (avoidOSTContention) {
+      lustreObjectMap = readOSTPlacement();
+    }
+
+
     Entry transferTask = getTransferTask();
     list.shuffle();
 
@@ -204,6 +210,13 @@ public class AdaptiveGridFTPClient {
     for (XferList.MlsxEntry e : list) {
       if (e.dir) {
         continue;
+      }
+      if (avoidOSTContention) {
+        if (!lustreObjectMap.containsKey(e.fileName)) {
+          System.out.println("Could not find file " + e.fileName + " lustre_obj_map");
+          System.exit(-1);
+        }
+        e.sourceOSTId = (int) lustreObjectMap.get(e.fileName);
       }
       Density density = Utils.findDensityOfFile(e.size(), transferTask.getBandwidth(), maximumChunks);
       partitions.get(density.ordinal()).addRecord(e);
@@ -227,7 +240,30 @@ public class AdaptiveGridFTPClient {
           + " \t total:" + Utils.printSize(partitions.get(i).getRecords().size(), true) + " Density:" +
           chunk.getDensity());
     }
+
+
     return partitions;
+  }
+
+  private Map readOSTPlacement () {
+    Map lustreObjectMap = new HashMap<String, Integer>();
+    ClassLoader classloader = Thread.currentThread().getContextClassLoader();
+    String configFile = "lustre-placing-comet";
+    InputStream is;
+    try {
+      is = classloader.getResourceAsStream(configFile);
+      BufferedReader br = new BufferedReader(new InputStreamReader(is));
+      String line;
+      while ((line = br.readLine()) != null) {
+        String[] slist = line.split("\\s+");
+        lustreObjectMap.put(slist[0], Integer.parseInt(slist[1]));
+      }
+    } catch (Exception e) {
+      System.err.println("Something went wrong");
+      e.printStackTrace();
+      System.exit(-1);
+    }
+    return lustreObjectMap;
   }
 
   private ArrayList<Partition> mergePartitions(ArrayList<Partition> partitions) {
@@ -559,6 +595,10 @@ public class AdaptiveGridFTPClient {
         break;
       case "-enable-channel-debug":
         channelLevelDebug = true;
+        usedSecondArgument = false;
+        break;
+      case "-avoid-ost-contention":
+        avoidOSTContention = true;
         usedSecondArgument = false;
         break;
       default:
