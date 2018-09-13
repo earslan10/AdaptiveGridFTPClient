@@ -1,7 +1,11 @@
 
 # Dynamic Protocol Tuning Algorithms
-1. Import the project to Intellij
-  * Tested with Java 1.8 and Python 2.7
+1. Import the project to Intellij as a Maven Project, you will need to download all the dependencies which you can do as follows.
+     a) Press Ctrl + E to open recent files
+     b) Open Maven Projects
+     c) Click on install, this way you will install all the dependencies required for this code.
+     d) If you don't have Intellij use "run package" command to download all the dependencies.
+  
 2. Edit configurations in config.cfg in src/main/resources folder as follows
 
   **-s** $Source_GridFTP_Server  
@@ -26,4 +30,7 @@
   -useHysterisis  
   -use-dynamic-scheduling
 
-3. Run CooperativeChannels.java to schedule transfer
+3. Run AdaptiveGridFTPClient.java to start the transfer
+4. Logs will be stored in harp.log and inst-throughput.txt inside the project folder.
+
+*This code is tested with Java 1.8 and Python 2.7
