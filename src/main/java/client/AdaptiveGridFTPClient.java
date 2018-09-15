@@ -71,10 +71,6 @@ public class AdaptiveGridFTPClient {
   @VisibleForTesting
   void transfer() throws Exception {
     transferTask.setBDP((transferTask.getBandwidth() * transferTask.getRtt()) / 8); // In MB
-    String mHysterisis = useHysterisis ? "Hysterisis" : "";
-    String mDynamic = useDynamicScheduling ? "Dynamic" : "";
-    LOG.info("*************" + algorithm.name() + "************");
-    //LogManager.writeToLog("*************" + algorithm.name() + "-" + mHysterisis + "-" + mDynamic + "************" + transferTask.getMaxConcurrency(), ConfigurationParams.INFO_LOG_ID);
 
     URI su = null, du = null;
     try {
@@ -104,6 +100,7 @@ public class AdaptiveGridFTPClient {
     gridFTPClient.useDynamicScheduling = useDynamicScheduling;
     gridFTPClient.setPerfFreq(perfFreq);
     GridFTPTransfer.client.setChecksumEnabled(runChecksumControl);
+
     if (useHysterisis) {
       // this will initialize matlab connection while running hysterisis analysis
       hysterisis = new Hysterisis();
@@ -117,6 +114,7 @@ public class AdaptiveGridFTPClient {
     long datasetSize = dataset.size();
     ArrayList<Partition> chunks = partitionByFileSize(dataset, maximumChunks);
 
+    // Check if there are multiple hosts behind given hostname
     // Make sure hostname resolution operations are completed before starting to a transfer
     sourceHostResolution.join();
     destinationHostResolution.join();

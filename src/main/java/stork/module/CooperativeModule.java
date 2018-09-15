@@ -661,10 +661,9 @@ public class CooperativeModule {
         } else {
           String checksum = null;
           if (enableCheckSum) {
-            checksum = pipeGetCheckSum(e.path());
+            checksum = pipeGetCheckSum(e.fullPath());
           }
-          //System.out.println("Piping " + e.path() + " to " + e.dpath());
-          pipeRetr(e.path(), e.off, e.len);
+          pipeRetr(e.fullPath(), e.off, e.len);
           if (enableCheckSum && checksum != null)
             pipeStorCheckSum(checksum);
           pipeStor(e.dpath(), e.off, e.len);
@@ -1042,13 +1041,12 @@ public class CooperativeModule {
 
         while (!dirs.isEmpty())
           waiting.add(dirs.pop());
-        System.out.println("Waiting has " + waiting.size() + " items");
 
         // Pipeline commands like a champ.
         while  (currentPipelining < MAXIMUM_PIPELINING && !waiting.isEmpty()) {
           String p = waiting.pop();
           cc.pipePassive();
-          System.out.println("Pipelining " + cmd + " " + path+p);
+          System.out.println("Piping  " + cmd + " " + path+p);
           cc.rc.write(cmd, path + p);
           working.add(p);
           currentPipelining++;
@@ -1090,8 +1088,6 @@ public class CooperativeModule {
             if (e.dir) {
               subdirs.add(e.spath);
             }
-            //if (e.dir) System.out.println("Directory:"+e.spath()+" "+e.dpath()+" "+spath);
-
           }
           list.addAll(xl);
 
@@ -1159,9 +1155,15 @@ public class CooperativeModule {
         xl.dp = dp;
       } else {  // Otherwise it's just one file.
         xl = new XferList(sp, dp, size(sp));
-
       }
       // Pass the list off to the transfer() which handles lists.
+      xl.updateDestinationPaths();
+      for (MlsxEntry entry : xl.getFileList()) {
+        if (entry.dir) {
+          LOG.info("Creating directory " + entry.dpath);
+          cc.pipeMkdir(entry.dpath);
+        }
+      }
       return xl;
     }
 
@@ -1284,36 +1286,7 @@ public class CooperativeModule {
       updateOnAir(newFileList, +1);
       return newChannel;
     }
-    /*
-        void changeChunkOfChannel(ChannelPair channel, int chunkId) {
-          System.out.println("channel " + channel.id + " finished its job in Chunk " + channel.xferListIndex + "*" +
-              getChannels(chunks.get(channel.xferListIndex).getRecords()) + " moving to Chunk " +
-              channel.newxferListIndex + "*" + getChannels(chunks.get(channel.newxferListIndex).getRecords()));
-          MlsxEntry fileToStart = getNextFile(channel.xferListIndex);
-          if (fileToStart == null) {
-            return;
-          }
-          XferList newChunk = chunks.get(channel.newxferListIndex).getRecords();
-          int channelId = channel.id;
-          int newChunkId = channel.newxferListIndex;
-          long start = System.currentTimeMillis();
-          //cc.close();
-          channel = new ChannelPair(su, du);
-          channel.xferListIndex = newChunkId;
-          channel.parallelism = newChunk.parallelism;
-          channel.pipelining = newChunk.pipelining;
 
-          GridFTPTransfer.setupChannelConf(channel, newChunk.parallelism, newChunk.pipelining, newChunk.bufferSize, 0,
-              channelId, channel.xferListIndex, newChunk, fileToStart);
-          updateOnAir(channel.xferListIndex, +1);
-          System.out.println("channel " + channel.id + " joined to Chunk in " + (System.currentTimeMillis() - start) + " ms");
-          for (int i = 0; i < channel.pipelining; i++) {
-            pullAndSendAFile(channel);
-          }
-          channel.isChunkChanged = false;
-
-        }
-    */
     XferList.MlsxEntry getNextFile(XferList fileList) {
       synchronized (fileList) {
         if (fileList.count() > 0) {
@@ -1430,7 +1403,6 @@ public class CooperativeModule {
           cc.setParallelism(params.getParallelism());
         cc.pipelining = params.getPipelining();
         cc.setBufferSize(params.getBufferSize());
-        System.out.println("Performance perf req " + perfFreq);
         cc.setPerfFreq(perfFreq);
         if (!cc.dc_ready) {
           if (cc.dc.local || !cc.gridftp) {
@@ -1587,7 +1559,6 @@ public class CooperativeModule {
       LOG.info("Transferring chunk " + chunk.getDensity().name() + " params:" + tunableParameters.toString() + " " + tunableParameters.getBufferSize() + " size:" + (xl.size() / (1024.0 * 1024))
           + " files:" + xl.count());
       double fileSize = xl.size();
-      xl.updateDestinationPaths();
 
       xl.channels = new LinkedList<>();
       xl.initialSize = xl.size();
@@ -1658,7 +1629,6 @@ public class CooperativeModule {
         XferList xl = chunks.get(i).getRecords();
         totalDataSize += xl.size();
         xl.initialSize = xl.size();
-        xl.updateDestinationPaths();
         xl.channels = Lists.newArrayListWithCapacity(channelAllocations[i]);
         chunks.get(i).isReadyToTransfer = true;
         client.chunks.add(chunks.get(i));
@@ -1782,6 +1752,8 @@ public class CooperativeModule {
       }
     }
 
+    // This function implements dynamic scheduling. Dynamic scheduling is used to re-assign channels from fast
+    // chunks to slow chunks to make all run as similar pace
     public void checkIfChannelReallocationRequired(double[] estimatedCompletionTimes) {
 
       // if any channel reallocation is ongoing, then don't go for another!
@@ -1885,16 +1857,10 @@ public class CooperativeModule {
             InetAddress srcIp, dstIp;
             synchronized (sourceIpList) {
               srcIp = sourceIpList.poll();
-              while(srcIp.getCanonicalHostName().contains("ie04")) {
-                srcIp = sourceIpList.poll();
-              }
               sourceIpList.add(srcIp);
             }
             synchronized (destinationIpList) {
               dstIp = destinationIpList.poll();
-              while(dstIp.getCanonicalHostName().contains("ie04")) {
-                dstIp = destinationIpList.poll();
-              }
               destinationIpList.add(dstIp);
             }
             //long start = System.currentTimeMillis();
