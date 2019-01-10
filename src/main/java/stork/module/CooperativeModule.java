@@ -659,6 +659,11 @@ public class CooperativeModule {
         if (e.dir) {
           pipeMkdir(e.dpath());
         } else {
+          // Reset port if we are using FTP in stream mode, otherwise channel will be closed after first file transfer.
+          if (!gridftp && mode == 'S') {
+            HostPort hp = setPassive();
+            setActive(hp);
+          }
           String checksum = null;
           if (enableCheckSum) {
             checksum = pipeGetCheckSum(e.fullPath());
