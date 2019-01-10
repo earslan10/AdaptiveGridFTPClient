@@ -34,7 +34,6 @@ public class AdaptiveGridFTPClient {
   boolean useMaxCC = false;
   private String proxyFile;
   private ChannelDistributionPolicy channelDistPolicy = ChannelDistributionPolicy.ROUND_ROBIN;
-  private boolean anonymousTransfer = false;
   private Hysterisis hysterisis;
   private GridFTPTransfer gridFTPClient;
   private boolean useHysterisis = false;
@@ -401,9 +400,11 @@ public class AdaptiveGridFTPClient {
         processParameter(argument);
     }
 
-    if (null == proxyFile && !anonymousTransfer) {
+    if (proxyFile == null) {
       int uid = findUserId();
-      proxyFile = "/tmp/x509up_u" + uid;
+      File x509 = new File("/tmp/x509up_u" + uid);
+      if (x509.exists())
+        this.proxyFile = x509.getAbsolutePath();
     }
     ConfigurationParams.init();
   }
@@ -440,10 +441,6 @@ public class AdaptiveGridFTPClient {
           LOG.fatal("-spath requires spath of file/directory to be transferred");
         }
         LOG.info("proxyFile = " + proxyFile);
-        break;
-      case "-no-proxy":
-        anonymousTransfer = true;
-        usedSecondArgument = false;
         break;
       case "-bw":
       case "-bandwidth":

@@ -225,7 +225,7 @@ public class CooperativeModule {
 
 
   private static class ControlChannel {
-    public final boolean local, gridftp, hasCred;
+    public final boolean local, gridftp;
     public final FTPServerFacade facade;
     public final FTPControlChannel fc;
     public final BasicClientControlChannel cc;
@@ -240,7 +240,6 @@ public class CooperativeModule {
       local = false;
       facade = null;
       gridftp = u.gridftp;
-      hasCred = u.cred != null;
       if (u.gridftp) {
         GridFTPControlChannel gc;
         cc = fc = gc = new GridFTPControlChannel(u.host, u.port);
@@ -296,13 +295,9 @@ public class CooperativeModule {
       }
       local = true;
       gridftp = rc.gridftp;
-      hasCred = rc.hasCred;
       if (gridftp) {
         facade = new GridFTPServerFacade((GridFTPControlChannel) rc.fc);
-
-        if (!hasCred) {
-          ((GridFTPServerFacade) facade).setDataChannelAuthentication(DataChannelAuthentication.NONE);
-        }
+        ((GridFTPServerFacade) facade).setDataChannelAuthentication(DataChannelAuthentication.NONE);
       } else {
         facade = new FTPServerFacade(rc.fc);
       }
